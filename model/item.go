@@ -15,5 +15,6 @@ type Item struct {
 	ItemName  string     `json:"item_name"`
 	Stocks    int        `json:"stocks"`
 	TenantId  int        `json:"tenant_id"`
+	IsActive  bool       `json:"is_active"`
 	CreatedAt *time.Time `json:"created_at,omitempty"`
 }

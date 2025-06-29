@@ -153,6 +153,7 @@ func TestWarehouseRepository_Get(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, 4, len(_dummiesFromDB))
 
+	// First page
 	currentPage := 1
 	itemPerPage := 2
 	items, count, err := warehouseRepo.Get(1, itemPerPage, currentPage)
@@ -160,6 +161,7 @@ func TestWarehouseRepository_Get(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, 2, len(items))
 
+	// Go to next page
 	currentPage += 1
 	items, _, err = warehouseRepo.Get(1, itemPerPage, currentPage)
 	assert.Nil(t, err)
