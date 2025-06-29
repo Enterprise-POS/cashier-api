@@ -15,6 +15,35 @@ type WarehouseRepositoryImpl struct {
 	Client *supabase.Client
 }
 
+func (warehouse *WarehouseRepositoryImpl) Get(tenantId int, limit int, page int) ([]*model.Item, int, error) {
+	start := page * limit
+	end := start + limit - 1
+
+	data, count, err := warehouse.Client.
+		From("warehouse").
+
+		// exact: Will return the total items are there
+		Select("*", "exact", false).
+
+		// Only return the requested tenant
+		Eq("tenant_id", strconv.Itoa(tenantId)).
+		Range(start, end, "").
+		Limit(limit, "").
+		Execute()
+
+	if err != nil {
+		return nil, 0, err
+	}
+
+	var itemsList []*model.Item
+	err = json.Unmarshal(data, &itemsList)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return itemsList, int(count), nil
+}
+
 func (warehouse *WarehouseRepositoryImpl) FindById(itemId int, tenantId int) *model.Item {
 	data, _, err := warehouse.Client.
 		From("warehouse").
@@ -27,7 +56,6 @@ func (warehouse *WarehouseRepositoryImpl) FindById(itemId int, tenantId int) *mo
 		return nil
 	}
 
-	// Marshal response to your model
 	var item model.Item
 	err = json.Unmarshal(data, &item)
 	if err != nil {
@@ -38,20 +66,21 @@ func (warehouse *WarehouseRepositoryImpl) FindById(itemId int, tenantId int) *mo
 	return &item
 }
 
-func (warehouse *WarehouseRepositoryImpl) CreateItem(item *model.Item) (*model.Item, error) {
-	result, _, err := warehouse.Client.From("warehouse").Insert(item, false, "", "representation", "").Single().Execute()
+func (warehouse *WarehouseRepositoryImpl) CreateItem(items []*model.Item) ([]*model.Item, error) {
+	result, _, err := warehouse.Client.From("warehouse").Insert(items, false, "", "representation", "").Execute()
 	if err != nil {
 		return nil, err
 	}
 
-	var data = new(model.Item)
-	err = json.Unmarshal(result, data)
+	// fmt.Println("message ->", reflect.TypeOf(string(result)).Name())
+
+	var itemsList []*model.Item
+	err = json.Unmarshal(result, &itemsList)
 	if err != nil {
-		fmt.Println(err)
-		return nil, errors.New("[ERROR] Fatal ! Could not Unmarshal item at CreateItem")
+		return nil, err
 	}
 
-	return data, nil
+	return itemsList, nil
 }
 
 func (warehouse *WarehouseRepositoryImpl) Edit(quantity int, item *model.Item) error {
@@ -64,7 +93,7 @@ func (warehouse *WarehouseRepositoryImpl) Edit(quantity int, item *model.Item) e
 	})
 
 	if strings.Contains(message, "[ERROR]") {
-		return errors.New(strings.Replace(message, "[ERROR] ", "", 1))
+		return errors.New(message)
 	}
 
 	// We don't need to return the item, because we already know before
