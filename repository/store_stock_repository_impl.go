@@ -43,6 +43,20 @@ func (storeStock *StoreStockRepositoryImpl) Get(tenantId int, storeId int, limit
 	return result, int(count), nil
 }
 
+/*
+TransferStockToWarehouse:
+
+	This RPC also decrease/increment the stocks at warehouse also store_stock
+
+	Un-exist item_id at warehouse will cause FATAL ERROR
+
+	rather than use model.StoreStock, quantity is required,
+	We want to prevent race condition at the DB.
+
+	(warehouse -> store_stock)
+
+	TODO: resolve security alert from supabase, 'search_path'
+*/
 func (storeStock *StoreStockRepositoryImpl) TransferStockToWarehouse(quantity int, itemId int, storeId int, tenantId int) error {
 	var message string = storeStock.Client.Rpc("transfer_stock_to_warehouse", "", map[string]interface{}{
 		"p_quantity":  quantity,
@@ -57,8 +71,22 @@ func (storeStock *StoreStockRepositoryImpl) TransferStockToWarehouse(quantity in
 	return nil
 }
 
+/*
+TransferStockToStoreStock:
+
+	This RPC also decrease/increment the stocks at warehouse also store_stock
+
+	By default if current item stored but 'never exist' at the 'store_stock',
+	it will create price with default 'price = 0'
+
+	rather than use model.Item, quantity is required,
+	We want to prevent race condition at the DB.
+
+	(store_stock -> warehouse)
+
+	TODO: resolve security alert from supabase, 'search_path'
+*/
 func (storeStock *StoreStockRepositoryImpl) TransferStockToStoreStock(quantity int, itemId int, storeId int, tenantId int) error {
-	// By default if current item stored but 'never exist' at the 'store_stock', it will create price with default 'price = 0'
 	var message string = storeStock.Client.Rpc("transfer_stocks_to_store_stock", "", map[string]interface{}{
 		"p_quantity":  quantity,
 		"p_item_id":   itemId,
