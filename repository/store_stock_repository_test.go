@@ -72,6 +72,11 @@ func TestStoreStockRepository(t *testing.T) {
 		assert.Equal(t, dummyItemFromDB.ItemId, transferredItemFromDB.ItemId)
 		assert.Equal(t, dummyItemFromDB.ItemName, transferredItemFromDB.ItemName)
 
+		// TEST: transfer not enough stock from store_stock
+		err = storeStockRepo.TransferStockToWarehouse(100, dummyItemFromDB.ItemId, STORE_ID, TENANT_ID)
+		assert.NotNil(t, err)
+		assert.Equal(t, "\"[ERROR] Not enough stock\"", err.Error())
+
 		// Clean up
 		// store_stock
 		supabaseClient.From("store_stock").
@@ -124,6 +129,11 @@ func TestStoreStockRepository(t *testing.T) {
 		assert.Equal(t, STORE_ID, storeStockDummyFromDB.StoreId)
 		assert.Equal(t, dummyItemFromDB.ItemId, storeStockDummyFromDB.ItemId)
 		assert.Equal(t, dummyItemFromDB.TenantId, storeStockDummyFromDB.TenantId)
+
+		// TEST: not enough stock to store_stock from warehouse
+		err = storeStockRepo.TransferStockToStoreStock(999, dummyItemFromDB.ItemId, STORE_ID, TENANT_ID)
+		assert.NotNil(t, err)
+		assert.Equal(t, "\"[ERROR] Not enough stock\"", err.Error())
 
 		// Delete the data
 		// store_stock

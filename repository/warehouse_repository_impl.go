@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 
+	log "github.com/sirupsen/logrus"
 	"github.com/supabase-community/supabase-go"
 )
 
@@ -44,7 +45,7 @@ func (warehouse *WarehouseRepositoryImpl) Get(tenantId int, limit int, page int)
 	return itemsList, int(count), nil
 }
 
-func (warehouse *WarehouseRepositoryImpl) FindById(itemId int, tenantId int) *model.Item {
+func (warehouse *WarehouseRepositoryImpl) FindById(itemId int, tenantId int) (*model.Item, error) {
 	data, _, err := warehouse.Client.
 		From("warehouse").
 		Select("*", "exact", false).
@@ -52,18 +53,22 @@ func (warehouse *WarehouseRepositoryImpl) FindById(itemId int, tenantId int) *mo
 		Eq("tenant_id", strconv.Itoa(tenantId)).
 		Single().Execute()
 	if err != nil {
-		fmt.Println("Error fetching warehouse item:", err)
-		return nil
+		if strings.Contains(err.Error(), "(PGRST116)") {
+			log.Warnf("Warning ! Handled error, id not found for item with id: %d", itemId)
+		} else {
+			log.Error("Error fetching warehouse item:", err)
+		}
+		return nil, err
 	}
 
 	var item model.Item
 	err = json.Unmarshal(data, &item)
 	if err != nil {
 		fmt.Println("Failed to unmarshal Supabase response:", err)
-		return nil
+		return nil, err
 	}
 
-	return &item
+	return &item, err
 }
 
 func (warehouse *WarehouseRepositoryImpl) CreateItem(items []*model.Item) ([]*model.Item, error) {

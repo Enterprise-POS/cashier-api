@@ -6,8 +6,10 @@ import (
 	"reflect"
 	"strconv"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/supabase-community/supabase-go"
 )
 
@@ -15,11 +17,45 @@ var supabaseClient *supabase.Client = client.CreateSupabaseClient()
 
 func TestWarehouseRepository_FindById(t *testing.T) {
 	warehouseRepo := WarehouseRepositoryImpl{Client: supabaseClient}
-	item := warehouseRepo.FindById(1, 1)
-	assert.Equal(t, 1, item.ItemId)
-	assert.Equal(t, "Apple", item.ItemName)
-	assert.Equal(t, 40, item.Stocks)
-	assert.Equal(t, 27, item.CreatedAt.Day())
+
+	// TEST: normal search
+	// Create item first
+	var dummyItem = &model.Item{
+		ItemName: "Test TestWarehouseRepository_FindById 1",
+		Stocks:   40,
+		TenantId: 1,
+	}
+	_dummiesFromDB, err := warehouseRepo.CreateItem([]*model.Item{dummyItem})
+	require.Nil(t, err)
+	require.Greater(t, len(_dummiesFromDB), 0)
+
+	dummyItemFromDB := _dummiesFromDB[0]
+
+	item, err := warehouseRepo.FindById(dummyItemFromDB.ItemId, 1)
+	assert.Nil(t, err)
+	assert.NotNil(t, item)
+	assert.Equal(t, dummyItemFromDB.ItemId, item.ItemId)
+	assert.Equal(t, dummyItemFromDB.ItemName, item.ItemName)
+	assert.Equal(t, dummyItemFromDB.Stocks, item.Stocks)
+
+	now := time.Now()
+	assert.Equal(t, now.Day(), item.CreatedAt.Day())
+
+	// TEST: id not found
+	itemNotFound, err := warehouseRepo.FindById(0, 1)
+	assert.Nil(t, itemNotFound)
+	assert.NotNil(t, err)
+	assert.Equal(t, "(PGRST116) JSON object requested, multiple (or no) rows returned", err.Error())
+
+	// Clean up
+	// Delete the dummy data
+	_, _, err = supabaseClient.From("warehouse").
+		Delete("", "").
+		Eq("tenant_id", strconv.Itoa(dummyItemFromDB.TenantId)).
+		Eq("item_name", dummyItemFromDB.ItemName).Execute()
+	if err != nil {
+		t.Fatal("unexpected error while testing to delete dummy data _CreateItem")
+	}
 }
 
 func TestWarehouseRepository_CreateItem(t *testing.T) {
@@ -84,7 +120,8 @@ func TestWarehouseRepository_Edit(t *testing.T) {
 	assert.Nil(t, err)
 
 	// Check if edited item is exist
-	editedDummyItemFromDB := warehouseRepo.FindById(dummyItemFromDB.ItemId, dummyItemFromDB.TenantId)
+	editedDummyItemFromDB, err := warehouseRepo.FindById(dummyItemFromDB.ItemId, dummyItemFromDB.TenantId)
+	assert.Nil(t, err)
 	assert.NotNil(t, editedDummyItemFromDB)
 	assert.Equal(t, dummyItemFromDB.ItemId, editedDummyItemFromDB.ItemId)
 	assert.Equal(t, dummyItemFromDB.ItemName, editedDummyItemFromDB.ItemName)
@@ -96,7 +133,8 @@ func TestWarehouseRepository_Edit(t *testing.T) {
 	err = warehouseRepo.Edit(-(dummyItemFromDB.Stocks - editedDummyItemFromDB.Stocks), editedDummyItemFromDB)
 	assert.Nil(t, err)
 
-	editIncrementDummyItemFromDB := warehouseRepo.FindById(editedDummyItemFromDB.ItemId, editedDummyItemFromDB.TenantId)
+	editIncrementDummyItemFromDB, err := warehouseRepo.FindById(editedDummyItemFromDB.ItemId, editedDummyItemFromDB.TenantId)
+	assert.Nil(t, err)
 	assert.NotNil(t, editIncrementDummyItemFromDB)
 	assert.Equal(t, editedDummyItemFromDB.ItemId, editIncrementDummyItemFromDB.ItemId)
 	assert.Equal(t, editedDummyItemFromDB.ItemName, editIncrementDummyItemFromDB.ItemName)
