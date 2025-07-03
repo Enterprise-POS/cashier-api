@@ -19,7 +19,7 @@ func TestOrderItemRepository(t *testing.T) {
 	const TENANT_ID = 1
 
 	t.Run("_PlaceOrderItem", func(t *testing.T) {
-		// Normal insert
+		// TEST: Normal insert
 		warehouseRepo := WarehouseRepositoryImpl{Client: supabaseClient}
 		orderItemRepo := OrderItemRepositoryImpl{Client: supabaseClient}
 		storeStockRepo := StoreStockRepositoryImpl{Client: supabaseClient}
@@ -79,9 +79,85 @@ func TestOrderItemRepository(t *testing.T) {
 		assert.Equal(t, STORE_ID, dummyOrderItemFromDB.StoreId)
 
 		// Clean up; order_item -> store_stock (also act as shop) -> warehouse
-		// supabaseClient.From("order_item").Delete("", "").Eq("id", strconv.Itoa(dummyOrderItemFromDB.Id)).Execute()
-		// supabaseClient.From("store_stock").Delete("", "").Eq("id", strconv.Itoa(transferredStoreStockFromDB.Id)).Execute()
-		// supabaseClient.From("warehouse").Delete("", "").Eq("item_id", strconv.Itoa(dummyItemFromDB.ItemId)).Execute()
-	})
+		supabaseClient.From("order_item").Delete("", "").Eq("id", strconv.Itoa(dummyOrderItemFromDB.Id)).Execute()
+		supabaseClient.From("store_stock").Delete("", "").Eq("id", strconv.Itoa(transferredStoreStockFromDB.Id)).Execute()
+		supabaseClient.From("warehouse").Delete("", "").Eq("item_id", strconv.Itoa(dummyItemFromDB.ItemId)).Execute()
 
+		/*
+			TEST: invalid value
+				total_quantity > 0
+				total_amount >= 0
+				discount_amount >= 0
+				subtotal >= 0
+		*/
+		dummyOrderItemInvalidTotalQuantity := &model.OrderItem{
+			PurchasedPrice: 10000,
+			TotalQuantity:  0,
+			TotalAmount:    10000,
+			DiscountAmount: 0,
+			Subtotal:       10000,
+			TenantId:       TENANT_ID,
+			StoreId:        STORE_ID,
+		}
+		dummyOrderItemFromDB, err = orderItemRepo.PlaceOrderItem(dummyOrderItemInvalidTotalQuantity)
+		assert.Nil(t, dummyOrderItemFromDB)
+		assert.NotNil(t, err)
+		assert.Equal(t, "(23514) new row for relation \"order_item\" violates check constraint \"order_item_quantity_check\"", err.Error())
+		dummyOrderItemInvalidTotalAmount := &model.OrderItem{
+			PurchasedPrice: 10000,
+			TotalQuantity:  10000,
+			TotalAmount:    -1,
+			DiscountAmount: 0,
+			Subtotal:       10000,
+			TenantId:       TENANT_ID,
+			StoreId:        STORE_ID,
+		}
+		dummyOrderItemFromDB, err = orderItemRepo.PlaceOrderItem(dummyOrderItemInvalidTotalAmount)
+		assert.Nil(t, dummyOrderItemFromDB)
+		assert.NotNil(t, err)
+		assert.Equal(t, "(23514) new row for relation \"order_item\" violates check constraint \"order_item_total_amount_check\"", err.Error())
+		dummyOrderItemInvalidDiscountAmount := &model.OrderItem{
+			PurchasedPrice: 10000,
+			TotalQuantity:  1,
+			TotalAmount:    10000,
+			DiscountAmount: -1,
+			Subtotal:       10000,
+			TenantId:       TENANT_ID,
+			StoreId:        STORE_ID,
+		}
+		dummyOrderItemFromDB, err = orderItemRepo.PlaceOrderItem(dummyOrderItemInvalidDiscountAmount)
+		assert.Nil(t, dummyOrderItemFromDB)
+		assert.NotNil(t, err)
+		assert.Equal(t, "(23514) new row for relation \"order_item\" violates check constraint \"order_item_discount_amount_check\"", err.Error())
+
+		// TEST: unavailable STORE_ID
+		dummyOrderItem = &model.OrderItem{
+			PurchasedPrice: 9999,
+			TotalQuantity:  90,
+			TotalAmount:    9999,
+			DiscountAmount: 0,
+			Subtotal:       9999,
+			TenantId:       TENANT_ID,
+			StoreId:        0, // -> will not valid
+		}
+		dummyOrderItemFromDB, err = orderItemRepo.PlaceOrderItem(dummyOrderItem)
+		assert.Nil(t, dummyOrderItemFromDB)
+		assert.NotNil(t, err)
+		assert.Equal(t, "(23503) insert or update on table \"order_item\" violates foreign key constraint \"order_item_store_id_fkey\"", err.Error())
+
+		// TEST: unavailable TENANT_ID
+		dummyOrderItem = &model.OrderItem{
+			PurchasedPrice: 9999,
+			TotalQuantity:  90,
+			TotalAmount:    9999,
+			DiscountAmount: 0,
+			Subtotal:       9999,
+			TenantId:       0, // -> will not valid
+			StoreId:        STORE_ID,
+		}
+		dummyOrderItemFromDB, err = orderItemRepo.PlaceOrderItem(dummyOrderItem)
+		assert.Nil(t, dummyOrderItemFromDB)
+		assert.NotNil(t, err)
+		assert.Equal(t, "(23503) insert or update on table \"order_item\" violates foreign key constraint \"order_item_tenant_id_fkey\"", err.Error())
+	})
 }
