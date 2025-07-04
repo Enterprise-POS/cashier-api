@@ -4,7 +4,6 @@ import (
 	"cashier-api/model"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"strconv"
 	"strings"
 
@@ -20,7 +19,8 @@ func (warehouse *WarehouseRepositoryImpl) Get(tenantId int, limit int, page int)
 	start := page * limit
 	end := start + limit - 1
 
-	data, count, err := warehouse.Client.
+	var itemsList []*model.Item
+	count, err := warehouse.Client.
 		From("warehouse").
 
 		// exact: Will return the total items are there
@@ -30,14 +30,8 @@ func (warehouse *WarehouseRepositoryImpl) Get(tenantId int, limit int, page int)
 		Eq("tenant_id", strconv.Itoa(tenantId)).
 		Range(start, end, "").
 		Limit(limit, "").
-		Execute()
+		ExecuteTo(&itemsList)
 
-	if err != nil {
-		return nil, 0, err
-	}
-
-	var itemsList []*model.Item
-	err = json.Unmarshal(data, &itemsList)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -46,25 +40,19 @@ func (warehouse *WarehouseRepositoryImpl) Get(tenantId int, limit int, page int)
 }
 
 func (warehouse *WarehouseRepositoryImpl) FindById(itemId int, tenantId int) (*model.Item, error) {
-	data, _, err := warehouse.Client.
+	var item model.Item
+	_, err := warehouse.Client.
 		From("warehouse").
 		Select("*", "exact", false).
 		Eq("item_id", strconv.Itoa(itemId)).
 		Eq("tenant_id", strconv.Itoa(tenantId)).
-		Single().Execute()
+		Single().ExecuteTo(&item)
 	if err != nil {
 		if strings.Contains(err.Error(), "(PGRST116)") {
 			log.Warnf("Warning ! Handled error, id not found for item with id: %d", itemId)
 		} else {
 			log.Error("Error fetching warehouse item:", err)
 		}
-		return nil, err
-	}
-
-	var item model.Item
-	err = json.Unmarshal(data, &item)
-	if err != nil {
-		fmt.Println("Failed to unmarshal Supabase response:", err)
 		return nil, err
 	}
 
@@ -92,7 +80,7 @@ func (warehouse *WarehouseRepositoryImpl) Edit(quantity int, item *model.Item) e
 	message := warehouse.Client.Rpc("edit_warehouse_item", "", map[string]interface{}{
 		"p_quantity":  quantity,
 		"p_item_name": item.ItemName,
-		"p_category":  nil, // TODO: implement this
+		"p_category":  item.Category,
 		"p_item_id":   item.ItemId,
 		"p_tenant_id": item.TenantId,
 	})

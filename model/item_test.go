@@ -21,6 +21,8 @@ func TestDefinedProperties(t *testing.T) {
 		Stocks:    999,
 		TenantId:  1,
 		CreatedAt: &now,
+		IsActive:  true,
+		Category:  1,
 	}
 
 	assert.Equal(t, 1, item.ItemId)
@@ -28,4 +30,6 @@ func TestDefinedProperties(t *testing.T) {
 	assert.Equal(t, 999, item.Stocks)
 	assert.Equal(t, 1, item.TenantId)
 	assert.NotNil(t, item.CreatedAt)
+	assert.True(t, item.IsActive)
+	assert.Equal(t, 1, item.Category)
 }
