@@ -13,14 +13,17 @@ import (
 
 func TestPurchasedItemList(t *testing.T) {
 	var supabaseClient *supabase.Client = client.CreateSupabaseClient()
-	const TENANT_ID int = 1
-	const STORE_ID int = 1
 
-	// just for faster testing
-	const APPLE_ID int = 1
-	const PEACH_ID int = 2
-	const APPLE_PRICE int = 10000
-	const PEACH_PRICE int = 20000
+	const (
+		TENANT_ID int = 1
+		STORE_ID  int = 1
+
+		// just for faster testing
+		APPLE_ID    int = 1
+		PEACH_ID    int = 2
+		APPLE_PRICE int = 10000
+		PEACH_PRICE int = 20000
+	)
 
 	t.Run("_CreateList", func(t *testing.T) {
 		orderItemRepo := OrderItemRepositoryImpl{Client: supabaseClient}

@@ -18,6 +18,5 @@ type Item struct {
 	Stocks    int        `json:"stocks"`
 	TenantId  int        `json:"tenant_id"`
 	IsActive  bool       `json:"is_active"`
-	Category  int        `json:"category,omitempty"`
 	CreatedAt *time.Time `json:"created_at,omitempty"`
 }

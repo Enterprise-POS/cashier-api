@@ -1,5 +1,9 @@
 name: CI/CD Configuration
 
+env:
+  SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+  SUPABASE_API_URL: ${{ secrets.SUPABASE_API_URL }}
+
 on:
   push:
     branches:
@@ -12,3 +16,14 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: 1.22
+
+      - name: Install Go dependencies
+        run: go get
+
+      - name: Test all Go file
+        run: go test -v ./...

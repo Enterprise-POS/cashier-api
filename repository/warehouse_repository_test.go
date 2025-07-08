@@ -3,6 +3,7 @@ package repository
 import (
 	"cashier-api/helper/client"
 	"cashier-api/model"
+	"fmt"
 	"reflect"
 	"strconv"
 	"testing"
@@ -38,8 +39,10 @@ func TestWarehouseRepository_FindById(t *testing.T) {
 	assert.Equal(t, dummyItemFromDB.ItemName, item.ItemName)
 	assert.Equal(t, dummyItemFromDB.Stocks, item.Stocks)
 
+	// may cause error because the day not sync
 	now := time.Now()
-	assert.Equal(t, now.Day(), item.CreatedAt.Day())
+	assert.Equal(t, now.UTC().Day(), item.CreatedAt.UTC().Day())
+	fmt.Println(now)
 
 	// TEST: id not found
 	itemNotFound, err := warehouseRepo.FindById(0, 1)
@@ -104,6 +107,7 @@ func TestWarehouseRepository_Edit(t *testing.T) {
 		ItemName: "Test Name2",
 		Stocks:   20,
 		TenantId: 1,
+		IsActive: true,
 	}
 
 	_dummyItemFromDB, err := warehouseRepo.CreateItem([]*model.Item{dummyItem})
@@ -128,7 +132,7 @@ func TestWarehouseRepository_Edit(t *testing.T) {
 	assert.Equal(t, dummyItemFromDB.Stocks, editedDummyItemFromDB.Stocks)
 
 	// Increment +
-	editedDummyItemFromDB.ItemName = "Edit Name 2 :"
+	editedDummyItemFromDB.ItemName = "Edit Name 2"
 	editedDummyItemFromDB.Stocks = 100
 	err = warehouseRepo.Edit(-(dummyItemFromDB.Stocks - editedDummyItemFromDB.Stocks), editedDummyItemFromDB)
 	assert.Nil(t, err)

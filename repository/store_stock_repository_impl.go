@@ -16,6 +16,7 @@ type StoreStockRepositoryImpl struct {
 }
 
 func (storeStock *StoreStockRepositoryImpl) Get(tenantId int, storeId int, limit int, page int) ([]*model.StoreStock, int, error) {
+	// Even user see first page written in 1, we must subtract by 1 otherwise range error
 	start := page * limit
 	end := start + limit - 1
 

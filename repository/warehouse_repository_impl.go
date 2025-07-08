@@ -78,11 +78,11 @@ func (warehouse *WarehouseRepositoryImpl) CreateItem(items []*model.Item) ([]*mo
 
 func (warehouse *WarehouseRepositoryImpl) Edit(quantity int, item *model.Item) error {
 	message := warehouse.Client.Rpc("edit_warehouse_item", "", map[string]interface{}{
-		"p_quantity":  quantity,
-		"p_item_name": item.ItemName,
-		"p_category":  item.Category,
-		"p_item_id":   item.ItemId,
-		"p_tenant_id": item.TenantId,
+		"p_quantity":  quantity,      // int
+		"p_item_name": item.ItemName, // string
+		"p_category":  0,             // int
+		"p_item_id":   item.ItemId,   // int
+		"p_tenant_id": item.TenantId, // int
 	})
 
 	if strings.Contains(message, "[ERROR]") {
