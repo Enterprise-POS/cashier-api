@@ -39,11 +39,6 @@ func main() {
 		ErrorHandler:            exception.ErrorHandler,
 	})
 
-	// firebaseApp, err := helper.InitFirebase()
-	// if err != nil {
-	// 	panic(err)
-	// }
-
 	// 02 Middleware, Security
 	app.Use(cors.New())
 	app.Use(recover.New(recover.Config{EnableStackTrace: true}))

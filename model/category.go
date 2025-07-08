@@ -17,16 +17,17 @@ CategoryWithItem:
 	the table between name is category_mtm_warehouse
 */
 type CategoryWithItem struct {
-	Id           int    `json:"id,omitempty"`
+	// Caution ! Because there are ItemId and CategoryId, it's different from Category
+	// We don't specify omitempty because we only hope to get the data from this struct not inserting nor updating
+	CategoryId int `json:"category_id"`
+
 	CategoryName string `json:"category_name"`
 
 	// CreatedAt is Category property
-	CreatedAt *time.Time `json:"created_at"`
-	TenantId  int        `json:"tenant_id"`
+	// CreatedAt *time.Time `json:"created_at"`
 
 	// Item reference
-	ItemId   int    `json:"item_id,omitempty"`
+	ItemId   int    `json:"item_id"`
 	ItemName string `json:"item_name"`
 	Stocks   int    `json:"stocks"`
-	IsActive bool   `json:"is_active"`
 }

@@ -1,13 +1,15 @@
 package repository
 
 import (
-	"fmt"
-	"os"
+	"cashier-api/helper/client"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/supabase-community/supabase-go"
 )
 
 func TestCategoryRepository(t *testing.T) {
-	// var supabaseClient *supabase.Client = client.CreateSupabaseClient()
+	var supabaseClient *supabase.Client = client.CreateSupabaseClient()
 
 	const (
 		TENANT_ID int = 1
@@ -15,7 +17,7 @@ func TestCategoryRepository(t *testing.T) {
 	)
 
 	t.Run("GetItemsByCategory", func(t *testing.T) {
-		// categoryRepositoryImpl := &CategoryRepositoryImpl{Client: supabaseClient}
+		categoryRepositoryImpl := &CategoryRepositoryImpl{Client: supabaseClient}
 
 		/*
 			id (category id) id=1
@@ -23,13 +25,12 @@ func TestCategoryRepository(t *testing.T) {
 			limit=10
 			page=1
 		*/
-		// categoryWithItemFromDB, count, err := categoryRepositoryImpl.GetItemsByCategory(1, TENANT_ID, 10, 0, false)
-		// assert.Nil(t, err)
-		// fmt.Println(count)
-		// fmt.Println(categoryWithItemFromDB)
+		page := 1
+		pagePerContent := 2
+		categoryWithItemFromDB, err := categoryRepositoryImpl.GetItemsByCategory(1, TENANT_ID, pagePerContent, page-1)
 
-		// fmt.Println(categoryWithItemFromDB[0])
-		env := os.Getenv("MODE")
-		fmt.Println(env)
+		assert.Nil(t, err)
+		assert.NotNil(t, categoryWithItemFromDB)
+		assert.Equal(t, pagePerContent, len(categoryWithItemFromDB))
 	})
 }

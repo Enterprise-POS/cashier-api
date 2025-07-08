@@ -2,9 +2,9 @@ package repository
 
 import (
 	"cashier-api/model"
-	"strconv"
+	"encoding/json"
 
-	"github.com/supabase-community/postgrest-go"
+	log "github.com/sirupsen/logrus"
 	"github.com/supabase-community/supabase-go"
 )
 
@@ -12,39 +12,44 @@ type CategoryRepositoryImpl struct {
 	Client *supabase.Client
 }
 
-func (repository *CategoryRepositoryImpl) GetItemsByCategory(id int, tenantId int, limit int, page int, doCount bool) ([]*model.CategoryWithItem, int, error) {
+func (repository *CategoryRepositoryImpl) GetItemsByCategory(tenantId int, categoryId int, limit int, page int) ([]*model.CategoryWithItem, error) {
 	start := page * limit
-	end := start + limit - 1
+	// end := start + limit - 1
 
 	/*
 		Original query:
 
 		-- Get items base on category (id)
-		SELECT * FROM warehouse
-		INNER JOIN category_mtm_warehouse ON category_mtm_warehouse.item_id=warehouse.item_id
-		INNER JOIN category ON category.id=category_mtm_warehouse.category_id
-		WHERE warehouse.tenant_id=1 AND category.id=2;
+			SELECT
+				category.id AS category_id, category.category_name,
+				warehouse.item_id, warehouse.item_name, warehouse.stocks
+			FROM warehouse
+			INNER JOIN category_mtm_warehouse ON category_mtm_warehouse.item_id=warehouse.item_id
+			INNER JOIN category ON category.id=category_mtm_warehouse.category_id
+			WHERE warehouse.tenant_id=p_tenant_id AND category.id=p_category_id;
 	*/
 
+	data := repository.Client.Rpc("get_items_base_on_category", "", map[string]interface{}{
+		"p_tenant_id":   tenantId,
+		"p_category_id": categoryId,
+		"p_limit":       limit,
+		"p_offset":      start,
+	})
+
+	/*
+		[
+			{"category_id":1,"category_name":"Fruits","item_id":1,"item_name":"Apple","stocks":358},
+			{"category_id":1,"category_name":"Fruits","item_id":267,"item_name":"Durian","stocks":10}
+		]
+	*/
 	var results []*model.CategoryWithItem
-
-	var query *postgrest.QueryBuilder = repository.Client.From("category_mtm_warehouse")
-	var filterBuilder *postgrest.FilterBuilder
-	if doCount {
-		filterBuilder = query.Select("warehouse(item_id, item_name, tenant_id), category(id, category_name)", "exact", false)
-	} else {
-		filterBuilder = query.Select("warehouse(item_id, item_name, tenant_id), category(id, category_name)", "", false)
-	}
-
-	count, err := filterBuilder.Eq("warehouse.tenant_id", strconv.Itoa(tenantId)).
-		Eq("category.id", strconv.Itoa(id)).
-		Range(start, end, "").
-		ExecuteTo(&results)
+	err := json.Unmarshal([]byte(data), &results)
 	if err != nil {
-		return nil, 0, err
+		log.Errorf("ERROR ! While unmarshaling data at CategoryRepositoryImpl.GetItemsByCategory. tenantId: %d, categoryId: %d", tenantId, categoryId)
+		return nil, err
 	}
 
-	return results, int(count), nil
+	return results, nil
 }
 
 // count, err := repository.Client.From("category").

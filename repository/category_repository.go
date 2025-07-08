@@ -7,5 +7,5 @@ type CategoryRepository interface {
 		Items = Warehouse Table Item
 		Written by category but 'id' needed, not 'category_name'
 	*/
-	GetItemsByCategory(id int, tenantId int, limit int, page int, doCount bool) ([]*model.CategoryWithItem, int, error)
+	GetItemsByCategory(tenantId int, categoryId int, limit int, page int) ([]*model.CategoryWithItem, error)
 }
