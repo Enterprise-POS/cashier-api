@@ -137,17 +137,19 @@ func TestStoreStockRepository(t *testing.T) {
 
 		// Delete the data
 		// store_stock
-		supabaseClient.From("store_stock").
+		_, _, err = supabaseClient.From("store_stock").
 			Delete("", "").
 			Eq("id", fmt.Sprint(storeStockDummyFromDB.Id)).
 			Eq("item_id", fmt.Sprint(storeStockDummyFromDB.ItemId)).
 			Eq("store_id", fmt.Sprint(storeStockDummyFromDB.StoreId)).
 			Execute()
+		require.Nil(t, err, "Failed not allowed ! Because test data will persist !")
 
 		// warehouse
-		supabaseClient.From("warehouse").
+		_, _, err = supabaseClient.From("warehouse").
 			Delete("", "").
 			Eq("item_id", fmt.Sprint(dummyItemFromDB.ItemId)).
 			Execute()
+		require.Nil(t, err, "Because test data will persist !")
 	})
 }

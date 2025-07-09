@@ -29,7 +29,7 @@ func init() {
 }
 
 func main() {
-	// 01 Setup the fiber and database
+	// 01 Set up the fiber and database
 	app := fiber.New(fiber.Config{
 		IdleTimeout:             time.Second * 5,
 		ReadTimeout:             time.Second * 5,
