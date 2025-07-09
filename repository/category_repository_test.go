@@ -67,6 +67,12 @@ func TestCategoryRepository(t *testing.T) {
 			assert.Nil(t, err)
 			assert.NotEqual(t, 0, count)
 			assert.NotNil(t, categoryWithItemFromDB)
+
+			// Ignoring count
+			categoryWithItemFromDB, count, err = categoryRepositoryImpl.GetCategoryWithItems(TENANT_ID, page-1, pagePerContent, false)
+			assert.Nil(t, err)
+			assert.Equal(t, 0, count)
+			assert.NotNil(t, categoryWithItemFromDB)
 		})
 
 		t.Run("Overflow", func(t *testing.T) {
@@ -76,6 +82,26 @@ func TestCategoryRepository(t *testing.T) {
 			assert.Nil(t, err)
 			assert.NotEqual(t, 0, count)
 			assert.NotNil(t, categoryWithItemFromDB)
+
+			// Ignoring count
+			categoryWithItemFromDB, count, err = categoryRepositoryImpl.GetCategoryWithItems(TENANT_ID, page-1, pagePerContent, false)
+			assert.Nil(t, err)
+			assert.Equal(t, 0, count)
+			assert.NotNil(t, categoryWithItemFromDB)
+		})
+	})
+
+	t.Run("Get", func(t *testing.T) {
+		categoryRepositoryImpl := &CategoryRepositoryImpl{Client: supabaseClient}
+
+		t.Run("NormalGetAll", func(t *testing.T) {
+			page := 1
+			pagePerContent := 2
+			categories, count, err := categoryRepositoryImpl.Get(TENANT_ID, page-1, pagePerContent)
+			assert.Nil(t, err)
+			assert.NotEqual(t, 0, count)
+			assert.NotNil(t, categories)
+			assert.Greater(t, len(categories), 0)
 		})
 	})
 }

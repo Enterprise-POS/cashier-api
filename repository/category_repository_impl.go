@@ -3,6 +3,7 @@ package repository
 import (
 	"cashier-api/model"
 	"encoding/json"
+	"strconv"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/supabase-community/supabase-go"
@@ -81,10 +82,31 @@ func (repository *CategoryRepositoryImpl) GetCategoryWithItems(tenantId, page, l
 		return nil, 0, err
 	}
 
-	_, count, err := repository.Client.From("warehouse").Select("item_id", "exact", false).Execute()
+	countResult := 0
+	if doCount {
+		_, count, err := repository.Client.From("warehouse").Select("item_id", "exact", false).Execute()
+		if err != nil {
+			return nil, 0, err
+		}
+		countResult = int(count)
+	}
+
+	return results, countResult, nil
+}
+
+func (repository *CategoryRepositoryImpl) Get(tenantId, page, limit int) ([]*model.Category, int, error) {
+	start := page * limit
+	end := start + limit - 1
+
+	var result []*model.Category
+	count, err := repository.Client.From("category").
+		Select("*", "exact", false).
+		Eq("tenant_id", strconv.Itoa(tenantId)).
+		Range(start, end, "").
+		ExecuteTo(&result)
 	if err != nil {
 		return nil, 0, err
 	}
 
-	return results, int(count), nil
+	return result, int(count), nil
 }
