@@ -12,7 +12,7 @@ type CategoryRepositoryImpl struct {
 	Client *supabase.Client
 }
 
-func (repository *CategoryRepositoryImpl) GetItemsByCategory(tenantId int, categoryId int, limit int, page int) ([]*model.CategoryWithItem, error) {
+func (repository *CategoryRepositoryImpl) GetItemsByCategoryId(tenantId int, categoryId int, limit int, page int) ([]*model.CategoryWithItem, error) {
 	start := page * limit
 	// end := start + limit - 1
 
@@ -37,6 +37,8 @@ func (repository *CategoryRepositoryImpl) GetItemsByCategory(tenantId int, categ
 	})
 
 	/*
+		Example return
+
 		[
 			{"category_id":1,"category_name":"Fruits","item_id":1,"item_name":"Apple","stocks":358},
 			{"category_id":1,"category_name":"Fruits","item_id":267,"item_name":"Durian","stocks":10}
@@ -52,9 +54,37 @@ func (repository *CategoryRepositoryImpl) GetItemsByCategory(tenantId int, categ
 	return results, nil
 }
 
-// count, err := repository.Client.From("category").
-// 	Select("*", "exact", false).
-// 	Eq("id", strconv.Itoa(id)).
-// 	Range(start, end, "").
-// 	Limit(limit, "").
-// 	ExecuteTo(&results)
+func (repository *CategoryRepositoryImpl) GetCategoryWithItems(tenantId, page, limit int, doCount bool) ([]*model.CategoryWithItem, int, error) {
+	start := page * limit
+	// end := start + limit - 1
+
+	/*
+		Example join using bare bone supabase method.
+
+		results, _, err := repository.Client.From("category").
+			Select("id, category_name, category_mtm_warehouse(warehouse(item_id))", "", false).
+			Limit(limit, "category_mtm_warehouse(warehouse(item_id))").
+			Range(start, end, "category_mtm_warehouse(warehouse(item_id))").
+			Eq("tenant_id", strconv.Itoa(tenantId)).
+			Execute()
+
+		Instead will be using Rpc with the same query as above
+	*/
+	data := repository.Client.Rpc("get_category_with_items", "", map[string]interface{}{
+		"p_tenant_id": tenantId,
+		"p_limit":     limit,
+		"p_offset":    start,
+	})
+	var results []*model.CategoryWithItem
+	err := json.Unmarshal([]byte(data), &results)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	_, count, err := repository.Client.From("warehouse").Select("item_id", "exact", false).Execute()
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return results, int(count), nil
+}
