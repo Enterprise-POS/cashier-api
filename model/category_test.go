@@ -37,3 +37,18 @@ func TestCategoryWithItem(t *testing.T) {
 	assert.Equal(t, "Apple", categoryWithItem.ItemName)
 	assert.Equal(t, 10, categoryWithItem.Stocks)
 }
+
+func TestCategoryMtmWarehouse(t *testing.T) {
+	now := time.Now()
+	categoryMtmWarehouse := &CategoryMtmWarehouse{
+		Id:         1,
+		CategoryId: 1,
+		ItemId:     1,
+		CreatedAt:  &now,
+	}
+
+	assert.Equal(t, 1, categoryMtmWarehouse.Id)
+	assert.Equal(t, 1, categoryMtmWarehouse.ItemId)
+	assert.Equal(t, 1, categoryMtmWarehouse.CategoryId)
+	assert.Equal(t, now.UTC().Day(), categoryMtmWarehouse.CreatedAt.UTC().Day())
+}

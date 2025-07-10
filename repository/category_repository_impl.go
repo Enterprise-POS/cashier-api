@@ -3,7 +3,6 @@ package repository
 import (
 	"cashier-api/model"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"strconv"
 
@@ -22,6 +21,8 @@ func NewCategoryRepositoryImpl(client *supabase.Client) *CategoryRepositoryImpl 
 		CategoryTable: "category",
 	}
 }
+
+const categoryMtmWarehouseTable string = "category_mtm_warehouse"
 
 func (repository *CategoryRepositoryImpl) GetItemsByCategoryId(tenantId int, categoryId int, limit int, page int) ([]*model.CategoryWithItem, error) {
 	start := page * limit
@@ -124,7 +125,7 @@ func (repository *CategoryRepositoryImpl) Get(tenantId, page, limit int) ([]*mod
 func (repository *CategoryRepositoryImpl) Create(tenantId int, categories []*model.Category) ([]*model.Category, error) {
 	if repository.CategoryTable == "" {
 		log.Errorf("Fatal Error ! CategoryRepositoryImpl.Create called with empty table. probably didn't use New Fn for create CategoryRepositoryImpl. TenantId: %d", tenantId)
-		return nil, errors.New(fmt.Sprintf("CategoryRepositoryImpl.Create called with empty table. probably didn't use New Fn for create CategoryRepositoryImpl. TenantId: %d", tenantId))
+		return nil, fmt.Errorf("CategoryRepositoryImpl.Create called with empty table. probably didn't use New Fn for create CategoryRepositoryImpl. TenantId: %d", tenantId)
 	}
 
 	var results []*model.Category
@@ -137,4 +138,42 @@ func (repository *CategoryRepositoryImpl) Create(tenantId int, categories []*mod
 	}
 
 	return results, nil
+}
+
+func (repository *CategoryRepositoryImpl) Register(tobeRegisters []*model.CategoryMtmWarehouse) error {
+	var results []*model.CategoryMtmWarehouse
+
+	// WARN: inconsistent constant naming
+	_, err := repository.Client.From(categoryMtmWarehouseTable).Insert(tobeRegisters, false, "", "", "").ExecuteTo(&results)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (repository *CategoryRepositoryImpl) Update(tenantId int, categoryId int, tobeChangeCategoryName string) (*model.Category, error) {
+	/*
+		For now, only updating Category.CategoryName is allowed
+		- category_name (ok)
+		-	id (no)
+		- created_at
+		- tenant_id
+	*/
+	tobeUpdatedValue := map[string]interface{}{
+		"category_name": tobeChangeCategoryName,
+	}
+
+	var updatedCategory *model.Category
+	_, err := repository.Client.From(repository.CategoryTable).
+		Update(tobeUpdatedValue, "", ""). // Do not use 'exact' for returning parameter
+		Eq("tenant_id", strconv.Itoa(tenantId)).
+		Eq("id", strconv.Itoa(categoryId)).
+		Single().
+		ExecuteTo(&updatedCategory)
+	if err != nil {
+		return nil, err
+	}
+
+	return updatedCategory, nil
 }

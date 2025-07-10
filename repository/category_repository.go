@@ -24,4 +24,17 @@ type CategoryRepository interface {
 		Create new category
 	*/
 	Create(tenantId int, categories []*model.Category) ([]*model.Category, error)
+
+	/*
+		Register warehouse.item into category,
+		this will inserting data into category_mtm_warehouse
+	*/
+	Register(categoryId, itemId int) error
+
+	/*
+		Update existing category
+		- only category name allowed to edit
+		- only update 1 category
+	*/
+	Update(tenantId int, categoryId int, tobeChangeCategoryName string) (*model.Category, error)
 }

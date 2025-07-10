@@ -31,3 +31,10 @@ type CategoryWithItem struct {
 	ItemName string `json:"item_name"`
 	Stocks   int    `json:"stocks"`
 }
+
+type CategoryMtmWarehouse struct {
+	Id         int        `json:"id,omitempty"`
+	CategoryId int        `json:"category_id"`
+	ItemId     int        `json:"item_id"`
+	CreatedAt  *time.Time `json:"created_at,omitempty"`
+}
