@@ -110,17 +110,17 @@ func (repository *CategoryRepositoryImpl) Get(tenantId, page, limit int) ([]*mod
 	start := page * limit
 	end := start + limit - 1
 
-	var result []*model.Category
+	var results []*model.Category
 	count, err := repository.Client.From("category").
 		Select("*", "exact", false).
 		Eq("tenant_id", strconv.Itoa(tenantId)).
 		Range(start, end, "").
-		ExecuteTo(&result)
+		ExecuteTo(&results)
 	if err != nil {
 		return nil, 0, err
 	}
 
-	return result, int(count), nil
+	return results, int(count), nil
 }
 
 func (repository *CategoryRepositoryImpl) Create(tenantId int, categories []*model.Category) ([]*model.Category, error) {
