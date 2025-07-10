@@ -29,7 +29,13 @@ type CategoryRepository interface {
 		Register warehouse.item into category,
 		this will inserting data into category_mtm_warehouse
 	*/
-	Register(categoryId, itemId int) error
+	Register(tobeRegisters []*model.CategoryMtmWarehouse) error
+
+	/*
+		Unregister, deleting category_mtm_warehouse
+		- Only 1 operation allowed for now
+	*/
+	Unregister(toUnregister *model.CategoryMtmWarehouse) error
 
 	/*
 		Update existing category
@@ -37,4 +43,9 @@ type CategoryRepository interface {
 		- only update 1 category
 	*/
 	Update(tenantId int, categoryId int, tobeChangeCategoryName string) (*model.Category, error)
+
+	/*
+		Deleting category; NOT category_mtm_warehouse
+	*/
+	Delete(*model.Category) error
 }

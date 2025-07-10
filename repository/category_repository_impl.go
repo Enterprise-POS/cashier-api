@@ -3,6 +3,7 @@ package repository
 import (
 	"cashier-api/model"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strconv"
 
@@ -152,13 +153,35 @@ func (repository *CategoryRepositoryImpl) Register(tobeRegisters []*model.Catego
 	return nil
 }
 
+func (repository *CategoryRepositoryImpl) Unregister(toUnregister *model.CategoryMtmWarehouse) error {
+	_, count, err := repository.Client.From(categoryMtmWarehouseTable).
+		Delete("", "exact").
+		Eq("category_id", strconv.Itoa(toUnregister.CategoryId)).
+		Eq("item_id", strconv.Itoa(toUnregister.ItemId)).
+		Execute()
+	if err != nil {
+		return err
+	}
+	if count > 1 {
+		log.Errorf("FATAL ERROR multiple categories deleted from categoryId: %d, itemId: %d", toUnregister.CategoryId, toUnregister.ItemId)
+		return errors.New("FATAL ERROR multiple categories deleted")
+	}
+
+	if count == 0 {
+		log.Warnf("Warning ! Handled error, no data deleted from categoryId: %d, itemId: %d", toUnregister.CategoryId, toUnregister.ItemId)
+		return errors.New("[WARN] No data deleted")
+	}
+
+	return nil
+}
+
 func (repository *CategoryRepositoryImpl) Update(tenantId int, categoryId int, tobeChangeCategoryName string) (*model.Category, error) {
 	/*
 		For now, only updating Category.CategoryName is allowed
 		- category_name (ok)
-		-	id (no)
-		- created_at
-		- tenant_id
+		-	id (x)
+		- created_at (x)
+		- tenant_id (x)
 	*/
 	tobeUpdatedValue := map[string]interface{}{
 		"category_name": tobeChangeCategoryName,
@@ -176,4 +199,26 @@ func (repository *CategoryRepositoryImpl) Update(tenantId int, categoryId int, t
 	}
 
 	return updatedCategory, nil
+}
+
+func (repository *CategoryRepositoryImpl) Delete(category *model.Category) error {
+	_, count, err := repository.Client.From(repository.CategoryTable).
+		Delete("", "exact").
+		Eq("tenant_id", strconv.Itoa(category.TenantId)).
+		Eq("id", strconv.Itoa(category.Id)).
+		Execute()
+	if err != nil {
+		return err
+	}
+	if count > 1 {
+		log.Errorf("FATAL ERROR multiple categories deleted from categoryId: %d, tenantId: %d", category.Id, category.TenantId)
+		return errors.New("FATAL ERROR multiple categories deleted")
+	}
+
+	if count == 0 {
+		log.Warnf("Warning ! Handled error, no data deleted from categoryId: %d, tenantId: %d", category.Id, category.TenantId)
+		return errors.New("[WARN] No data deleted")
+	}
+
+	return nil
 }

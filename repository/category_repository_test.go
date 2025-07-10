@@ -364,6 +364,88 @@ func TestCategoryRepository(t *testing.T) {
 		})
 	})
 
+	t.Run("Unregister", func(t *testing.T) {
+		// This is special insert, because category is many to many into warehouse
+		categoryRepositoryImpl := NewCategoryRepositoryImpl(supabaseClient)
+		warehouseRepositoryImpl := WarehouseRepositoryImpl{Client: supabaseClient}
+
+		t.Run("NormalUnregister", func(t *testing.T) {
+			// START:
+			// Create warehouse item
+			dummyItem := &model.Item{
+				ItemName: "Test_CategoryRepositoryImpl_Register_NormalUnregister 1",
+				Stocks:   10,
+				TenantId: TenantId,
+				IsActive: true,
+			}
+			_dummyItemFromDB, err := warehouseRepositoryImpl.CreateItem([]*model.Item{dummyItem})
+			require.Nil(t, err)
+			require.Equal(t, 1, len(_dummyItemFromDB))
+
+			// warehouse item
+			dummyItemFromDB := _dummyItemFromDB[0]
+
+			// Create the Category
+			dummyCategory := &model.Category{
+				CategoryName: "Test_CategoryRepositoryImpl_Register_NormalUnregister 1 The Category",
+				TenantId:     TenantId,
+			}
+
+			_createdDummyCategoryFromDB, err := categoryRepositoryImpl.Create(dummyCategory.TenantId, []*model.Category{dummyCategory})
+			require.Nil(t, err)
+			require.Equal(t, 1, len(_createdDummyCategoryFromDB))
+
+			// category
+			createdDummyCategoryFromDB := _createdDummyCategoryFromDB[0]
+
+			dummyCategoryMtmWarehouse := []*model.CategoryMtmWarehouse{
+				{
+					CategoryId: createdDummyCategoryFromDB.Id,
+					ItemId:     dummyItemFromDB.ItemId,
+				},
+			}
+
+			// END: Until here, is the same as the code above
+			err = categoryRepositoryImpl.Register(dummyCategoryMtmWarehouse)
+			assert.Nil(t, err)
+
+			// The test itself
+			tobeUnregisteredCategoryMtmWarehouse := &model.CategoryMtmWarehouse{
+				CategoryId: createdDummyCategoryFromDB.Id,
+				ItemId:     dummyItemFromDB.ItemId,
+			}
+			err = categoryRepositoryImpl.Unregister(tobeUnregisteredCategoryMtmWarehouse)
+			assert.Nil(t, err)
+
+			// Clean up
+			// _, _, err = supabaseClient.From("category_mtm_warehouse").Delete("", "").Eq("category_id", strconv.Itoa(createdDummyCategoryFromDB.Id)).Eq("item_id", strconv.Itoa(dummyItemFromDB.ItemId)).Execute()
+			// require.Nil(t, err, "If this fail, immediately delete the test data; Register/NormalUnregister 1")
+			_, _, err = supabaseClient.From(CategoryTable).Delete("", "").Eq("category_name", createdDummyCategoryFromDB.CategoryName).Execute()
+			require.Nil(t, err, "If this fail, immediately delete the test data; Register/NormalUnregister 2")
+			_, _, err = supabaseClient.From(WarehouseTable).Delete("", "").Eq("item_name", dummyItemFromDB.ItemName).Execute()
+			require.Nil(t, err, "If this fail, immediately delete the test data; Register/NormalUnregister 3")
+		})
+
+		t.Run("UnregisterThatUnregistered", func(t *testing.T) {
+			tobeUnregisteredCategoryMtmWarehouse1 := &model.CategoryMtmWarehouse{
+				CategoryId: 0,
+				ItemId:     1,
+			}
+			tobeUnregisteredCategoryMtmWarehouse2 := &model.CategoryMtmWarehouse{
+				CategoryId: 1,
+				ItemId:     0,
+			}
+
+			err := categoryRepositoryImpl.Unregister(tobeUnregisteredCategoryMtmWarehouse1)
+			require.NotNil(t, err, "If this fail, immediately check the the test data; there is a possibility data deleted !")
+			require.Contains(t, err.Error(), "[WARN]")
+
+			err = categoryRepositoryImpl.Unregister(tobeUnregisteredCategoryMtmWarehouse2)
+			require.NotNil(t, err, "If this fail, immediately check the the test data; there is a possibility data deleted !")
+			require.Contains(t, err.Error(), "[WARN]")
+		})
+	})
+
 	t.Run("Update", func(t *testing.T) {
 		categoryRepositoryImpl := NewCategoryRepositoryImpl(supabaseClient)
 
@@ -396,11 +478,42 @@ func TestCategoryRepository(t *testing.T) {
 				Execute()
 		})
 
-		t.Run("UpdateThatCategoryIdNotExist", func(t *testing.T) {
+		t.Run("UpdateThatCategoryNotExist", func(t *testing.T) {
 			editedDummyCategoryDB, err := categoryRepositoryImpl.Update(TenantId, 0, "Will not happen")
 			assert.NotNil(t, err)
 			assert.Nil(t, editedDummyCategoryDB)
 			assert.Equal(t, "(PGRST116) JSON object requested, multiple (or no) rows returned", err.Error())
+		})
+	})
+
+	t.Run("Delete", func(t *testing.T) {
+		categoryRepositoryImpl := NewCategoryRepositoryImpl(supabaseClient)
+
+		t.Run("NormalDelete", func(t *testing.T) {
+			dummyData := &model.Category{
+				TenantId:     TenantId,
+				CategoryName: "Test_CategoryRepositoryImpl_Delete_NormalDelete 1",
+			}
+			_createdDummyCategoryDB, err := categoryRepositoryImpl.Create(TenantId, []*model.Category{dummyData})
+			require.Nil(t, err)
+			require.Equal(t, 1, len(_createdDummyCategoryDB))
+
+			// The created category itself
+			createdDummyCategoryDB := _createdDummyCategoryDB[0]
+
+			err = categoryRepositoryImpl.Delete(createdDummyCategoryDB)
+			assert.Nil(t, err)
+		})
+
+		t.Run("DeleteThatCategoryNotExist", func(t *testing.T) {
+			dummyData := &model.Category{
+				Id:           0,
+				TenantId:     TenantId,
+				CategoryName: "Test_CategoryRepositoryImpl_Delete_DeleteThatCategoryNotExist 1",
+			}
+			err := categoryRepositoryImpl.Delete(dummyData)
+			assert.NotNil(t, err)
+			assert.Contains(t, err.Error(), "[WARN]")
 		})
 	})
 }
