@@ -73,7 +73,7 @@ func TestPurchasedItemList(t *testing.T) {
 
 		// Will clean up first 2 unreturned data and clean 2 returned data
 		supabaseClient.
-			From(PURCHASED_ITEM_LIST_TABLE).
+			From(PurchasedItemListTable).
 			Delete("", "").
 			Filter("item_id", "in", fmt.Sprintf("(%d, %d)", APPLE_ID, PEACH_ID)).
 			Execute()

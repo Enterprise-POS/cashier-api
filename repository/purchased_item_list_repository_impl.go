@@ -7,7 +7,7 @@ import (
 	"github.com/supabase-community/supabase-go"
 )
 
-const PURCHASED_ITEM_LIST_TABLE string = "purchased_item_list"
+const PurchasedItemListTable string = "purchased_item_list"
 
 type PurchasedItemListRepositoryImpl struct {
 	Client *supabase.Client
@@ -21,7 +21,7 @@ CreateList:
 */
 func (repository *PurchasedItemListRepositoryImpl) CreateList(data []*model.PurchasedItemList, withReturn bool) ([]*model.PurchasedItemList, error) {
 	if withReturn {
-		result, _, err := repository.Client.From(PURCHASED_ITEM_LIST_TABLE).Insert(data, false, "", "representation", "").Execute()
+		result, _, err := repository.Client.From(PurchasedItemListTable).Insert(data, false, "", "representation", "").Execute()
 		if err != nil {
 			return nil, err
 		}
@@ -34,7 +34,7 @@ func (repository *PurchasedItemListRepositoryImpl) CreateList(data []*model.Purc
 
 		return purchasedItemList, nil
 	} else {
-		_, _, err := repository.Client.From(PURCHASED_ITEM_LIST_TABLE).Insert(data, false, "", "representation", "").Execute()
+		_, _, err := repository.Client.From(PurchasedItemListTable).Insert(data, false, "", "representation", "").Execute()
 		if err != nil {
 			return nil, err
 		}

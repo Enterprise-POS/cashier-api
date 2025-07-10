@@ -7,5 +7,45 @@ type CategoryRepository interface {
 		Items = Warehouse Table Item
 		Written by category but 'id' needed, not 'category_name'
 	*/
-	GetItemsByCategory(id int, tenantId int, limit int, page int, doCount bool) ([]*model.CategoryWithItem, int, error)
+	GetItemsByCategoryId(tenantId, categoryId, limit, page int) ([]*model.CategoryWithItem, error)
+
+	/*
+		Return an all items within category,
+		items maybe double return, but different category id is required
+	*/
+	GetCategoryWithItems(tenantId, page, limit int, doCount bool) ([]*model.CategoryWithItem, error)
+
+	/*
+		Get the category name only
+	*/
+	Get(tenantId, page, limit int) ([]*model.Category, int, error)
+
+	/*
+		Create new category
+	*/
+	Create(tenantId int, categories []*model.Category) ([]*model.Category, error)
+
+	/*
+		Register warehouse.item into category,
+		this will inserting data into category_mtm_warehouse
+	*/
+	Register(tobeRegisters []*model.CategoryMtmWarehouse) error
+
+	/*
+		Unregister, deleting category_mtm_warehouse
+		- Only 1 operation allowed for now
+	*/
+	Unregister(toUnregister *model.CategoryMtmWarehouse) error
+
+	/*
+		Update existing category
+		- only category name allowed to edit
+		- only update 1 category
+	*/
+	Update(tenantId int, categoryId int, tobeChangeCategoryName string) (*model.Category, error)
+
+	/*
+		Deleting category; NOT category_mtm_warehouse
+	*/
+	Delete(*model.Category) error
 }

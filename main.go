@@ -29,7 +29,7 @@ func init() {
 }
 
 func main() {
-	// 01 Setup the fiber and database
+	// 01 Set up the fiber and database
 	app := fiber.New(fiber.Config{
 		IdleTimeout:             time.Second * 5,
 		ReadTimeout:             time.Second * 5,
@@ -38,11 +38,6 @@ func main() {
 		EnableTrustedProxyCheck: true,
 		ErrorHandler:            exception.ErrorHandler,
 	})
-
-	// firebaseApp, err := helper.InitFirebase()
-	// if err != nil {
-	// 	panic(err)
-	// }
 
 	// 02 Middleware, Security
 	app.Use(cors.New())

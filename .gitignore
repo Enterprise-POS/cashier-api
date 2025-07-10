@@ -1,5 +1,10 @@
 .env
-keys.json
+
+# binary file not required for production, production instance/computer should build by itself
 main.exe
+
+# ignoring intellij idea
 .idea
+
+# personal bash script, contain setup .env / other developer recommended to setup this personally
 setup.bash
