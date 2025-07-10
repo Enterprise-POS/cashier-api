@@ -3,6 +3,8 @@ package repository
 import (
 	"cashier-api/model"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"strconv"
 
 	log "github.com/sirupsen/logrus"
@@ -10,7 +12,15 @@ import (
 )
 
 type CategoryRepositoryImpl struct {
-	Client *supabase.Client
+	Client        *supabase.Client
+	CategoryTable string
+}
+
+func NewCategoryRepositoryImpl(client *supabase.Client) *CategoryRepositoryImpl {
+	return &CategoryRepositoryImpl{
+		Client:        client,
+		CategoryTable: "category",
+	}
 }
 
 func (repository *CategoryRepositoryImpl) GetItemsByCategoryId(tenantId int, categoryId int, limit int, page int) ([]*model.CategoryWithItem, error) {
@@ -109,4 +119,22 @@ func (repository *CategoryRepositoryImpl) Get(tenantId, page, limit int) ([]*mod
 	}
 
 	return result, int(count), nil
+}
+
+func (repository *CategoryRepositoryImpl) Create(tenantId int, categories []*model.Category) ([]*model.Category, error) {
+	if repository.CategoryTable == "" {
+		log.Errorf("Fatal Error ! CategoryRepositoryImpl.Create called with empty table. probably didn't use New Fn for create CategoryRepositoryImpl. TenantId: %d", tenantId)
+		return nil, errors.New(fmt.Sprintf("CategoryRepositoryImpl.Create called with empty table. probably didn't use New Fn for create CategoryRepositoryImpl. TenantId: %d", tenantId))
+	}
+
+	var results []*model.Category
+	_, err := repository.Client.From(repository.CategoryTable).
+		Insert(categories, false, "", "", "").
+		Eq("tenant_id", strconv.Itoa(tenantId)).
+		ExecuteTo(&results)
+	if err != nil {
+		return nil, err
+	}
+
+	return results, nil
 }

@@ -6,7 +6,7 @@ import "time"
 type Category struct {
 	Id           int        `json:"id,omitempty"`
 	CategoryName string     `json:"category_name"`
-	CreatedAt    *time.Time `json:"created_at"`
+	CreatedAt    *time.Time `json:"created_at,omitempty"`
 	TenantId     int        `json:"tenant_id"`
 }
 
