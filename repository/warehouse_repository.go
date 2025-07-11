@@ -7,4 +7,9 @@ type WarehouseRepository interface {
 	FindById(itemId int, tenantId int) (*model.Item, error)
 	CreateItem(item []*model.Item) error
 	Edit(quantity int, item *model.Item) error
+
+	/*
+		Deactivate/Activate item, not delete it from DB
+	*/
+	SetActivate(item *model.Item) error
 }

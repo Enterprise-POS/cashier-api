@@ -12,7 +12,15 @@ import (
 )
 
 type WarehouseRepositoryImpl struct {
-	Client *supabase.Client
+	Client         *supabase.Client
+	WarehouseTable string
+}
+
+func NewWarehouseRepositoryImpl(client *supabase.Client) *WarehouseRepositoryImpl {
+	return &WarehouseRepositoryImpl{
+		Client:         client,
+		WarehouseTable: "warehouse",
+	}
 }
 
 func (warehouse *WarehouseRepositoryImpl) Get(tenantId int, limit int, page int) ([]*model.Item, int, error) {
@@ -80,7 +88,10 @@ func (warehouse *WarehouseRepositoryImpl) Edit(quantity int, item *model.Item) e
 	message := warehouse.Client.Rpc("edit_warehouse_item", "", map[string]interface{}{
 		"p_quantity":  quantity,      // int
 		"p_item_name": item.ItemName, // string
-		"p_category":  0,             // int
+
+		// DEPRECATED: category table created
+		"p_category": 0, // int
+
 		"p_item_id":   item.ItemId,   // int
 		"p_tenant_id": item.TenantId, // int
 	})
@@ -90,5 +101,23 @@ func (warehouse *WarehouseRepositoryImpl) Edit(quantity int, item *model.Item) e
 	}
 
 	// We don't need to return the item, because we already know before
+	return nil
+}
+
+func (warehouse *WarehouseRepositoryImpl) SetActivate(tenantId, itemId int, setInto bool) error {
+	tobeUpdatedValue := map[string]interface{}{
+		"is_active": setInto,
+	}
+
+	_, _, err := warehouse.Client.From(warehouse.WarehouseTable).
+		Update(tobeUpdatedValue, "", "").
+		Eq("tenant_id", strconv.Itoa(tenantId)).
+		Eq("item_id", strconv.Itoa(itemId)).
+		Single().
+		Execute()
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
