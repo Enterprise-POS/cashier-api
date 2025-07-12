@@ -2,6 +2,7 @@ package repository
 
 import (
 	"cashier-api/helper/client"
+	"cashier-api/helper/query"
 	"cashier-api/model"
 	"encoding/json"
 	"fmt"
@@ -259,57 +260,58 @@ func TestOrderItemRepository(t *testing.T) {
 			min4Day := now.AddDate(0, 0, -4)
 			dummyOrderItems := []*model.OrderItem{
 				{
-					PurchasedPrice: 10000,
+					PurchasedPrice: 100,
 					TotalQuantity:  1,
-					TotalAmount:    10000,
+					TotalAmount:    100,
 					DiscountAmount: 0,
-					Subtotal:       10000,
+					Subtotal:       100,
 					TenantId:       TENANT_ID,
 					StoreId:        STORE_ID,
 					CreatedAt:      &now,
 				},
 				{
-					PurchasedPrice: 20000,
+					PurchasedPrice: 200,
 					TotalQuantity:  2,
-					TotalAmount:    40000,
+					TotalAmount:    400,
 					DiscountAmount: 0,
-					Subtotal:       40000,
+					Subtotal:       400,
 					TenantId:       TENANT_ID,
 					StoreId:        STORE_ID,
 					CreatedAt:      &min1Day,
 				},
 				{
-					PurchasedPrice: 30000,
+					PurchasedPrice: 300,
 					TotalQuantity:  3,
-					TotalAmount:    90000,
+					TotalAmount:    900,
 					DiscountAmount: 0,
-					Subtotal:       90000,
+					Subtotal:       900,
 					TenantId:       TENANT_ID,
 					StoreId:        STORE_ID,
 					CreatedAt:      &min2Day,
 				},
 				{
-					PurchasedPrice: 40000,
+					PurchasedPrice: 400,
 					TotalQuantity:  4,
-					TotalAmount:    100_000,
-					DiscountAmount: 60000,
-					Subtotal:       160_000,
+					TotalAmount:    1000,
+					DiscountAmount: 600,
+					Subtotal:       1600,
 					TenantId:       TENANT_ID,
 					StoreId:        STORE_ID,
 					CreatedAt:      &min3Day,
 				},
 				{
-					PurchasedPrice: 50000,
+					PurchasedPrice: 500,
 					TotalQuantity:  5,
-					TotalAmount:    250_000,
+					TotalAmount:    2500,
 					DiscountAmount: 0,
-					Subtotal:       250_000,
+					Subtotal:       2500,
 					TenantId:       TENANT_ID,
 					StoreId:        STORE_ID,
 					CreatedAt:      &min4Day,
 				},
 			}
 
+			record := []*model.OrderItem{}
 			for i, dummyOrderItem := range dummyOrderItems {
 				dummyOrderItemFromDB, err := orderItemRepo.PlaceOrderItem(dummyOrderItem)
 
@@ -324,12 +326,17 @@ func TestOrderItemRepository(t *testing.T) {
 				require.Equal(t, dummyOrderItems[i].Subtotal, dummyOrderItemFromDB.Subtotal)
 				require.Equal(t, TENANT_ID, dummyOrderItemFromDB.TenantId)
 				require.Equal(t, STORE_ID, dummyOrderItemFromDB.StoreId)
+
+				record = append(record, dummyOrderItemFromDB)
 			}
 
 			page := 1
 			limit := 5
-			dummyCreatedOrderItems, count, err := orderItemRepo.Get(TENANT_ID, limit, page-1, &QueryFilter{
-				CreatedAtAsc: false, // -> descending
+			dummyCreatedOrderItems, count, err := orderItemRepo.Get(TENANT_ID, limit, page-1, []*query.QueryFilter{
+				{
+					Column:    query.CreatedAtColumn,
+					Ascending: false,
+				},
 			})
 			assert.Nil(t, err)
 			assert.GreaterOrEqual(t, count, 5)
@@ -345,8 +352,101 @@ func TestOrderItemRepository(t *testing.T) {
 			}
 
 			// Clean up;
-			for _, dummyItem := range dummyCreatedOrderItems {
-				// Clean up;
+			for _, dummyItem := range record {
+				_, _, err := supabaseClient.From(OrderItemTable).Delete("", "").Eq("id", strconv.Itoa(dummyItem.Id)).Execute()
+				require.Nilf(t, err, "If this error; immediately delete the test data. tenantId: %d, id: %d; TestOrderItemRepository/Get/NormalQuery 1", TENANT_ID, dummyItem.Id)
+			}
+		})
+
+		t.Run("SortByTotalAmountDesc", func(t *testing.T) {
+			dummyOrderItems := []*model.OrderItem{
+				{
+					PurchasedPrice: 10000,
+					TotalQuantity:  1,
+					TotalAmount:    10000,
+					DiscountAmount: 0,
+					Subtotal:       10000,
+					TenantId:       TENANT_ID,
+					StoreId:        STORE_ID,
+				},
+				{
+					PurchasedPrice: 20000,
+					TotalQuantity:  2,
+					TotalAmount:    40000,
+					DiscountAmount: 0,
+					Subtotal:       40000,
+					TenantId:       TENANT_ID,
+					StoreId:        STORE_ID,
+				},
+				{
+					PurchasedPrice: 30000,
+					TotalQuantity:  3,
+					TotalAmount:    90000,
+					DiscountAmount: 0,
+					Subtotal:       90000,
+					TenantId:       TENANT_ID,
+					StoreId:        STORE_ID,
+				},
+				{
+					PurchasedPrice: 40000,
+					TotalQuantity:  4,
+					TotalAmount:    100_000,
+					DiscountAmount: 60000,
+					Subtotal:       160_000,
+					TenantId:       TENANT_ID,
+					StoreId:        STORE_ID,
+				},
+				{
+					PurchasedPrice: 50000,
+					TotalQuantity:  5,
+					TotalAmount:    250_000,
+					DiscountAmount: 0,
+					Subtotal:       250_000,
+					TenantId:       TENANT_ID,
+					StoreId:        STORE_ID,
+				},
+			}
+
+			record := []*model.OrderItem{}
+			for i, dummyOrderItem := range dummyOrderItems {
+				dummyOrderItemFromDB, err := orderItemRepo.PlaceOrderItem(dummyOrderItem)
+
+				require.Nil(t, err)
+				require.NotNil(t, dummyOrderItemFromDB)
+				require.NotNil(t, dummyOrderItemFromDB.Id)
+				require.NotEqual(t, 0, dummyOrderItemFromDB.Id)
+				require.Equal(t, dummyOrderItems[i].PurchasedPrice, dummyOrderItemFromDB.PurchasedPrice)
+				require.Equal(t, dummyOrderItems[i].TotalQuantity, dummyOrderItemFromDB.TotalQuantity)
+				require.Equal(t, dummyOrderItems[i].TotalAmount, dummyOrderItemFromDB.TotalAmount)
+				require.Equal(t, dummyOrderItems[i].DiscountAmount, dummyOrderItemFromDB.DiscountAmount)
+				require.Equal(t, dummyOrderItems[i].Subtotal, dummyOrderItemFromDB.Subtotal)
+				require.Equal(t, TENANT_ID, dummyOrderItemFromDB.TenantId)
+				require.Equal(t, STORE_ID, dummyOrderItemFromDB.StoreId)
+
+				record = append(record, dummyOrderItemFromDB)
+			}
+
+			page := 1
+			limit := 5
+			dummyCreatedOrderItems, count, err := orderItemRepo.Get(TENANT_ID, limit, page-1, []*query.QueryFilter{
+				{
+					Column:    query.TotalAmountColumn,
+					Ascending: false,
+				},
+			})
+			assert.Nil(t, err)
+			assert.GreaterOrEqual(t, count, 5)
+			assert.Equal(t, limit, len(dummyCreatedOrderItems))
+			var previous *model.OrderItem
+			for _, current := range dummyCreatedOrderItems {
+				if previous != nil {
+					assert.Less(t, current.TotalAmount, previous.TotalAmount)
+				}
+				previous = current
+			}
+
+			// Clean up;
+			for _, dummyItem := range record {
 				_, _, err := supabaseClient.From(OrderItemTable).Delete("", "").Eq("id", strconv.Itoa(dummyItem.Id)).Execute()
 				require.Nilf(t, err, "If this error; immediately delete the test data. tenantId: %d, id: %d; TestOrderItemRepository/Get/NormalQuery 1", TENANT_ID, dummyItem.Id)
 			}

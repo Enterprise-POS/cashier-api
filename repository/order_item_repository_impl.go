@@ -1,7 +1,9 @@
 package repository
 
 import (
+	"cashier-api/helper/query"
 	"cashier-api/model"
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -59,12 +61,8 @@ QueryFilter:
 		CreatedAtAsc = false -> will order by descending
 		CreatedAtAsc = true -> will order by ascending
 */
-type QueryFilter struct {
-	CreatedAtAsc   bool
-	TotalAmountAsc bool
-}
 
-func (repository *OrderItemRepositoryImpl) Get(tenantId int, limit int, page int, filter *QueryFilter) ([]*model.OrderItem, int, error) {
+func (repository *OrderItemRepositoryImpl) Get(tenantId int, limit int, page int, filters []*query.QueryFilter) ([]*model.OrderItem, int, error) {
 	start := page * limit
 	end := start + limit - 1
 
@@ -74,22 +72,13 @@ func (repository *OrderItemRepositoryImpl) Get(tenantId int, limit int, page int
 		Eq("tenant_id", strconv.Itoa(tenantId)).
 		Range(start, end, "")
 
-	// Apply filter
-	if filter != nil {
-		// created_at
-		isOrderByDateAsc := filter.CreatedAtAsc
-		if !isOrderByDateAsc {
-			filterBuilder = filterBuilder.Order("created_at", &postgrest.OrderOpts{Ascending: false})
+		// Apply filter
+	for _, filter := range filters {
+		if filter.Column == "" {
+			log.Warnf("WARN ! handled error, some filter is an empty string. from tenantId: %d", tenantId)
+			return nil, 0, fmt.Errorf("WARN ! handled error, some filter is an empty string. from tenantId: %d", tenantId)
 		} else {
-			filterBuilder = filterBuilder.Order("created_at", &postgrest.OrderOpts{Ascending: true})
-		}
-
-		// total_amount
-		isOrderByTotalAmount := filter.TotalAmountAsc
-		if !isOrderByTotalAmount {
-			filterBuilder = filterBuilder.Order("total_amount", &postgrest.OrderOpts{Ascending: false})
-		} else {
-			filterBuilder = filterBuilder.Order("total_amount", &postgrest.OrderOpts{Ascending: true})
+			filterBuilder = filterBuilder.Order(filter.Column, &postgrest.OrderOpts{Ascending: filter.Ascending})
 		}
 	}
 
