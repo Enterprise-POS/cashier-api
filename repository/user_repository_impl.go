@@ -43,6 +43,7 @@ func (repository *UserRepositoryImpl) EmailAndPasswordRegister(newUser model.Use
 		Name:     newUser.Name,
 		Email:    newUser.Email,
 		Password: password, // only insert encrypted password here
+		UserUuid: newUser.UserUuid,
 	}
 
 	var newCreatedUser *model.User
