@@ -2,8 +2,10 @@ package repository
 
 import (
 	"cashier-api/helper/client"
+	"cashier-api/helper/query"
 	"cashier-api/model"
 	"fmt"
+	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -25,9 +27,9 @@ func TestPurchasedItemList(t *testing.T) {
 		PEACH_PRICE int = 20000
 	)
 
-	t.Run("_CreateList", func(t *testing.T) {
-		orderItemRepo := OrderItemRepositoryImpl{Client: supabaseClient}
-		purchasedItemListRepo := PurchasedItemListRepositoryImpl{Client: supabaseClient}
+	t.Run("CreateList", func(t *testing.T) {
+		orderItemRepo := NewOrderItemRepositoryImpl(supabaseClient)
+		purchasedItemListRepo := NewPurchasedItemListRepositoryImpl(supabaseClient)
 
 		// The dummy data
 		dummyOrderItem := &model.OrderItem{
@@ -72,8 +74,9 @@ func TestPurchasedItemList(t *testing.T) {
 		assert.Equal(t, 2, len(returnedData))
 
 		// Will clean up first 2 unreturned data and clean 2 returned data
+		// TODO: use return data to for deleting
 		supabaseClient.
-			From(PurchasedItemListTable).
+			From(query.PurchasedItemListTable).
 			Delete("", "").
 			Filter("item_id", "in", fmt.Sprintf("(%d, %d)", APPLE_ID, PEACH_ID)).
 			Execute()
@@ -110,5 +113,74 @@ func TestPurchasedItemList(t *testing.T) {
 
 		// Clean up order_item
 		supabaseClient.From("order_item").Delete("", "").Eq("tenant_id", "1").Eq("store_id", "1").Execute()
+	})
+
+	t.Run("GetByOrderItemId", func(t *testing.T) {
+		orderItemRepo := NewOrderItemRepositoryImpl(supabaseClient)
+		purchasedItemListRepo := NewPurchasedItemListRepositoryImpl(supabaseClient)
+
+		t.Run("NormalGet", func(t *testing.T) {
+			// Create the dummy item first
+			dummyOrderItem := &model.OrderItem{
+				PurchasedPrice: 20_000,
+				TotalQuantity:  3,
+				DiscountAmount: 10_000,
+				TotalAmount:    (APPLE_PRICE * 2) + (PEACH_PRICE * 1) - 10_000,
+				Subtotal:       (APPLE_PRICE * 2) + (PEACH_PRICE * 1),
+				StoreId:        STORE_ID,
+				TenantId:       TENANT_ID,
+			}
+			newDummyOrderItem, err := orderItemRepo.PlaceOrderItem(dummyOrderItem)
+			require.Nil(t, err)
+			require.NotNil(t, newDummyOrderItem)
+
+			dummyPurchasedItemList1 := &model.PurchasedItemList{
+				ItemId:         APPLE_ID,
+				OrderItemId:    newDummyOrderItem.Id,
+				Quantity:       2,
+				PurchasedPrice: APPLE_PRICE,
+				DiscountAmount: 0,
+				TotalAmount:    2 * APPLE_PRICE,
+			}
+			dummyPurchasedItemList2 := &model.PurchasedItemList{
+				ItemId:         PEACH_ID,
+				OrderItemId:    newDummyOrderItem.Id,
+				Quantity:       1,
+				PurchasedPrice: PEACH_PRICE,
+				DiscountAmount: 0,
+				TotalAmount:    1 * PEACH_PRICE,
+			}
+			returnedData, err := purchasedItemListRepo.CreateList([]*model.PurchasedItemList{dummyPurchasedItemList1, dummyPurchasedItemList2}, false)
+			assert.Nil(t, returnedData)
+			assert.Nil(t, err)
+
+			// Begin test here
+			purchasedItemsList, err := purchasedItemListRepo.GetByOrderItemId(newDummyOrderItem.Id)
+			assert.Nil(t, err)
+			assert.Equal(t, 2, len(purchasedItemsList))
+			for _, purchasedItem := range purchasedItemsList {
+				assert.Greater(t, purchasedItem.Id, 0)
+				// Searching if correct item inputted
+				check1 := false
+				for _, testI := range []*model.PurchasedItemList{dummyPurchasedItemList1, dummyPurchasedItemList2} {
+					if testI.ItemId == purchasedItem.ItemId {
+						check1 = true
+						break
+					}
+				}
+				assert.True(t, check1)
+			}
+
+			// Clear up
+			_, _, err = supabaseClient.
+				From(query.PurchasedItemListTable).
+				Delete("", "").
+				Filter("id", "in", fmt.Sprintf("(%d, %d)", purchasedItemsList[0].Id, purchasedItemsList[1].Id)).
+				Execute()
+			require.Nil(t, err, "If this error shown, then the TestPurchasedItemList/GeByOrderItemId/NormalGet error while checking the item id")
+
+			_, _, err = supabaseClient.From("order_item").Delete("", "").Eq("tenant_id", "1").Eq("store_id", "1").Eq("id", strconv.Itoa(newDummyOrderItem.Id)).Execute()
+			require.Nil(t, err, "If this error shown, then the TestPurchasedItemList/GeByOrderItemId/NormalGet error while checking the item id")
+		})
 	})
 }
