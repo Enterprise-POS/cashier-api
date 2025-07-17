@@ -15,12 +15,18 @@ type StoreStockRepositoryImpl struct {
 	Client *supabase.Client
 }
 
+const StoreStockTable string = "store_stock"
+
+func NewStoreStockRepositoryImpl(client *supabase.Client) StoreStockRepository {
+	return &StoreStockRepositoryImpl{Client: client}
+}
+
 func (storeStock *StoreStockRepositoryImpl) Get(tenantId int, storeId int, limit int, page int) ([]*model.StoreStock, int, error) {
 	// Even user see first page written in 1, we must subtract by 1 otherwise range error
 	start := page * limit
 	end := start + limit - 1
 
-	data, count, err := storeStock.Client.From("store_stock").
+	data, count, err := storeStock.Client.From(StoreStockTable).
 		// exact: Will return the total items are there
 		Select("*", "exact", false).
 

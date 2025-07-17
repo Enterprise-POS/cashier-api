@@ -1,6 +1,9 @@
 package repository
 
-import "cashier-api/model"
+import (
+	"cashier-api/helper/query"
+	"cashier-api/model"
+)
 
 type OrderItemRepository interface {
 	/*
@@ -13,7 +16,7 @@ type OrderItemRepository interface {
 		Get the list of order_item, purchased_item_list will not included
 		2nd params return is the count of all data
 	*/
-	Get(tenantId int, limit int, page int) ([]*model.Item, int, error)
+	Get(tenantId int, limit int, page int, filters []*query.QueryFilter) ([]*model.OrderItem, int, error)
 
 	// FindById(itemId int, tenantId int) *model.Item
 	// CreateItem(item []*model.Item) error

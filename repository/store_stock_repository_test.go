@@ -15,7 +15,6 @@ import (
 
 func TestStoreStockRepository(t *testing.T) {
 	var supabaseClient *supabase.Client = client.CreateSupabaseClient()
-	const StoreStockTable = "store_stock"
 	const WarehouseTable = "warehouse"
 	const StoreId = 1
 	const TenantId = 1
@@ -37,8 +36,8 @@ func TestStoreStockRepository(t *testing.T) {
 	})
 
 	t.Run("_TransferStockToWarehouse", func(t *testing.T) {
-		storeStockRepo := StoreStockRepositoryImpl{Client: supabaseClient}
-		warehouseRepo := WarehouseRepositoryImpl{Client: supabaseClient}
+		storeStockRepo := NewStoreStockRepositoryImpl(supabaseClient)
+		warehouseRepo := NewWarehouseRepositoryImpl(supabaseClient)
 
 		// Flow: warehouse -> store_stock -> warehouse
 		dummyItem := &model.Item{

@@ -18,7 +18,7 @@ type OrderItemRepositoryImpl struct {
 	Client *supabase.Client
 }
 
-func NewOrderItemRepositoryImpl(client *supabase.Client) *OrderItemRepositoryImpl {
+func NewOrderItemRepositoryImpl(client *supabase.Client) OrderItemRepository {
 	return &OrderItemRepositoryImpl{
 		Client: client,
 	}
