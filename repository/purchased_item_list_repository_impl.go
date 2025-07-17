@@ -13,7 +13,7 @@ type PurchasedItemListRepositoryImpl struct {
 	Client *supabase.Client
 }
 
-func NewPurchasedItemListRepositoryImpl(client *supabase.Client) *PurchasedItemListRepositoryImpl {
+func NewPurchasedItemListRepositoryImpl(client *supabase.Client) PurchasedItemListRepository {
 	return &PurchasedItemListRepositoryImpl{Client: client}
 }
 

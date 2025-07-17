@@ -12,7 +12,7 @@ type UserRepositoryImpl struct {
 
 const UserTable string = "user"
 
-func NewUserRepositoryImpl(client *supabase.Client) *UserRepositoryImpl {
+func NewUserRepositoryImpl(client *supabase.Client) UserRepository {
 	return &UserRepositoryImpl{
 		Client: client,
 	}
@@ -66,4 +66,8 @@ func (repository *UserRepositoryImpl) EmailAndPasswordRegister(newUser model.Use
 
 	// success
 	return newCreatedUser, nil
+}
+
+func (repository *UserRepositoryImpl) EmailAndPasswordLogin(email string, password string) (*model.User, error) {
+	panic("NOT IMPLEMENTED")
 }

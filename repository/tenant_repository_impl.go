@@ -18,7 +18,7 @@ type TenantRepositoryImpl struct {
 const TenantTable string = "tenant"
 const UserMtmTenantTable string = "user_mtm_tenant"
 
-func NewTenantRepositoryImpl(client *supabase.Client) *TenantRepositoryImpl {
+func NewTenantRepositoryImpl(client *supabase.Client) TenantRepository {
 	return &TenantRepositoryImpl{Client: client}
 }
 

@@ -2,7 +2,7 @@ package repository
 
 import "cashier-api/model"
 
-type User interface {
+type UserRepository interface {
 	/*
 		Get all user
 	*/
@@ -16,7 +16,7 @@ type User interface {
 	/*
 		Will connect to tenant table
 	*/
-	EmailAndPasswordRegister(user *model.User, password string) (*model.User, error)
+	EmailAndPasswordRegister(newUser model.User, password string) (*model.User, error)
 
 	/*
 		Deactivate user at DB. Not delete user from authentication

@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 
 	"github.com/stretchr/testify/assert"
@@ -25,7 +26,6 @@ func TestCategoryRepository(t *testing.T) {
 	t.Run("CreateCategoryRepositoryImplByNewFn", func(t *testing.T) {
 		categoryRepositoryImpl := NewCategoryRepositoryImpl(supabaseClient)
 		assert.NotNil(t, categoryRepositoryImpl)
-		assert.NotNil(t, categoryRepositoryImpl.Client)
 	})
 
 	t.Run("GetItemsByCategory", func(t *testing.T) {
@@ -143,7 +143,7 @@ func TestCategoryRepository(t *testing.T) {
 		t.Run("CreateOne", func(t *testing.T) {
 			dummyData := &model.Category{
 				TenantId:     TenantId,
-				CategoryName: "Test_CategoryRepositoryImpl_Create_CreateOne 1",
+				CategoryName: "Test_CategoryRepositoryImpl_Create_CreateOne 1 " + uuid.NewString(),
 			}
 			createdDummyCategoryFromDB, err := categoryRepositoryImpl.Create(TenantId, []*model.Category{dummyData})
 			assert.Nil(t, err)

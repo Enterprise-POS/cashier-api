@@ -16,10 +16,11 @@ type CategoryRepositoryImpl struct {
 	CategoryTable string
 }
 
-func NewCategoryRepositoryImpl(client *supabase.Client) *CategoryRepositoryImpl {
+const CategoryTable string = "category"
+
+func NewCategoryRepositoryImpl(client *supabase.Client) CategoryRepository {
 	return &CategoryRepositoryImpl{
-		Client:        client,
-		CategoryTable: "category",
+		Client: client,
 	}
 }
 
@@ -124,13 +125,13 @@ func (repository *CategoryRepositoryImpl) Get(tenantId, page, limit int) ([]*mod
 }
 
 func (repository *CategoryRepositoryImpl) Create(tenantId int, categories []*model.Category) ([]*model.Category, error) {
-	if repository.CategoryTable == "" {
+	if CategoryTable == "" {
 		log.Errorf("Fatal Error ! CategoryRepositoryImpl.Create called with empty table. probably didn't use New Fn for create CategoryRepositoryImpl. TenantId: %d", tenantId)
 		return nil, fmt.Errorf("CategoryRepositoryImpl.Create called with empty table. probably didn't use New Fn for create CategoryRepositoryImpl. TenantId: %d", tenantId)
 	}
 
 	var results []*model.Category
-	_, err := repository.Client.From(repository.CategoryTable).
+	_, err := repository.Client.From(CategoryTable).
 		Insert(categories, false, "", "", "").
 		Eq("tenant_id", strconv.Itoa(tenantId)).
 		ExecuteTo(&results)
@@ -188,7 +189,7 @@ func (repository *CategoryRepositoryImpl) Update(tenantId int, categoryId int, t
 	}
 
 	var updatedCategory *model.Category
-	_, err := repository.Client.From(repository.CategoryTable).
+	_, err := repository.Client.From(CategoryTable).
 		Update(tobeUpdatedValue, "", ""). // Do not use 'exact' for returning parameter
 		Eq("tenant_id", strconv.Itoa(tenantId)).
 		Eq("id", strconv.Itoa(categoryId)).
@@ -202,7 +203,7 @@ func (repository *CategoryRepositoryImpl) Update(tenantId int, categoryId int, t
 }
 
 func (repository *CategoryRepositoryImpl) Delete(category *model.Category) error {
-	_, count, err := repository.Client.From(repository.CategoryTable).
+	_, count, err := repository.Client.From(CategoryTable).
 		Delete("", "exact").
 		Eq("tenant_id", strconv.Itoa(category.TenantId)).
 		Eq("id", strconv.Itoa(category.Id)).
