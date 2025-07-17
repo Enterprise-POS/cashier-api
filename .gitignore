@@ -7,4 +7,8 @@ main.exe
 .idea
 
 # personal bash script, contain setup .env / other developer recommended to setup this personally
+# example: source ./setup.bash
 setup.bash
+
+# VS code settings
+.vscode
