@@ -11,15 +11,15 @@ import (
 	"github.com/supabase-community/supabase-go"
 )
 
+const WarehouseTable string = "warehouse"
+
 type WarehouseRepositoryImpl struct {
-	Client         *supabase.Client
-	WarehouseTable string
+	Client *supabase.Client
 }
 
-func NewWarehouseRepositoryImpl(client *supabase.Client) *WarehouseRepositoryImpl {
+func NewWarehouseRepositoryImpl(client *supabase.Client) WarehouseRepository {
 	return &WarehouseRepositoryImpl{
-		Client:         client,
-		WarehouseTable: "warehouse",
+		Client: client,
 	}
 }
 
@@ -109,7 +109,7 @@ func (warehouse *WarehouseRepositoryImpl) SetActivate(tenantId, itemId int, setI
 		"is_active": setInto,
 	}
 
-	_, _, err := warehouse.Client.From(warehouse.WarehouseTable).
+	_, _, err := warehouse.Client.From(WarehouseTable).
 		Update(tobeUpdatedValue, "", "").
 		Eq("tenant_id", strconv.Itoa(tenantId)).
 		Eq("item_id", strconv.Itoa(itemId)).

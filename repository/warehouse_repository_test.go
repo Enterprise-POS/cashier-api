@@ -246,7 +246,7 @@ func TestWarehouseRepository(t *testing.T) {
 
 			// Check if the data at database correct
 			var testItem *model.Item
-			_, err = supabaseClient.From(warehouseRepo.WarehouseTable).Select("*", "", false).Eq("item_id", strconv.Itoa(createdItemFromDB.ItemId)).Single().ExecuteTo(&testItem)
+			_, err = supabaseClient.From(WarehouseTable).Select("*", "", false).Eq("item_id", strconv.Itoa(createdItemFromDB.ItemId)).Single().ExecuteTo(&testItem)
 			require.Nil(t, err, "If this error, data persist at warehouse table, delete immediately")
 
 			assert.NotNil(t, testItem)
@@ -256,7 +256,7 @@ func TestWarehouseRepository(t *testing.T) {
 			assert.Equal(t, createdItemFromDB.TenantId, testItem.TenantId)
 			assert.NotEqual(t, dummyItem.IsActive, testItem.IsActive)
 
-			_, _, err = supabaseClient.From(warehouseRepo.WarehouseTable).Delete("", "").Eq("item_id", strconv.Itoa(testItem.ItemId)).Eq("tenant_id", strconv.Itoa(testItem.TenantId)).Execute()
+			_, _, err = supabaseClient.From(WarehouseTable).Delete("", "").Eq("item_id", strconv.Itoa(testItem.ItemId)).Eq("tenant_id", strconv.Itoa(testItem.TenantId)).Execute()
 			require.Nilf(t, err, "If this error, data persist at warehouse table itemId: %d, tenantId: %d; TestWarehouse/SetActivate/NormalDeactivate", testItem.ItemId, testItem.TenantId)
 		})
 
@@ -281,7 +281,7 @@ func TestWarehouseRepository(t *testing.T) {
 
 			// Check if the data at database correct
 			var testItem *model.Item
-			_, err = supabaseClient.From(warehouseRepo.WarehouseTable).Select("*", "", false).Eq("item_id", strconv.Itoa(createdItemFromDB.ItemId)).Single().ExecuteTo(&testItem)
+			_, err = supabaseClient.From(WarehouseTable).Select("*", "", false).Eq("item_id", strconv.Itoa(createdItemFromDB.ItemId)).Single().ExecuteTo(&testItem)
 			require.Nil(t, err, "If this error, data persist at warehouse table, delete immediately")
 
 			assert.NotNil(t, testItem)
@@ -291,7 +291,7 @@ func TestWarehouseRepository(t *testing.T) {
 			assert.Equal(t, createdItemFromDB.TenantId, testItem.TenantId)
 			assert.NotEqual(t, dummyItem.IsActive, testItem.IsActive)
 
-			_, _, err = supabaseClient.From(warehouseRepo.WarehouseTable).Delete("", "").Eq("item_id", strconv.Itoa(testItem.ItemId)).Eq("tenant_id", strconv.Itoa(testItem.TenantId)).Execute()
+			_, _, err = supabaseClient.From(WarehouseTable).Delete("", "").Eq("item_id", strconv.Itoa(testItem.ItemId)).Eq("tenant_id", strconv.Itoa(testItem.TenantId)).Execute()
 			require.Nilf(t, err, "If this error, data persist at warehouse table itemId: %d, tenantId: %d; TestWarehouse/SetActivate/NormalDeactivate", testItem.ItemId, testItem.TenantId)
 		})
 
