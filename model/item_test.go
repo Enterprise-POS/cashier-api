@@ -1,6 +1,8 @@
 package model
 
 import (
+	"fmt"
+	"os"
 	"testing"
 	"time"
 
@@ -11,6 +13,8 @@ func TestDefaultProperties(t *testing.T) {
 	var item = new(Item)
 	assert.Equal(t, 0, item.ItemId)
 	assert.Nil(t, item.CreatedAt)
+
+	fmt.Println(os.Getenv("MODE"))
 }
 
 func TestDefinedProperties(t *testing.T) {
