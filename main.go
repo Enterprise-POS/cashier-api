@@ -1,8 +1,12 @@
 package main
 
 import (
+	"cashier-api/controller"
 	"cashier-api/exception"
 	common "cashier-api/helper"
+	"cashier-api/helper/client"
+	"cashier-api/repository"
+	"cashier-api/service"
 	"os"
 	"time"
 
@@ -39,6 +43,9 @@ func main() {
 		ErrorHandler:            exception.ErrorHandler,
 	})
 
+	// DB client
+	supabaseClient := client.CreateSupabaseClient()
+
 	// 02 Middleware, Security
 	app.Use(cors.New())
 	app.Use(recover.New(recover.Config{EnableStackTrace: true}))
@@ -46,7 +53,6 @@ func main() {
 	// 03 Router (grouping by /api/v1)
 	apiV1 := app.Group("/api/v1")
 
-	// Test url
 	apiV1.Get("/", func(ctx *fiber.Ctx) error {
 		return ctx.Status(200).JSON(common.WebResponse{
 			Code:   200,
@@ -56,6 +62,11 @@ func main() {
 			},
 		})
 	})
+
+	warehouseRepository := repository.NewWarehouseRepositoryImpl(supabaseClient)
+	warehouseService := service.NewWarehouseServiceImpl(warehouseRepository)
+	warehouseController := controller.NewWarehouseControllerImpl(warehouseService)
+	apiV1.Get("/warehouse/:id", warehouseController.GetWarehouseItems)
 
 	// Handle route not found (404)
 	app.All("*", func(ctx *fiber.Ctx) error {
