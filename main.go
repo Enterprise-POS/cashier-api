@@ -66,7 +66,7 @@ func main() {
 	warehouseRepository := repository.NewWarehouseRepositoryImpl(supabaseClient)
 	warehouseService := service.NewWarehouseServiceImpl(warehouseRepository)
 	warehouseController := controller.NewWarehouseControllerImpl(warehouseService)
-	apiV1.Get("/warehouse/:id", warehouseController.GetWarehouseItems)
+	apiV1.Get("/warehouse/:id", warehouseController.Get)
 
 	// Handle route not found (404)
 	app.All("*", func(ctx *fiber.Ctx) error {

@@ -4,6 +4,7 @@ import (
 	common "cashier-api/helper"
 
 	"github.com/gofiber/fiber/v2"
+	log "github.com/sirupsen/logrus"
 )
 
 func ErrorHandler(ctx *fiber.Ctx, err error) error {
@@ -30,17 +31,12 @@ func ErrorHandler(ctx *fiber.Ctx, err error) error {
 	// 	})
 	// }
 
-	// Fatal error
-	if e, ok := err.(*fiber.Error); ok {
-		code = e.Code
-		message = e.Message
-	}
+	// struct *fiber.Error is default error by go fiber
+	code = err.(*fiber.Error).Code
+	message = err.(*fiber.Error).Message
+	log.Errorf("Unknown error occurred, code: %d", code)
+	log.Errorf("Message: %s", message)
 
-	return ctx.Status(code).JSON(common.WebResponse{
-		Code:   code,
-		Status: "Internal Server Error",
-		Data: fiber.Map{
-			"message": "Unhandled error occurred -> " + message,
-		},
-	})
+	errResponse := common.NewWebResponseError(code, common.StatusInternalServerError, message)
+	return ctx.Status(code).JSON(errResponse)
 }
