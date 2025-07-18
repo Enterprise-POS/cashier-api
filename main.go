@@ -66,6 +66,8 @@ func main() {
 	warehouseRepository := repository.NewWarehouseRepositoryImpl(supabaseClient)
 	warehouseService := service.NewWarehouseServiceImpl(warehouseRepository)
 	warehouseController := controller.NewWarehouseControllerImpl(warehouseService)
+
+	// GET /warehouse/:tenantId?limit=10&page=1
 	apiV1.Get("/warehouse/:id", warehouseController.Get)
 
 	// Handle route not found (404)
