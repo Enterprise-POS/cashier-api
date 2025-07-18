@@ -9,7 +9,7 @@ import (
 
 func ErrorHandler(ctx *fiber.Ctx, err error) error {
 	code := 500
-	message := "Internal Server Error"
+	message := "internal server error"
 
 	// if e, ok := err.(*NotFoundError); ok {
 	// 	return ctx.Status(e.Code).JSON(web.WebResponse{

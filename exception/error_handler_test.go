@@ -22,7 +22,7 @@ func TestErrorHandler_InternalServerError(t *testing.T) {
 	})
 
 	app.Get("/test", func(c *fiber.Ctx) error {
-		return fiber.NewError(fiber.StatusInternalServerError, "Some internal error")
+		return fiber.NewError(fiber.StatusInternalServerError, "some internal error")
 	})
 
 	req := httptest.NewRequest("GET", "/test", nil)
@@ -30,12 +30,12 @@ func TestErrorHandler_InternalServerError(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, fiber.StatusInternalServerError, resp.StatusCode)
 
-	var body common.WebResponse
+	var body common.WebResponseError
 	json.NewDecoder(resp.Body).Decode(&body)
 
 	assert.Equal(t, 500, body.Code)
-	assert.Equal(t, "Internal Server Error", body.Status)
+	assert.Equal(t, "internal server error", body.Status)
 
-	data := body.Data.(map[string]interface{})
-	assert.Contains(t, data["message"], "Unhandled error occurred")
+	msg := body.Message
+	assert.Contains(t, msg, "some internal error")
 }

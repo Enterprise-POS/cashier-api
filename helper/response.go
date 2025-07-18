@@ -10,7 +10,7 @@ type StatusResponse = string
 
 const StatusSuccess StatusResponse = "success"
 const StatusError StatusResponse = "error"
-const StatusInternalServerError = "internal service error"
+const StatusInternalServerError = "internal server error"
 
 func NewWebResponse(code int, status StatusResponse, data interface{}) *WebResponse {
 	return &WebResponse{
