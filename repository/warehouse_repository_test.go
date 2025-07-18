@@ -222,6 +222,19 @@ func TestWarehouseRepository(t *testing.T) {
 		}
 	})
 
+	t.Run("Get", func(t *testing.T) {
+		warehouseRepo := NewWarehouseRepositoryImpl(supabaseClient)
+
+		t.Run("TenantIdNotExist", func(t *testing.T) {
+			items, count, err := warehouseRepo.Get(0, 5, 1)
+			assert.NotNil(t, err)
+			assert.Equal(t, "(PGRST103) Requested range not satisfiable", err.Error())
+			assert.Equal(t, 0, len(items))
+			assert.Nil(t, items)
+			assert.Equal(t, 0, count)
+		})
+	})
+
 	t.Run("SetActivate", func(t *testing.T) {
 		warehouseRepo := NewWarehouseRepositoryImpl(supabaseClient)
 

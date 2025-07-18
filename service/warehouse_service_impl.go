@@ -1,6 +1,7 @@
 package service
 
 import (
+	"cashier-api/model"
 	"cashier-api/repository"
 )
 
@@ -12,5 +13,6 @@ func NewWarehouseServiceImpl(repository repository.WarehouseRepository) Warehous
 	return &WarehouseServiceImpl{Repository: repository}
 }
 
-func (service *WarehouseServiceImpl) GetWarehouseItems() {
+func (service *WarehouseServiceImpl) GetWarehouseItems(tenantId, limit, page int) ([]*model.Item, int, error) {
+	return service.Repository.Get(tenantId, limit, page-1)
 }
