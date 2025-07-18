@@ -62,8 +62,10 @@ func TestWarehouseServiceImpl(t *testing.T) {
 		}
 
 		// Tell mock to return something
+		// for test purpose set page=0
+		// because at warehouseService.GetWarehouseItems the page will be auto subtracted
 		tenantId, limit, page := 1, 5, 1
-		warehouseRepo.Mock.On("Get", tenantId, limit, page).Return(itemDummies, 5, nil)
+		warehouseRepo.Mock.On("Get", tenantId, limit, page-1).Return(itemDummies, 5, nil)
 
 		result, count, err := warehouseService.GetWarehouseItems(tenantId, limit, page)
 
@@ -82,7 +84,7 @@ func TestWarehouseServiceImpl(t *testing.T) {
 
 		tenantId, limit, page = 0, 5, 1
 		errMessage := "(PGRST103) Requested range not satisfiable"
-		warehouseRepo.Mock.On("Get", tenantId, limit, page).Return(nil, 0, errors.New(errMessage))
+		warehouseRepo.Mock.On("Get", tenantId, limit, page-1).Return(nil, 0, errors.New(errMessage))
 
 		result, count, err = warehouseService.GetWarehouseItems(0, 5, 1)
 		assert.NotNil(t, err)
