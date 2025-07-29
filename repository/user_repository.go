@@ -6,20 +6,19 @@ type UserRepository interface {
 	/*
 		Get all user
 	*/
-	// Get()
-
-	/*
-		Login user using email and password
-	*/
-	EmailAndPasswordLogin(email string, password string) (*model.User, error)
+	GetByEmail(email string) (*model.UserRegisterForm, error)
 
 	/*
 		Will connect to tenant table
 	*/
-	EmailAndPasswordRegister(newUser model.User, password string) (*model.User, error)
+	CreateWithEmailAndPassword(newUser model.User, password string) (*model.User, error)
 
 	/*
 		Deactivate user at DB. Not delete user from authentication
 	*/
 	// DeactivateUser(user *model.User) error
+
+	/*
+		User will sign in using traditional email and password
+	*/
 }

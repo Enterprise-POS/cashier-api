@@ -150,7 +150,7 @@ func TestTenantRepositoryImpl(t *testing.T) {
 			Email: "testtenantrepositoryimpl" + uuid.NewString() + "@gmail.com",
 		}
 		password := "12345678"
-		newCreatedDummyUser, err := userRepo.EmailAndPasswordRegister(dummyUser, password)
+		newCreatedDummyUser, err := userRepo.CreateWithEmailAndPassword(dummyUser, password)
 		require.Nil(t, err)
 		require.NotNil(t, newCreatedDummyUser)
 
@@ -193,7 +193,7 @@ func TestTenantRepositoryImpl(t *testing.T) {
 				Email: "testtenantrepositoryimpl" + uuid.NewString() + "@gmail.com",
 			}
 			password = "12345678"
-			newCreatedDummyUser2, err := userRepo.EmailAndPasswordRegister(dummyUser2, password)
+			newCreatedDummyUser2, err := userRepo.CreateWithEmailAndPassword(dummyUser2, password)
 			require.Nil(t, err)
 			require.NotNil(t, newCreatedDummyUser2)
 
@@ -250,7 +250,7 @@ func TestTenantRepositoryImpl(t *testing.T) {
 			Email: "testtenantrepositoryimpl" + uuid.NewString() + "@gmail.com",
 		}
 		password := "12345678"
-		newCreatedDummyUser, err := userRepo.EmailAndPasswordRegister(dummyUser, password)
+		newCreatedDummyUser, err := userRepo.CreateWithEmailAndPassword(dummyUser, password)
 		require.Nil(t, err)
 		require.NotNil(t, newCreatedDummyUser)
 
@@ -307,7 +307,7 @@ func TestTenantRepositoryImpl(t *testing.T) {
 				Email: "testtenantrepositoryimpl" + uuid.NewString() + "@gmail.com",
 			}
 			password = "12345678"
-			newCreatedDummyUser2, err := userRepo.EmailAndPasswordRegister(dummyUser2, password)
+			newCreatedDummyUser2, err := userRepo.CreateWithEmailAndPassword(dummyUser2, password)
 			require.Nil(t, err)
 			require.NotNil(t, newCreatedDummyUser2)
 

@@ -24,7 +24,7 @@ UserRepositoryImpl
 	Don't give pointer for 'user pointer'
 	we want copy
 */
-func (repository *UserRepositoryImpl) EmailAndPasswordRegister(newUser model.User, password string) (*model.User, error) {
+func (repository *UserRepositoryImpl) CreateWithEmailAndPassword(newUser model.User, password string) (*model.User, error) {
 	// // Create user via supabase authentication
 	// signUpResponse, err := repository.Client.Auth.Signup(types.SignupRequest{
 	// 	Email:    newUser.Email,
@@ -68,6 +68,12 @@ func (repository *UserRepositoryImpl) EmailAndPasswordRegister(newUser model.Use
 	return newCreatedUser, nil
 }
 
-func (repository *UserRepositoryImpl) EmailAndPasswordLogin(email string, password string) (*model.User, error) {
-	panic("NOT IMPLEMENTED")
+func (repository *UserRepositoryImpl) GetByEmail(email string) (*model.UserRegisterForm, error) {
+	var user *model.UserRegisterForm
+	_, err := repository.Client.From("user").Select("*", "", false).Eq("email", email).Single().ExecuteTo(&user)
+	if err != nil {
+		return nil, err
+	}
+
+	return user, nil
 }

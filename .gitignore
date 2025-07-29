@@ -4,6 +4,7 @@
 main.exe
 
 # ignoring intellij idea
+# when using intellij idea or GoLand, environment variable could be create by UI configurations
 .idea
 
 # personal bash script, contain setup .env / other developer recommended to setup this personally
@@ -11,4 +12,5 @@ main.exe
 setup.bash
 
 # VS code settings
+# specifying environment variable for VSCode example: "go.toolsEnvVars": {MODE: "prod"}
 .vscode
