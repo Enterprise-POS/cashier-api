@@ -3,6 +3,7 @@ name: CI/CD Configuration
 env:
   SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
   SUPABASE_API_URL: ${{ secrets.SUPABASE_API_URL }}
+  JWT_S: ${{ secrets.JWT_S }}
 
 on:
   push:
