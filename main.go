@@ -74,7 +74,8 @@ func main() {
 	userService := service.NewUserServiceImpl(userRepository)
 	userController := controller.NewUserControllerImpl(userService)
 
-	apiV1.Post("/users", userController.SignUpWithEmailAndPassword)
+	apiV1.Post("/users/sign_up", userController.SignUpWithEmailAndPassword)
+	apiV1.Post("/users/sign_in", userController.SignInWithEmailAndPassword)
 
 	// Handle route not found (404)
 	app.All("*", func(ctx *fiber.Ctx) error {

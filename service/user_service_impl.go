@@ -67,6 +67,9 @@ func (service *UserServiceImpl) SignInWithEmailAndPassword(email string, passwor
 
 	candidateUser, err := service.Repository.GetByEmail(email)
 	if err != nil {
+		if err.Error() == "(PGRST116) JSON object requested, multiple (or no) rows returned" {
+			return nil, "", errors.New("No user with this credentials")
+		}
 		return nil, "", err
 	}
 
