@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -26,7 +25,7 @@ func TestUserServiceImpl(t *testing.T) {
 
 		t.Run("NormalSignUp", func(t *testing.T) {
 			now := time.Now()
-			dummyIdentity := "NormalSignUp_" + uuid.NewString()
+			dummyIdentity := "NormalSignUp_" + fmt.Sprint(time.Now().Unix())
 			dummyPassword := "12345678"
 			expectedDummyUser := model.User{
 				Name:      "TestUserServiceImpl " + dummyIdentity,
@@ -54,13 +53,13 @@ func TestUserServiceImpl(t *testing.T) {
 		})
 
 		t.Run("InvalidEmail", func(t *testing.T) {
-			dummyIdentity := "InvalidEmail" + uuid.NewString()
+			dummyIdentity := "InvalidEmail" + fmt.Sprint(time.Now().Unix())
 			dummyPassword := "12345678"
 			expectedDummyUser := model.User{
 				Name:  "TestUserServiceImpl " + dummyIdentity,
 				Email: dummyIdentity + "gmail.com", // no @ while registering
 			}
-			errorMessage := "Could not create user account. check the input email"
+			errorMessage := "Could not create user account. Check input email"
 
 			// We don't even need mock to test email and password validation
 			createdDummyUser, err := userService.SignUpWithEmailAndPassword(expectedDummyUser.Email, dummyPassword, expectedDummyUser.Name)
@@ -70,13 +69,13 @@ func TestUserServiceImpl(t *testing.T) {
 		})
 
 		t.Run("InvalidPassword", func(t *testing.T) {
-			dummyIdentity := "InvalidPassword" + uuid.NewString()
+			dummyIdentity := "InvalidPassword" + fmt.Sprint(time.Now().Unix())
 			dummyPassword := "123456" // less than 8 characters are not allowed
 			expectedDummyUser := model.User{
 				Name:  "TestUserServiceImpl " + dummyIdentity,
 				Email: dummyIdentity + "@gmail.com",
 			}
-			errorMessage := "Could not create user account. check the input password"
+			errorMessage := "Could not create user account. Check input password"
 
 			createdDummyUser, err := userService.SignUpWithEmailAndPassword(expectedDummyUser.Email, dummyPassword, expectedDummyUser.Name)
 			assert.Nil(t, createdDummyUser)
@@ -91,7 +90,7 @@ func TestUserServiceImpl(t *testing.T) {
 
 		t.Run("NormalSignIn", func(t *testing.T) {
 			now := time.Now()
-			dummyIdentity := "NormalSignUp_" + uuid.NewString()
+			dummyIdentity := "NormalSignUp_" + fmt.Sprint(time.Now().Unix())
 			dummyPassword := "12345678"
 			expectedDummyUser := model.User{
 				Name:      "TestUserServiceImpl " + dummyIdentity,

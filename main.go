@@ -76,6 +76,7 @@ func main() {
 
 	apiV1.Post("/users/sign_up", userController.SignUpWithEmailAndPassword)
 	apiV1.Post("/users/sign_in", userController.SignInWithEmailAndPassword)
+	apiV1.Delete("/users/sign_out", userController.SignOut)
 
 	// Handle route not found (404)
 	app.All("*", func(ctx *fiber.Ctx) error {

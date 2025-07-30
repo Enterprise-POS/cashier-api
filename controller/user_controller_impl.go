@@ -148,10 +148,21 @@ func (controller *UserControllerImpl) SignOut(ctx *fiber.Ctx) error {
 			}))
 	} else {
 		// Clear the credential jwt
-		ctx.ClearCookie(constant.EnterprisePOS)
+		// ctx.ClearCookie(constant.EnterprisePOS)
 
-		return ctx.Status(fiber.StatusNoContent).
-			JSON(common.NewWebResponse(204, common.StatusSuccess, fiber.Map{
+		ctx.Cookie(&fiber.Cookie{
+			Name:     constant.EnterprisePOS,
+			Value:    "",
+			Expires:  time.Unix(0, 0), // Unix epoch time
+			MaxAge:   -1,
+			HTTPOnly: true,
+			Secure:   false, // Set to true if using HTTPS
+			SameSite: "Lax",
+			Path:     "/",
+		})
+
+		return ctx.Status(fiber.StatusOK).
+			JSON(common.NewWebResponse(200, common.StatusSuccess, fiber.Map{
 				"message": "Signed out successfully",
 			}))
 	}
