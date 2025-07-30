@@ -11,6 +11,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/stretchr/testify/assert"
@@ -40,7 +41,7 @@ func TestUserControllerImpl(t *testing.T) {
 			}`)
 			request := httptest.NewRequest("POST", "/users/sign_up", body)
 			request.Header.Set("Content-Type", "application/json")
-			response, err := app.Test(request)
+			response, err := app.Test(request, int(time.Minute*5))
 
 			assert.Nil(t, err)
 			assert.NotNil(t, response)
@@ -78,7 +79,7 @@ func TestUserControllerImpl(t *testing.T) {
 			}`)
 			request := httptest.NewRequest("POST", "/users/sign_up", body)
 			request.Header.Set("Content-Type", "application/json")
-			response, err := app.Test(request)
+			response, err := app.Test(request, int(time.Minute*5))
 
 			assert.Nil(t, err)
 			assert.NotNil(t, response)
@@ -100,7 +101,7 @@ func TestUserControllerImpl(t *testing.T) {
 			}`)
 			request = httptest.NewRequest("POST", "/users/sign_up", body)
 			request.Header.Set("Content-Type", "application/json")
-			response, err = app.Test(request)
+			response, err = app.Test(request, int(time.Minute*5))
 
 			require.Nil(t, err)
 
@@ -119,7 +120,7 @@ func TestUserControllerImpl(t *testing.T) {
 			}`)
 			request = httptest.NewRequest("POST", "/users/sign_up", body)
 			request.Header.Set("Content-Type", "application/json")
-			response, err = app.Test(request)
+			response, err = app.Test(request, int(time.Minute*5))
 
 			require.Nil(t, err)
 
@@ -139,7 +140,7 @@ func TestUserControllerImpl(t *testing.T) {
 			}`)
 			request := httptest.NewRequest("POST", "/users/sign_up", body)
 			request.Header.Set("Content-Type", "application/json")
-			response, err := app.Test(request)
+			response, err := app.Test(request, int(time.Minute*5))
 
 			assert.Nil(t, err)
 			assert.NotNil(t, response)
@@ -162,7 +163,7 @@ func TestUserControllerImpl(t *testing.T) {
 			}`)
 			request := httptest.NewRequest("POST", "/users/sign_up", body)
 			request.Header.Set("Content-Type", "application/json")
-			response, err := app.Test(request)
+			response, err := app.Test(request, int(time.Minute*5))
 
 			assert.Nil(t, err)
 			assert.NotNil(t, response)
@@ -183,7 +184,7 @@ func TestUserControllerImpl(t *testing.T) {
 			}`)
 			request = httptest.NewRequest("POST", "/users/sign_up", body)
 			request.Header.Set("Content-Type", "application/json")
-			response, err = app.Test(request)
+			response, err = app.Test(request, int(time.Minute*5))
 
 			assert.Nil(t, err)
 			assert.NotNil(t, response)
@@ -196,7 +197,7 @@ func TestUserControllerImpl(t *testing.T) {
 			}`)
 			request = httptest.NewRequest("POST", "/users/sign_up", body)
 			request.Header.Set("Content-Type", "application/json")
-			response, err = app.Test(request)
+			response, err = app.Test(request, int(time.Minute*5))
 
 			assert.Nil(t, err)
 			assert.NotNil(t, response)
@@ -214,7 +215,7 @@ func TestUserControllerImpl(t *testing.T) {
 
 		request := httptest.NewRequest("POST", "/users/sign_up", body)
 		request.Header.Set("Content-Type", "application/json")
-		response, err := app.Test(request)
+		response, err := app.Test(request, int(time.Minute*5))
 		require.Nil(t, err)
 		require.Equal(t, 201, response.StatusCode)
 
@@ -226,7 +227,7 @@ func TestUserControllerImpl(t *testing.T) {
 
 			request = httptest.NewRequest("POST", "/users/sign_in", body)
 			request.Header.Set("Content-Type", "application/json")
-			response, err = app.Test(request)
+			response, err = app.Test(request, int(time.Minute*5))
 
 			require.Nil(t, err, "If this failed, then delete data at DB. error at TestUserControllerImpl_SignIn")
 			require.Equal(t, 200, response.StatusCode, "If this failed, then delete data at DB. error at TestUserControllerImpl_SignIn")
@@ -264,7 +265,7 @@ func TestUserControllerImpl(t *testing.T) {
 			}`)
 			request := httptest.NewRequest("POST", "/users/sign_up", body)
 			request.Header.Set("Content-Type", "application/json")
-			response, err := app.Test(request)
+			response, err := app.Test(request, int(time.Minute*5))
 
 			require.Nil(t, err)
 			require.NotNil(t, response)
@@ -285,7 +286,7 @@ func TestUserControllerImpl(t *testing.T) {
 			request = httptest.NewRequest("DELETE", "/users/sign_out", nil)
 			request.AddCookie(enterprisePOSCookie)
 			request.Header.Set("Content-Type", "application/json")
-			response, err = app.Test(request)
+			response, err = app.Test(request, int(time.Minute*5))
 
 			assert.Nil(t, err)
 			assert.Equal(t, 200, response.StatusCode)
