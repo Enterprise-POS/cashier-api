@@ -16,6 +16,41 @@ func TestTenantServiceImpl(t *testing.T) {
 
 	t.Run("GetTenantWithUser", func(t *testing.T) {
 		t.Run("NormalGet", func(t *testing.T) {
+			userId := 1
+			sub := 1
+			now := time.Now()
+
+			expectedTenants := []*model.Tenant{
+				{
+					Id:          1,
+					Name:        "Dummy Tenant",
+					OwnerUserId: userId,
+					IsActive:    true,
+					CreatedAt:   &now,
+				},
+				{
+					Id:          2,
+					Name:        "Dummy Tenant",
+					OwnerUserId: 3, // other user id
+					IsActive:    true,
+					CreatedAt:   &now,
+				},
+			}
+			tenantRepo.Mock.On("GetTenantWithUser", userId).Return(expectedTenants, nil)
+			tenants, err := tenantService.GetTenantWithUser(userId, sub)
+			assert.Nil(t, err)
+			assert.NotNil(t, tenants)
+			assert.Equal(t, 2, len(tenants))
+		})
+
+		t.Run("SubAndTenantIdNotMatch", func(t *testing.T) {
+			userId := 1
+			sub := 2
+
+			tenants, err := tenantService.GetTenantWithUser(userId, sub)
+			assert.NotNil(t, err)
+			assert.Nil(t, tenants)
+			assert.Equal(t, "[TenantService:GetTenantWithUser:1]", err.Error())
 		})
 	})
 

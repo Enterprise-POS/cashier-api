@@ -74,7 +74,7 @@ func (repository *TenantRepositoryImpl) GetTenantWithUser(userId int) ([]*model.
 /*
 Fresh new tenant, with current user as a owner
 only create 1 tenant, will call new_tenant_user_as_owner function
-? by default field Tenant.category is TRUE, so don't need to update the file for now
+? when fresh new tenant created, automatically also insert into new_tenant_user_as_owner table
 */
 func (repository *TenantRepositoryImpl) NewTenant(tenant *model.Tenant) error {
 	var response string = repository.Client.Rpc("new_tenant_user_as_owner", "", map[string]interface{}{
