@@ -5,13 +5,13 @@ import (
 	"cashier-api/exception"
 	common "cashier-api/helper"
 	"cashier-api/helper/client"
+	"cashier-api/middleware"
 	"cashier-api/repository"
 	"cashier-api/service"
 	"os"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/recover"
 	log "github.com/sirupsen/logrus"
 )
@@ -28,7 +28,7 @@ func init() {
 		log.SetLevel(log.WarnLevel)
 	} else {
 		log.SetFormatter(&log.TextFormatter{})
-		log.SetLevel(log.InfoLevel)
+		log.SetLevel(log.DebugLevel)
 	}
 }
 
@@ -47,7 +47,7 @@ func main() {
 	supabaseClient := client.CreateSupabaseClient()
 
 	// 02 Middleware, Security
-	app.Use(cors.New())
+	// app.Use(cors.New())
 	app.Use(recover.New(recover.Config{EnableStackTrace: true}))
 
 	// 03 Router (grouping by /api/v1)
@@ -63,13 +63,6 @@ func main() {
 		})
 	})
 
-	warehouseRepository := repository.NewWarehouseRepositoryImpl(supabaseClient)
-	warehouseService := service.NewWarehouseServiceImpl(warehouseRepository)
-	warehouseController := controller.NewWarehouseControllerImpl(warehouseService)
-
-	// GET /warehouse/:tenantId?limit=10&page=1
-	apiV1.Get("/warehouses/:id", warehouseController.Get)
-
 	userRepository := repository.NewUserRepositoryImpl(supabaseClient)
 	userService := service.NewUserServiceImpl(userRepository)
 	userController := controller.NewUserControllerImpl(userService)
@@ -77,6 +70,13 @@ func main() {
 	apiV1.Post("/users/sign_up", userController.SignUpWithEmailAndPassword)
 	apiV1.Post("/users/sign_in", userController.SignInWithEmailAndPassword)
 	apiV1.Delete("/users/sign_out", userController.SignOut)
+
+	warehouseRepository := repository.NewWarehouseRepositoryImpl(supabaseClient)
+	warehouseService := service.NewWarehouseServiceImpl(warehouseRepository)
+	warehouseController := controller.NewWarehouseControllerImpl(warehouseService)
+
+	// GET /warehouse/:tenantId?limit=10&page=1
+	apiV1.Get("/warehouses/:id", middleware.ProtectedRoute, warehouseController.Get)
 
 	// Handle route not found (404)
 	app.All("*", func(ctx *fiber.Ctx) error {

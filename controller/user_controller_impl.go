@@ -77,6 +77,9 @@ func (controller *UserControllerImpl) SignUpWithEmailAndPassword(ctx *fiber.Ctx)
 		}))
 }
 
+/*
+200, 400, 401
+*/
 func (controller *UserControllerImpl) SignInWithEmailAndPassword(ctx *fiber.Ctx) error {
 	var body struct {
 		Email    string `json:"email"`
