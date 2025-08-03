@@ -63,6 +63,13 @@ func main() {
 		})
 	})
 
+	tenantRepository := repository.NewTenantRepositoryImpl(supabaseClient)
+	tenantService := service.NewTenantServiceImpl(tenantRepository)
+	tenantController := controller.NewTenantControllerImpl(tenantService)
+
+	apiV1.Get("/tenants/:userId", middleware.ProtectedRoute, tenantController.GetTenantWithUser)
+	apiV1.Post("/tenants/new", middleware.ProtectedRoute, tenantController.NewTenant)
+
 	userRepository := repository.NewUserRepositoryImpl(supabaseClient)
 	userService := service.NewUserServiceImpl(userRepository)
 	userController := controller.NewUserControllerImpl(userService)

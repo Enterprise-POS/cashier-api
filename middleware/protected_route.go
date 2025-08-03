@@ -3,8 +3,6 @@ package middleware
 import (
 	common "cashier-api/helper"
 	constant "cashier-api/helper/constant/cookie"
-	"fmt"
-	"os"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v5"
@@ -23,17 +21,10 @@ func ProtectedRoute(ctx *fiber.Ctx) error {
 	claims := jwt.MapClaims{}
 
 	// Parse and validate the token
-	token, err := jwt.ParseWithClaims(enterprisePOSCookie, &claims, func(token *jwt.Token) (interface{}, error) {
-		// Optional: verify signing method
-		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
-		}
-		return []byte(os.Getenv("JWT_S")), nil
-	})
+	token, err := common.ClaimJWT(enterprisePOSCookie, &claims)
 
 	if err != nil {
 		log.Warnf("Malformed JWT detected, reason: %s", err.Error())
-
 		return ctx.Status(fiber.StatusBadRequest).
 			JSON(common.NewWebResponseError(400, common.StatusError, "JWT malformed, try sign in again"))
 	}

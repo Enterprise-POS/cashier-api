@@ -120,4 +120,54 @@ func TestTenantServiceImpl(t *testing.T) {
 			assert.NotNil(t, err)
 		})
 	})
+
+	t.Run("RemoveUserFromTenant", func(t *testing.T) {
+		t.Run("NormalRemove", func(t *testing.T) {
+			now := time.Now()
+			userId := 1
+			sub := userId // typically get from JWT payload
+			userMtmTenant := &model.UserMtmTenant{
+				Id:        1,
+				UserId:    1,
+				TenantId:  1,
+				CreatedAt: &now,
+			}
+			tenantRepo.Mock.On("RemoveUserFromTenant", userMtmTenant, sub).Return("[SUCCESS] Removed from tenant", nil)
+			response, err := tenantService.RemoveUserFromTenant(userMtmTenant, userId, sub)
+			assert.NoError(t, err)
+			assert.Equal(t, "[SUCCESS] Removed from tenant", response)
+		})
+
+		t.Run("ForbiddenActionRemovingNotByPerformer", func(t *testing.T) {
+			now := time.Now()
+			userId := 1
+			sub := userId // typically get from JWT payload
+			userMtmTenant := &model.UserMtmTenant{
+				Id:        1,
+				UserId:    1,
+				CreatedAt: &now,
+			}
+
+			wrongPerformerId := 99
+			response, err := tenantService.RemoveUserFromTenant(userMtmTenant, wrongPerformerId, sub)
+			assert.Error(t, err)
+			assert.Equal(t, "", response)
+			assert.Equal(t, "[TenantService:RemoveUserFromTenant]", err.Error())
+		})
+
+		t.Run("WrongDataTypeForSpecifyingTenantId", func(t *testing.T) {
+			userId := 1
+			sub := userId // typically get from JWT payload
+			userMtmTenant := &model.UserMtmTenant{
+				Id:       1,
+				TenantId: 1,
+				UserId:   0, // When not specifying UserId, it should be looked like 0
+			}
+
+			response, err := tenantService.RemoveUserFromTenant(userMtmTenant, userId, sub)
+			assert.Error(t, err)
+			assert.Equal(t, "", response)
+			assert.Contains(t, err.Error(), "Data type error. User Id should be inserted.")
+		})
+	})
 }

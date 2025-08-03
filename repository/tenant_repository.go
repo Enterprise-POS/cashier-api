@@ -41,5 +41,5 @@ type TenantRepository interface {
 		Remove user from tenant
 		- delete from user_mtm_tenant
 	*/
-	RemoveUserFromTenant(userMtmTenantId *model.UserMtmTenant) (string, error)
+	RemoveUserFromTenant(userMtmTenantId *model.UserMtmTenant, userId int) (string, error)
 }

@@ -61,6 +61,12 @@ func (repository *TenantRepositoryMock) NewTenant(tenant *model.Tenant) error {
 }
 
 // RemoveUserFromTenant implements TenantRepository.
-func (t *TenantRepositoryMock) RemoveUserFromTenant(userMtmTenantId *model.UserMtmTenant) (string, error) {
-	panic("unimplemented")
+func (repository *TenantRepositoryMock) RemoveUserFromTenant(userMtmTenantId *model.UserMtmTenant, userId int) (string, error) {
+	args := repository.Mock.Called(userMtmTenantId, userId)
+
+	if args.String(0) == "" {
+		return "", args.Error(1)
+	}
+
+	return args.String(0), nil
 }
