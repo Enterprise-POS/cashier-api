@@ -17,8 +17,14 @@ func NewTenantRepositoryMock(mock *mock.Mock) TenantRepository {
 }
 
 // AddUserToTenant implements TenantRepository.
-func (t *TenantRepositoryMock) AddUserToTenant(userId int, tenantId int) (*model.UserMtmTenant, error) {
-	panic("unimplemented")
+func (repository *TenantRepositoryMock) AddUserToTenant(userId int, tenantId int) (*model.UserMtmTenant, error) {
+	args := repository.Mock.Called(userId, tenantId)
+
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+
+	return args.Get(0).(*model.UserMtmTenant), nil
 }
 
 // Create implements TenantRepository.

@@ -34,6 +34,11 @@ type TenantRepository interface {
 	/*
 		Will create new data into user_mtm_tenant table
 		that will make user have many to many relation with tenant table
+		different from NewTenant, that automatically add as tenant owner
+		AddUserToTenant will make added user into staff/normal user at some tenant
+
+		If some reason user add same id into tenant, SQL will be reject the request
+		this is done by table constraints
 	*/
 	AddUserToTenant(userId, tenantId int) (*model.UserMtmTenant, error)
 

@@ -11,6 +11,7 @@ import (
 	"cashier-api/service"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -45,6 +46,8 @@ func TestTenantControllerImpl(t *testing.T) {
 	app.Post("/users/sign_up", userController.SignUpWithEmailAndPassword)
 	app.Get("/tenants/:userId", middleware.ProtectedRoute, tenantController.GetTenantWithUser)
 	app.Post("/tenants/new", middleware.ProtectedRoute, tenantController.NewTenant)
+	app.Post("/tenants/add_user", middleware.ProtectedRoute, tenantController.AddUserToTenant)
+	app.Delete("/tenants/remove_user", middleware.ProtectedRoute, tenantController.RemoveUserFromTenant)
 
 	t.Run("NewTenant", func(t *testing.T) {
 		// Create dummy user
@@ -77,6 +80,7 @@ func TestTenantControllerImpl(t *testing.T) {
 				enterprisePOSCookie = c
 			}
 		}
+		require.NotNil(t, enterprisePOSCookie)
 
 		// Manually get the jwt payload from cookie
 		claims := jwt.MapClaims{}
@@ -263,5 +267,383 @@ func TestTenantControllerImpl(t *testing.T) {
 			Execute()
 
 		require.Nil(t, err, "If this failed, then delete data at DB. error at TestTenantControllerImpl")
+	})
+
+	type RequestBodyStructure struct {
+		UserId      int `json:"user_id"` // To be add user
+		TenantId    int `json:"tenant_id"`
+		PerformerId int `json:"performer_id"`
+	}
+
+	t.Run("AddUserToTenant", func(t *testing.T) {
+		// Setup
+		// Create dummy user by calling user controller
+		userIdentity := strings.ReplaceAll(uuid.NewString(), "-", "")
+		userPassword := "12345678"
+		dummyUser := &model.User{
+			Email: "test_tenant_controller_AddUserToTenant1" + userIdentity + "@gmail.com",
+			Name:  "test tenant" + userIdentity,
+		}
+		body := strings.NewReader(fmt.Sprintf(`{
+				"email": "%s",
+				"password": "%s",
+				"name": "%s"
+			}`, dummyUser.Email, userPassword, dummyUser.Name))
+
+		signUpRequest := &common.NewRequest{
+			Url:       "/users/sign_up",
+			Method:    "POST",
+			Body:      body,
+			TimeoutMs: 0,
+		}
+		_, response, err := signUpRequest.RunRequest(app)
+
+		require.Nil(t, err)
+		require.Equal(t, 201, response.StatusCode)
+
+		var enterprisePOSCookie *http.Cookie
+		for _, c := range response.Cookies() {
+			if c.Name == constant.EnterprisePOS {
+				enterprisePOSCookie = c
+			}
+		}
+		require.NotNil(t, enterprisePOSCookie)
+
+		// Manually get the jwt payload from cookie
+		claims := jwt.MapClaims{}
+		token, err := common.ClaimJWT(enterprisePOSCookie.Value, &claims)
+		require.NotEqual(t, "", claims["sub"])
+		sub, ok := claims["sub"].(float64)
+		require.True(t, ok)
+		require.True(t, token.Valid)
+		dummyUser.Id = int(sub)
+
+		// Create dummy tenant and add current dummyUser into this tenant
+		dummyTenant := &model.Tenant{
+			Name:        dummyUser.Name + " Group's",
+			OwnerUserId: dummyUser.Id,
+		}
+
+		bodyBytes, err := json.Marshal(dummyTenant)
+		require.NoError(t, err)
+
+		request := httptest.NewRequest("POST", "/tenants/new", bytes.NewReader(bodyBytes))
+		request.AddCookie(enterprisePOSCookie)
+		request.Header.Set("Content-Type", "application/json")
+		response, err = app.Test(request, int(time.Second*5))
+		require.NoError(t, err)
+
+		// Manually get created tenant
+		var createdTenant *model.Tenant
+		_, err = supabaseClient.From(repository.TenantTable).
+			Select("*", "", false).
+			Eq("name", dummyTenant.Name).
+			Eq("owner_user_id", fmt.Sprint(dummyUser.Id)).
+			Single().ExecuteTo(&createdTenant)
+		require.NoError(t, err)
+
+		// Create 2nd user, without tenant
+		user2Identity := strings.ReplaceAll(uuid.NewString(), "-", "")
+		user2Password := "12345678"
+		dummyUser2 := &model.User{
+			Email: "test_tenant_controller_AddUserToTenant2" + user2Identity + "@gmail.com",
+			Name:  "test tenant" + user2Identity,
+		}
+		body2 := strings.NewReader(fmt.Sprintf(`{
+				"email": "%s",
+				"password": "%s",
+				"name": "%s"
+			}`, dummyUser2.Email, user2Password, dummyUser2.Name))
+
+		signUpRequest2 := &common.NewRequest{
+			Url:       "/users/sign_up",
+			Method:    "POST",
+			Body:      body2,
+			TimeoutMs: 0,
+		}
+		_, response, err = signUpRequest2.RunRequest(app)
+		require.NoError(t, err)
+		require.Equal(t, 201, response.StatusCode)
+
+		var enterprisePOSCookie2 *http.Cookie
+		for _, c := range response.Cookies() {
+			if c.Name == constant.EnterprisePOS {
+				enterprisePOSCookie2 = c
+			}
+		}
+		require.NotNil(t, enterprisePOSCookie2)
+
+		// Manually get the jwt payload from cookie
+		claims = jwt.MapClaims{}
+		token, err = common.ClaimJWT(enterprisePOSCookie2.Value, &claims)
+		require.NotEqual(t, "", claims["sub"])
+		sub, ok = claims["sub"].(float64)
+		require.True(t, ok)
+		require.True(t, token.Valid)
+		dummyUser2.Id = int(sub)
+
+		t.Run("NormalAdd", func(t *testing.T) {
+			// WARN: Current scope body is for current scope
+			requestBody, err := json.Marshal(&RequestBodyStructure{
+				UserId:      dummyUser2.Id, // to be added user
+				TenantId:    createdTenant.Id,
+				PerformerId: dummyTenant.OwnerUserId, // owner
+			})
+			require.NoError(t, err)
+			request := httptest.NewRequest("POST", "/tenants/add_user", bytes.NewReader(requestBody))
+			request.AddCookie(enterprisePOSCookie)
+			request.Header.Set("Content-Type", "application/json")
+			response, err := app.Test(request, int(time.Second*5))
+
+			bodyBytes, err := io.ReadAll(response.Body)
+			responseBody := string(bodyBytes)
+			assert.NoError(t, err)
+			assert.Equal(t, http.StatusOK, response.StatusCode)
+			assert.Contains(t, responseBody, "success")
+			assert.Contains(t, responseBody, fmt.Sprintf("\"added_user_id\":%d,", dummyUser2.Id))
+			assert.Contains(t, responseBody, fmt.Sprintf("\"requested_by\":%d,", dummyTenant.OwnerUserId))
+			assert.Contains(t, responseBody, fmt.Sprintf("\"target_tenant_id\":%d", createdTenant.Id))
+		})
+
+		t.Run("DuplicateKeyForInsertingTheSameUserId", func(t *testing.T) {
+			// WARN: Current scope body is for current scope
+			requestBody, err := json.Marshal(&RequestBodyStructure{
+				UserId:      dummyUser2.Id, // to be added user
+				TenantId:    createdTenant.Id,
+				PerformerId: dummyTenant.OwnerUserId, // owner
+			})
+			require.NoError(t, err)
+			request := httptest.NewRequest("POST", "/tenants/add_user", bytes.NewReader(requestBody))
+			request.AddCookie(enterprisePOSCookie)
+			request.Header.Set("Content-Type", "application/json")
+			response, err := app.Test(request, int(time.Second*5))
+
+			bodyBytes, err := io.ReadAll(response.Body)
+			responseBody := string(bodyBytes)
+			assert.NoError(t, err)
+			assert.Equal(t, http.StatusBadRequest, response.StatusCode)
+			assert.Contains(t, responseBody, "error")
+			assert.Contains(t, responseBody, "duplicate key value violates unique constraint")
+		})
+
+		t.Run("IllegalActionByUsingAnotherUserId", func(t *testing.T) {
+			requestBody, err := json.Marshal(&RequestBodyStructure{
+				UserId:      dummyUser2.Id,
+				TenantId:    createdTenant.Id,
+				PerformerId: 99, // using someone id
+			})
+
+			request := httptest.NewRequest("POST", "/tenants/add_user", bytes.NewReader(requestBody))
+			request.AddCookie(enterprisePOSCookie)
+			request.Header.Set("Content-Type", "application/json")
+			response, err := app.Test(request, int(time.Second*5))
+
+			bodyBytes, err := io.ReadAll(response.Body)
+			responseBody := string(bodyBytes)
+
+			assert.NoError(t, err)
+			assert.Equal(t, http.StatusForbidden, response.StatusCode)
+			assert.Contains(t, responseBody, "error")
+			assert.Contains(t, responseBody, "Forbidden action detected ! Do not proceed")
+		})
+
+		// Clean up
+		// user_mtm_tenant
+		_, _, err = supabaseClient.From(repository.UserMtmTenantTable).
+			Delete("", "").
+			Eq("tenant_id", fmt.Sprint(createdTenant.Id)).
+			Execute()
+		require.NoError(t, err, "If this fail, then delete data at DB. error at TestTenantControllerImpl/AddUserToTenant")
+
+		// tenant
+		_, _, err = supabaseClient.From(repository.TenantTable).
+			Delete("", "").
+			Eq("id", fmt.Sprint(createdTenant.Id)).
+			Execute()
+		require.NoError(t, err)
+
+		// user
+		_, _, err = supabaseClient.From(repository.UserTable).
+			Delete("", "").
+			In("id", []string{fmt.Sprint(dummyUser.Id), fmt.Sprint(dummyUser2.Id)}).
+			Execute()
+	})
+
+	t.Run("RemoveUserFromTenant", func(t *testing.T) {
+		// Setup
+		// Create dummy user by calling user controller
+		userIdentity := strings.ReplaceAll(uuid.NewString(), "-", "")
+		userPassword := "12345678"
+		dummyUser := &model.User{
+			Email: "test_tenant_controller_removeFromTenant1" + userIdentity + "@gmail.com",
+			Name:  "test tenant" + userIdentity,
+		}
+		body := strings.NewReader(fmt.Sprintf(`{
+			"email": "%s",
+			"password": "%s",
+			"name": "%s"
+		}`, dummyUser.Email, userPassword, dummyUser.Name))
+
+		signUpRequest := &common.NewRequest{
+			Url:       "/users/sign_up",
+			Method:    "POST",
+			Body:      body,
+			TimeoutMs: 0,
+		}
+		_, response, err := signUpRequest.RunRequest(app)
+
+		require.Nil(t, err)
+		require.Equal(t, 201, response.StatusCode)
+
+		var enterprisePOSCookie *http.Cookie
+		for _, c := range response.Cookies() {
+			if c.Name == constant.EnterprisePOS {
+				enterprisePOSCookie = c
+			}
+		}
+		require.NotNil(t, enterprisePOSCookie)
+
+		// Manually get the jwt payload from cookie
+		claims := jwt.MapClaims{}
+		token, err := common.ClaimJWT(enterprisePOSCookie.Value, &claims)
+		require.NotEqual(t, "", claims["sub"])
+		sub, ok := claims["sub"].(float64)
+		require.True(t, ok)
+		require.True(t, token.Valid)
+		dummyUser.Id = int(sub)
+
+		// Create dummy tenant and add current dummyUser into this tenant
+		dummyTenant := &model.Tenant{
+			Name:        dummyUser.Name + " Group's",
+			OwnerUserId: dummyUser.Id,
+		}
+
+		bodyBytes, err := json.Marshal(dummyTenant)
+		require.NoError(t, err)
+
+		request := httptest.NewRequest("POST", "/tenants/new", bytes.NewReader(bodyBytes))
+		request.AddCookie(enterprisePOSCookie)
+		request.Header.Set("Content-Type", "application/json")
+		response, err = app.Test(request, int(time.Second*5))
+		require.NoError(t, err)
+
+		// Manually get created tenant
+		var createdTenant *model.Tenant
+		_, err = supabaseClient.From(repository.TenantTable).
+			Select("*", "", false).
+			Eq("name", dummyTenant.Name).
+			Eq("owner_user_id", fmt.Sprint(dummyUser.Id)).
+			Single().ExecuteTo(&createdTenant)
+		require.NoError(t, err)
+
+		// Create 2nd user, without tenant
+		user2Identity := strings.ReplaceAll(uuid.NewString(), "-", "")
+		user2Password := "12345678"
+		dummyUser2 := &model.User{
+			Email: "test_tenant_controller_removeFromTenant2" + user2Identity + "@gmail.com",
+			Name:  "test tenant" + user2Identity,
+		}
+		body2 := strings.NewReader(fmt.Sprintf(`{
+			"email": "%s",
+			"password": "%s",
+			"name": "%s"
+		}`, dummyUser2.Email, user2Password, dummyUser2.Name))
+
+		signUpRequest2 := &common.NewRequest{
+			Url:       "/users/sign_up",
+			Method:    "POST",
+			Body:      body2,
+			TimeoutMs: 0,
+		}
+		_, response, err = signUpRequest2.RunRequest(app)
+		require.NoError(t, err)
+		require.Equal(t, 201, response.StatusCode)
+
+		var enterprisePOSCookie2 *http.Cookie
+		for _, c := range response.Cookies() {
+			if c.Name == constant.EnterprisePOS {
+				enterprisePOSCookie2 = c
+			}
+		}
+		require.NotNil(t, enterprisePOSCookie2)
+
+		// Manually get the jwt payload from cookie
+		claims = jwt.MapClaims{}
+		token, err = common.ClaimJWT(enterprisePOSCookie2.Value, &claims)
+		require.NotEqual(t, "", claims["sub"])
+		sub, ok = claims["sub"].(float64)
+		require.True(t, ok)
+		require.True(t, token.Valid)
+		dummyUser2.Id = int(sub) // here we get the id, will be use for later deletion
+
+		t.Run("NormalRemove", func(t *testing.T) {
+			requestBody, err := json.Marshal(&RequestBodyStructure{
+				UserId:      dummyUser2.Id,
+				TenantId:    createdTenant.Id,
+				PerformerId: dummyUser.Id, // using someone id
+			})
+			require.NoError(t, err)
+
+			request := httptest.NewRequest("DELETE", "/tenants/remove_user", bytes.NewReader(requestBody))
+			request.AddCookie(enterprisePOSCookie)
+			request.Header.Set("Content-Type", "application/json")
+			response, err := app.Test(request, int(time.Second*5))
+
+			require.NoError(t, err)
+			bodyBytes, err := io.ReadAll(response.Body)
+			responseBody := string(bodyBytes)
+
+			assert.NoError(t, err)
+			assert.Equal(t, http.StatusOK, response.StatusCode)
+			assert.Contains(t, responseBody, "success")
+			assert.Contains(t, responseBody, "Removed from tenant")
+		})
+
+		t.Run("RemoveOwner", func(t *testing.T) {
+			// Current tenant will be archived
+			requestBody, err := json.Marshal(&RequestBodyStructure{
+				UserId:      dummyUser.Id, // the owner
+				TenantId:    createdTenant.Id,
+				PerformerId: dummyUser.Id, // using someone id
+			})
+			require.NoError(t, err)
+
+			// Test itself
+			// WARN: even we say delete and it's from the owner, this perform soft delete
+			request := httptest.NewRequest("DELETE", "/tenants/remove_user", bytes.NewReader(requestBody))
+			request.AddCookie(enterprisePOSCookie)
+			request.Header.Set("Content-Type", "application/json")
+			response, err := app.Test(request, int(time.Second*5))
+
+			require.NoError(t, err)
+			bodyBytes, err := io.ReadAll(response.Body)
+			responseBody := string(bodyBytes)
+
+			assert.NoError(t, err)
+			assert.Equal(t, http.StatusOK, response.StatusCode)
+			assert.Contains(t, responseBody, "success")
+			assert.Contains(t, responseBody, "Current tenant will be archived")
+		})
+
+		// Clean up
+		// user_mtm_tenant
+		_, _, err = supabaseClient.From(repository.UserMtmTenantTable).
+			Delete("", "").
+			Eq("tenant_id", fmt.Sprint(createdTenant.Id)).
+			Execute()
+		require.NoError(t, err, "If this fail, then delete data at DB. error at TestTenantControllerImpl/AddUserToTenant")
+
+		// tenant
+		_, _, err = supabaseClient.From(repository.TenantTable).
+			Delete("", "").
+			Eq("id", fmt.Sprint(createdTenant.Id)).
+			Execute()
+		require.NoError(t, err)
+
+		// user
+		_, _, err = supabaseClient.From(repository.UserTable).
+			Delete("", "").
+			In("id", []string{fmt.Sprint(dummyUser.Id), fmt.Sprint(dummyUser2.Id)}).
+			Execute()
 	})
 }

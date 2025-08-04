@@ -5,6 +5,7 @@ import (
 	"cashier-api/model"
 	"cashier-api/service"
 	"strconv"
+	"strings"
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -92,4 +93,88 @@ func (controller *TenantControllerImpl) NewTenant(ctx *fiber.Ctx) error {
 	}
 
 	return ctx.SendStatus(fiber.StatusCreated)
+}
+
+// RemoveUserFromTenant implements TenantController.
+func (controller *TenantControllerImpl) RemoveUserFromTenant(ctx *fiber.Ctx) error {
+	var body struct {
+		UserId      int `json:"user_id"` // To be remove user
+		TenantId    int `json:"tenant_id"`
+		PerformerId int `json:"performer_id"` // Tell the identity who's perform this request/action
+	}
+
+	err := ctx.BodyParser(&body)
+	if err != nil {
+		return ctx.Status(fiber.StatusBadRequest).
+			JSON(common.NewWebResponseError(400, common.StatusError, "Something gone wrong ! The request body is malformed"))
+	}
+
+	sub := ctx.Locals("sub")
+	userId, ok := sub.(int)
+	if !ok {
+		return ctx.Status(fiber.StatusBadRequest).
+			JSON(common.NewWebResponseError(401, common.StatusError, "Unexpected behavior ! could not get the id"))
+	}
+
+	toBeRemoveUser := &model.UserMtmTenant{
+		UserId:   body.UserId,
+		TenantId: body.TenantId,
+	}
+
+	response, err := controller.Service.RemoveUserFromTenant(toBeRemoveUser, body.PerformerId, userId)
+	if err != nil {
+		if err.Error() == "[TenantService:RemoveUserFromTenant]" {
+			return ctx.Status(fiber.StatusForbidden).
+				JSON(common.NewWebResponseError(403, common.StatusError, "Forbidden action detected ! Do not proceed"))
+		}
+
+		return ctx.Status(fiber.StatusBadRequest).
+			JSON(common.NewWebResponseError(400, common.StatusError, err.Error()))
+	}
+
+	return ctx.Status(fiber.StatusOK).
+		JSON(common.NewWebResponse(200, common.StatusSuccess, fiber.Map{
+			"requested_by": body.PerformerId,
+			"message":      strings.Replace(response, "[SUCCESS] ", "", 1),
+		}))
+}
+
+// AddUserToTenant implements TenantController.
+func (controller *TenantControllerImpl) AddUserToTenant(ctx *fiber.Ctx) error {
+	var body struct {
+		UserId      int `json:"user_id"` // To be add user
+		TenantId    int `json:"tenant_id"`
+		PerformerId int `json:"performer_id"`
+	}
+
+	err := ctx.BodyParser(&body)
+	if err != nil {
+		return ctx.Status(fiber.StatusBadRequest).
+			JSON(common.NewWebResponseError(400, common.StatusError, "Something gone wrong ! The request body is malformed"))
+	}
+
+	sub := ctx.Locals("sub")
+	userId, ok := sub.(int)
+	if !ok {
+		return ctx.Status(fiber.StatusBadRequest).
+			JSON(common.NewWebResponseError(400, common.StatusError, "Unexpected behavior ! could not get the id"))
+	}
+
+	createdUserUserMtmTenant, err := controller.Service.AddUserToTenant(body.UserId, body.TenantId, body.PerformerId, userId)
+	if err != nil {
+		if err.Error() == "[TenantService:AddUserToTenant]" {
+			return ctx.Status(fiber.StatusForbidden).
+				JSON(common.NewWebResponseError(403, common.StatusError, "Forbidden action detected ! Do not proceed"))
+		}
+
+		return ctx.Status(fiber.StatusBadRequest).
+			JSON(common.NewWebResponseError(400, common.StatusError, err.Error()))
+	}
+
+	return ctx.Status(fiber.StatusOK).
+		JSON(common.NewWebResponse(200, common.StatusSuccess, fiber.Map{
+			"requested_by":     body.PerformerId,
+			"added_user_id":    createdUserUserMtmTenant.UserId,
+			"target_tenant_id": createdUserUserMtmTenant.TenantId,
+		}))
 }

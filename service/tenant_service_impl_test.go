@@ -3,6 +3,7 @@ package service
 import (
 	"cashier-api/model"
 	"cashier-api/repository"
+	"errors"
 	"testing"
 	"time"
 
@@ -118,6 +119,42 @@ func TestTenantServiceImpl(t *testing.T) {
 
 			err := tenantService.NewTenant(dummyTenant, sub)
 			assert.NotNil(t, err)
+		})
+	})
+
+	t.Run("AddUserToTenant", func(t *testing.T) {
+		t.Run("NormalAdd", func(t *testing.T) {
+			toBeAddedUserId := 99
+			tenantId := 1
+			performerId := 1 // user who request to add some user
+			sub := performerId
+
+			now := time.Now()
+			expectedAddedUserFromTenant := &model.UserMtmTenant{
+				Id:        1,
+				UserId:    toBeAddedUserId,
+				TenantId:  tenantId,
+				CreatedAt: &now,
+			}
+			tenantRepo.Mock.On("AddUserToTenant", toBeAddedUserId, tenantId).Return(expectedAddedUserFromTenant, nil)
+			testUserMtmTenant, err := tenantService.AddUserToTenant(toBeAddedUserId, tenantId, performerId, sub)
+			assert.NoError(t, err)
+			assert.NotNil(t, testUserMtmTenant)
+			assert.Equal(t, expectedAddedUserFromTenant.TenantId, testUserMtmTenant.TenantId)
+			assert.Equal(t, expectedAddedUserFromTenant.UserId, testUserMtmTenant.UserId)
+			assert.Equal(t, expectedAddedUserFromTenant.CreatedAt, testUserMtmTenant.CreatedAt)
+		})
+
+		t.Run("ForbiddenActionForAddingUserWithOtherUserId", func(t *testing.T) {
+			toBeAddedUserId := 99
+			tenantId := 1
+			performerId := 1
+			sub := 2 // JWT id different
+			tenantRepo.Mock.On("AddUserToTenant", toBeAddedUserId, tenantId).Return(nil, errors.New("[TenantService:AddUserToTenant]"))
+			testUserMtmTenant, err := tenantService.AddUserToTenant(toBeAddedUserId, tenantId, performerId, sub)
+			assert.Error(t, err)
+			assert.Nil(t, testUserMtmTenant)
+			assert.Equal(t, "[TenantService:AddUserToTenant]", err.Error())
 		})
 	})
 

@@ -7,4 +7,6 @@ import (
 type TenantController interface {
 	GetTenantWithUser(*fiber.Ctx) error
 	NewTenant(*fiber.Ctx) error
+	RemoveUserFromTenant(*fiber.Ctx) error
+	AddUserToTenant(*fiber.Ctx) error
 }

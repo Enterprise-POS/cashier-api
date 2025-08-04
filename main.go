@@ -69,6 +69,8 @@ func main() {
 
 	apiV1.Get("/tenants/:userId", middleware.ProtectedRoute, tenantController.GetTenantWithUser)
 	apiV1.Post("/tenants/new", middleware.ProtectedRoute, tenantController.NewTenant)
+	apiV1.Post("/tenants/add_user", middleware.ProtectedRoute, tenantController.AddUserToTenant)
+	apiV1.Delete("/tenants/remove_user", middleware.ProtectedRoute, tenantController.RemoveUserFromTenant)
 
 	userRepository := repository.NewUserRepositoryImpl(supabaseClient)
 	userService := service.NewUserServiceImpl(userRepository)
