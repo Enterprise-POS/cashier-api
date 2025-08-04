@@ -13,4 +13,16 @@ type TenantService interface {
 		only create 1 tenant, will call new_tenant_user_as_owner function
 	*/
 	NewTenant(tenant *model.Tenant, sub int) error
+
+	/*
+		Will create new data into user_mtm_tenant table
+		that will make user have many to many relation with tenant table
+	*/
+	AddUserToTenant(userId, tenantId, performerId, sub int) (*model.UserMtmTenant, error)
+
+	/*
+		Remove user from tenant
+		- delete from user_mtm_tenant
+	*/
+	RemoveUserFromTenant(userMtmTenantId *model.UserMtmTenant, performerId, sub int) (string, error)
 }

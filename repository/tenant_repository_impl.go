@@ -110,8 +110,9 @@ func (repository *TenantRepositoryImpl) AddUserToTenant(userId, tenantId int) (*
 	return newUserMtmTenant, nil
 }
 
-func (repository *TenantRepositoryImpl) RemoveUserFromTenant(userMtmTenant *model.UserMtmTenant) (string, error) {
+func (repository *TenantRepositoryImpl) RemoveUserFromTenant(userMtmTenant *model.UserMtmTenant, userId int) (string, error) {
 	response := repository.Client.Rpc("remove_user_from_tenant", "", map[string]any{
+		"p_performer": userId,
 		"p_user_id":   userMtmTenant.UserId,
 		"p_tenant_id": userMtmTenant.TenantId,
 	})

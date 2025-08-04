@@ -287,17 +287,43 @@ func TestTenantRepositoryImpl(t *testing.T) {
 		// -	createdTenantId int
 
 		t.Run("UserIdNotAvailable", func(t *testing.T) {
-			response, err := tenantRepo.RemoveUserFromTenant(&model.UserMtmTenant{UserId: 0, TenantId: createdTenantId})
+			response, err := tenantRepo.RemoveUserFromTenant(&model.UserMtmTenant{UserId: 0, TenantId: createdTenantId}, newCreatedDummyUser.Id)
 			assert.NotNil(t, err)
 			assert.Equal(t, "", response)
 			assert.Contains(t, err.Error(), "[ERROR] Fatal error, user id not existed")
 		})
 
 		t.Run("TenantIdNotAvailable", func(t *testing.T) {
-			response, err := tenantRepo.RemoveUserFromTenant(&model.UserMtmTenant{UserId: newCreatedDummyUser.Id, TenantId: 0})
+			response, err := tenantRepo.RemoveUserFromTenant(&model.UserMtmTenant{UserId: newCreatedDummyUser.Id, TenantId: 0}, newCreatedDummyUser.Id)
 			assert.NotNil(t, err)
 			assert.Equal(t, "", response)
 			assert.Contains(t, err.Error(), "[ERROR] Fatal error, tenant id not existed")
+		})
+
+		t.Run("IllegalActionRemoveUserFromNonOwner", func(t *testing.T) {
+			// create user
+			dummyUser2 := model.User{
+				Name:  "Test_TenantRepositoryImpl/RemoveUserFromTenant/NormalRemove user 2" + string(uuid.NewString()),
+				Email: "testtenantrepositoryimpl" + uuid.NewString() + "@gmail.com",
+			}
+			password = "12345678"
+			newCreatedDummyUser2, err := userRepo.CreateWithEmailAndPassword(dummyUser2, password)
+			require.Nil(t, err)
+			require.NotNil(t, newCreatedDummyUser2)
+
+			// Begin test
+			// Here we insert performerId is newCreatedDummyUser 2, which is not the owner
+			// - Tenant will be there
+			// - User available
+			// // User delete not from the owner as well
+			response, err := tenantRepo.RemoveUserFromTenant(&model.UserMtmTenant{UserId: newCreatedDummyUser2.Id, TenantId: createdTenantId}, newCreatedDummyUser2.Id)
+			assert.Error(t, err)
+			assert.Equal(t, "", response)
+			assert.Equal(t, "\"[ERROR] Illegal action! Removing user only allowed by the owner\"", err.Error())
+
+			// Clean up
+			_, _, err = supabaseClient.From(UserTable).Delete("", "").Eq("id", strconv.Itoa(newCreatedDummyUser2.Id)).Execute()
+			require.Nil(t, err, "If this fail, then delete data immediately TestTenantRepositoryImpl/RemoveUserFromTenant/IllegalActionRemoveUserFromNonOwners 1")
 		})
 
 		t.Run("NormalRemove", func(t *testing.T) {
@@ -323,7 +349,7 @@ func TestTenantRepositoryImpl(t *testing.T) {
 			assert.Equal(t, 2, int(count))
 
 			// Begin test
-			response, err := tenantRepo.RemoveUserFromTenant(&model.UserMtmTenant{UserId: newCreatedDummyUser2.Id, TenantId: createdTenantId})
+			response, err := tenantRepo.RemoveUserFromTenant(&model.UserMtmTenant{UserId: newCreatedDummyUser2.Id, TenantId: createdTenantId}, newCreatedDummyUser.Id)
 			assert.Nil(t, err)
 			assert.NotEqual(t, "", response)
 			assert.Contains(t, response, "[SUCCESS] Removed from tenant")
@@ -341,7 +367,7 @@ func TestTenantRepositoryImpl(t *testing.T) {
 
 		t.Run("RemoveOwner", func(t *testing.T) {
 			// From parent test block, delete the owner
-			response, err := tenantRepo.RemoveUserFromTenant(&model.UserMtmTenant{UserId: newCreatedDummyUser.Id, TenantId: createdTenantId})
+			response, err := tenantRepo.RemoveUserFromTenant(&model.UserMtmTenant{UserId: newCreatedDummyUser.Id, TenantId: createdTenantId}, newCreatedDummyUser.Id)
 			assert.Nil(t, err)
 			assert.NotEqual(t, "", response)
 			assert.Contains(t, response, "[SUCCESS] Current tenant will be archived")
