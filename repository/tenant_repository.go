@@ -47,4 +47,9 @@ type TenantRepository interface {
 		- delete from user_mtm_tenant
 	*/
 	RemoveUserFromTenant(userMtmTenantId *model.UserMtmTenant, userId int) (string, error)
+
+	/*
+		Get 1 tenant users/members
+	*/
+	GetTenantMembers(tenantId int) ([]*model.User, error)
 }

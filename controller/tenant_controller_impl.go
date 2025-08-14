@@ -178,3 +178,43 @@ func (controller *TenantControllerImpl) AddUserToTenant(ctx *fiber.Ctx) error {
 			"target_tenant_id": createdUserUserMtmTenant.TenantId,
 		}))
 }
+
+// GetTenantMembers implements TenantController.
+func (controller *TenantControllerImpl) GetTenantMembers(ctx *fiber.Ctx) error {
+	p_tenantId := ctx.Params("tenantId")
+	tenantId, err := strconv.Atoi(p_tenantId)
+	if err != nil {
+		return ctx.Status(fiber.StatusBadRequest).
+			JSON(common.NewWebResponseError(400, common.StatusError, "Something gone wrong ! params tenant id is not int"))
+	}
+
+	if tenantId == 0 {
+		return ctx.Status(fiber.StatusBadRequest).
+			JSON(common.NewWebResponseError(400, common.StatusError, "Something gone wrong ! Please check for tenant id"))
+	}
+
+	sub := ctx.Locals("sub")
+	userId, ok := sub.(int)
+	if !ok {
+		return ctx.Status(fiber.StatusBadRequest).
+			JSON(common.NewWebResponseError(400, common.StatusError, "Unexpected behavior ! could not get the id"))
+	}
+
+	members, err := controller.Service.GetTenantMembers(tenantId, userId)
+	if err != nil {
+		if err.Error() == "[TenantService:GetTenantMembers]" {
+			return ctx.Status(fiber.StatusForbidden).
+				JSON(common.NewWebResponseError(403, common.StatusError, "Forbidden action ! Requesting tenant data that not registered in current requested tenant"))
+		}
+
+		return ctx.Status(fiber.StatusBadRequest).
+			JSON(common.NewWebResponseError(400, common.StatusError, err.Error()))
+	}
+
+	return ctx.Status(fiber.StatusOK).
+		JSON(common.NewWebResponse(200, common.StatusSuccess, fiber.Map{
+			"requested_by":     userId,
+			"requested_tenant": tenantId,
+			"members":          members,
+		}))
+}

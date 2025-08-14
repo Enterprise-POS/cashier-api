@@ -387,4 +387,72 @@ func TestTenantRepositoryImpl(t *testing.T) {
 		_, _, err = supabaseClient.From(UserTable).Delete("", "").Eq("id", strconv.Itoa(newCreatedDummyUser.Id)).Execute()
 		require.Nil(t, err, "If this fail, then delete data immediately TestTenantRepositoryImpl/RemoveUserFromTenant 4")
 	})
+
+	t.Run("GetTenantMembers", func(t *testing.T) {
+		tenantRepo := NewTenantRepositoryImpl(supabaseClient)
+		userRepo := NewUserRepositoryImpl(supabaseClient)
+
+		// create user
+		dummyUser := model.User{
+			Name:  "Test_TenantRepositoryImpl/GetTenantMembers user 1" + uuid.NewString(),
+			Email: "testtenantrepositoryimpl" + uuid.NewString() + "@gmail.com",
+		}
+		password := "12345678"
+		newCreatedDummyUser, err := userRepo.CreateWithEmailAndPassword(dummyUser, password)
+		require.Nil(t, err)
+		require.NotNil(t, newCreatedDummyUser)
+
+		dummyUser2 := model.User{
+			Name:  "Test_TenantRepositoryImpl/GetTenantMembers user 2" + uuid.NewString(),
+			Email: "testtenantrepositoryimpl" + uuid.NewString() + "@gmail.com",
+		}
+		password = "12345678"
+		newCreatedDummyUser2, err := userRepo.CreateWithEmailAndPassword(dummyUser2, password)
+		require.Nil(t, err)
+		require.NotNil(t, newCreatedDummyUser2)
+
+		// Create the tenant first
+		dummyTenant := &model.Tenant{
+			Name:        "Test_TenantRepositoryImpl/GetTenantMembers 1 Group_" + uuid.NewString(),
+			OwnerUserId: newCreatedDummyUser.Id,
+			IsActive:    true,
+		}
+		err = tenantRepo.NewTenant(dummyTenant)
+		require.Nil(t, err)
+
+		createdDummyTenants, err := tenantRepo.GetTenantWithUser(newCreatedDummyUser.Id)
+		require.Nil(t, err)
+		require.NotNil(t, createdDummyTenants)
+		require.GreaterOrEqual(t, len(createdDummyTenants), 1)
+
+		// Take the id reference
+		createdDummyTenantId := createdDummyTenants[0].Id
+
+		// Add the second members
+		_, err = tenantRepo.AddUserToTenant(newCreatedDummyUser2.Id, createdDummyTenantId)
+		require.NoError(t, err)
+
+		// The test itself
+		users, err := tenantRepo.GetTenantMembers(createdDummyTenantId)
+		assert.NoError(t, err)
+		assert.Equal(t, 2, len(users))
+
+		// Clean up helper dummy
+		_, _, err = supabaseClient.From(UserMtmTenantTable).
+			Delete("", "").
+			In("user_id", []string{strconv.Itoa(newCreatedDummyUser.Id), strconv.Itoa(newCreatedDummyUser2.Id)}).
+			Eq("tenant_id", strconv.Itoa(createdDummyTenantId)).
+			Execute()
+		require.Nil(t, err, "If this fail, then delete data immediately TestTenantRepositoryImpl/Register 1")
+		_, _, err = supabaseClient.From(TenantTable).
+			Delete("", "").
+			Eq("id", strconv.Itoa(createdDummyTenantId)).
+			Execute()
+		require.Nil(t, err, "If this fail, then delete data immediately TestTenantRepositoryImpl/Register 2")
+		_, _, err = supabaseClient.From(UserTable).
+			Delete("", "").
+			In("id", []string{strconv.Itoa(newCreatedDummyUser.Id), strconv.Itoa(newCreatedDummyUser2.Id)}).
+			Execute()
+		require.Nil(t, err, "If this fail, then delete data immediately TestTenantRepositoryImpl/Register 3")
+	})
 }

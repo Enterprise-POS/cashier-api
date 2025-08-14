@@ -82,3 +82,19 @@ func (service *TenantServiceImpl) AddUserToTenant(userId, tenantId, performerId,
 
 	return service.Repository.AddUserToTenant(userId, tenantId)
 }
+
+// GetTenantMembers implements TenantService.
+func (service *TenantServiceImpl) GetTenantMembers(tenantId int, sub int) ([]*model.User, error) {
+	users, err := service.Repository.GetTenantMembers(tenantId)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, user := range users {
+		if user.Id == sub {
+			return users, nil
+		}
+	}
+
+	return nil, errors.New("[TenantService:GetTenantMembers]")
+}
