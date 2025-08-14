@@ -8,9 +8,11 @@ main.exe
 .idea
 
 # personal bash script, contain setup .env / other developer recommended to setup this personally
-# example: source ./setup.bash
-setup.bash
+# current project contains start.bashrc, setup.bashrc
+# example: source ./setup.bashrc (to setup this project required variable/config)
+setup.bashrc
 
 # VS code settings
 # specifying environment variable for VSCode example: "go.toolsEnvVars": {MODE: "prod"}
+# When using .vscode file, you can use .vscode built in run command button without worrying required setup such as environment variable
 .vscode

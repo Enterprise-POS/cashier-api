@@ -9,6 +9,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 )
 
 func TestTenantServiceImpl(t *testing.T) {
@@ -205,6 +206,59 @@ func TestTenantServiceImpl(t *testing.T) {
 			assert.Error(t, err)
 			assert.Equal(t, "", response)
 			assert.Contains(t, err.Error(), "Data type error. User Id should be inserted.")
+		})
+	})
+
+	t.Run("GetTenantMembers", func(t *testing.T) {
+		t.Run("NormalGet", func(t *testing.T) {
+			now := time.Now()
+			tenantId := 1
+			currentRequestedUserId := 999
+			tenantMembers := []*model.User{
+				{
+					Id:        1,
+					Name:      "Test 1",
+					Email:     "test@gmail.com",
+					CreatedAt: &now,
+				},
+				{
+					Id:        currentRequestedUserId,
+					Name:      "Test 2",
+					Email:     "test2@gmail.com",
+					CreatedAt: &now,
+				},
+			}
+			tenantRepo.Mock.On("GetTenantMembers", tenantId).Return(tenantMembers, nil)
+			users, err := tenantService.GetTenantMembers(tenantId, currentRequestedUserId)
+			require.NoError(t, err)
+			require.Equal(t, 2, len(users))
+		})
+
+		t.Run("ForbiddenActionForRequestingTenantDataWhileNotRegistered", func(t *testing.T) {
+			now := time.Now()
+			tenantId := 1
+			currentRequestedUserId := 999
+			tenantMembers := []*model.User{
+				{
+					Id:        1,
+					Name:      "Test 1",
+					Email:     "test@gmail.com",
+					CreatedAt: &now,
+				},
+				{
+					Id:        2,
+					Name:      "Test 2",
+					Email:     "test2@gmail.com",
+					CreatedAt: &now,
+				},
+			}
+
+			// Here mock is required, we must restart the mock otherwise, the mock will be overlap
+			tenantRepo.Mock = &mock.Mock{}
+			tenantRepo.Mock.On("GetTenantMembers", tenantId).Return(tenantMembers, nil)
+			users, err := tenantService.GetTenantMembers(tenantId, currentRequestedUserId)
+			require.Error(t, err)
+			require.Nil(t, users)
 		})
 	})
 }

@@ -76,3 +76,14 @@ func (repository *TenantRepositoryMock) RemoveUserFromTenant(userMtmTenantId *mo
 
 	return args.String(0), nil
 }
+
+// GetTenantMembers implements TenantRepository.
+func (repository *TenantRepositoryMock) GetTenantMembers(tenantId int) ([]*model.User, error) {
+	args := repository.Mock.Called(tenantId)
+
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+
+	return args.Get(0).([]*model.User), nil
+}

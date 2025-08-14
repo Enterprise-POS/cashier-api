@@ -25,4 +25,9 @@ type TenantService interface {
 		- delete from user_mtm_tenant
 	*/
 	RemoveUserFromTenant(userMtmTenantId *model.UserMtmTenant, performerId, sub int) (string, error)
+
+	/*
+		Get 1 tenant users/members
+	*/
+	GetTenantMembers(tenantId int, sub int) ([]*model.User, error)
 }

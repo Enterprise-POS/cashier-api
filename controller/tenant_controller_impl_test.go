@@ -15,6 +15,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -45,9 +46,16 @@ func TestTenantControllerImpl(t *testing.T) {
 	app := fiber.New()
 	app.Post("/users/sign_up", userController.SignUpWithEmailAndPassword)
 	app.Get("/tenants/:userId", middleware.ProtectedRoute, tenantController.GetTenantWithUser)
+	app.Get("/tenants/members/:tenantId", middleware.ProtectedRoute, tenantController.GetTenantMembers)
 	app.Post("/tenants/new", middleware.ProtectedRoute, tenantController.NewTenant)
 	app.Post("/tenants/add_user", middleware.ProtectedRoute, tenantController.AddUserToTenant)
 	app.Delete("/tenants/remove_user", middleware.ProtectedRoute, tenantController.RemoveUserFromTenant)
+
+	type RequestBodyStructure struct {
+		UserId      int `json:"user_id"` // To be add user
+		TenantId    int `json:"tenant_id"`
+		PerformerId int `json:"performer_id"`
+	}
 
 	t.Run("NewTenant", func(t *testing.T) {
 		// Create dummy user
@@ -268,12 +276,6 @@ func TestTenantControllerImpl(t *testing.T) {
 
 		require.Nil(t, err, "If this failed, then delete data at DB. error at TestTenantControllerImpl")
 	})
-
-	type RequestBodyStructure struct {
-		UserId      int `json:"user_id"` // To be add user
-		TenantId    int `json:"tenant_id"`
-		PerformerId int `json:"performer_id"`
-	}
 
 	t.Run("AddUserToTenant", func(t *testing.T) {
 		// Setup
@@ -623,6 +625,207 @@ func TestTenantControllerImpl(t *testing.T) {
 			assert.Equal(t, http.StatusOK, response.StatusCode)
 			assert.Contains(t, responseBody, "success")
 			assert.Contains(t, responseBody, "Current tenant will be archived")
+		})
+
+		// Clean up
+		// user_mtm_tenant
+		_, _, err = supabaseClient.From(repository.UserMtmTenantTable).
+			Delete("", "").
+			Eq("tenant_id", fmt.Sprint(createdTenant.Id)).
+			Execute()
+		require.NoError(t, err, "If this fail, then delete data at DB. error at TestTenantControllerImpl/AddUserToTenant")
+
+		// tenant
+		_, _, err = supabaseClient.From(repository.TenantTable).
+			Delete("", "").
+			Eq("id", fmt.Sprint(createdTenant.Id)).
+			Execute()
+		require.NoError(t, err)
+
+		// user
+		_, _, err = supabaseClient.From(repository.UserTable).
+			Delete("", "").
+			In("id", []string{fmt.Sprint(dummyUser.Id), fmt.Sprint(dummyUser2.Id)}).
+			Execute()
+	})
+
+	t.Run("GetTenantMembers", func(t *testing.T) {
+		// Setup
+		// User
+		// Create 1st user by calling user controller
+		userIdentity := strings.ReplaceAll(uuid.NewString(), "-", "")
+		userPassword := "12345678"
+		dummyUser := &model.User{
+			Email: "test_tenant_controller_removeFromTenant1" + userIdentity + "@gmail.com",
+			Name:  "test tenant" + userIdentity,
+		}
+		body := strings.NewReader(fmt.Sprintf(`{
+			"email": "%s",
+			"password": "%s",
+			"name": "%s"
+		}`, dummyUser.Email, userPassword, dummyUser.Name))
+
+		signUpRequest := &common.NewRequest{
+			Url:       "/users/sign_up",
+			Method:    "POST",
+			Body:      body,
+			TimeoutMs: 0,
+		}
+		_, response, err := signUpRequest.RunRequest(app)
+
+		require.Nil(t, err)
+		require.Equal(t, 201, response.StatusCode)
+
+		var enterprisePOSCookie *http.Cookie
+		for _, c := range response.Cookies() {
+			if c.Name == constant.EnterprisePOS {
+				enterprisePOSCookie = c
+			}
+		}
+		require.NotNil(t, enterprisePOSCookie)
+
+		// Manually get the jwt payload from cookie
+		claims := jwt.MapClaims{}
+		token, err := common.ClaimJWT(enterprisePOSCookie.Value, &claims)
+		require.NotEqual(t, "", claims["sub"])
+		sub, ok := claims["sub"].(float64)
+		require.True(t, ok)
+		require.True(t, token.Valid)
+		dummyUser.Id = int(sub)
+
+		// Create 2nd user, without tenant
+		user2Identity := strings.ReplaceAll(uuid.NewString(), "-", "")
+		user2Password := "12345678"
+		dummyUser2 := &model.User{
+			Email: "test_tenant_controller_removeFromTenant2" + user2Identity + "@gmail.com",
+			Name:  "test tenant" + user2Identity,
+		}
+		body2 := strings.NewReader(fmt.Sprintf(`{
+			"email": "%s",
+			"password": "%s",
+			"name": "%s"
+		}`, dummyUser2.Email, user2Password, dummyUser2.Name))
+
+		signUpRequest2 := &common.NewRequest{
+			Url:       "/users/sign_up",
+			Method:    "POST",
+			Body:      body2,
+			TimeoutMs: 0,
+		}
+		_, response, err = signUpRequest2.RunRequest(app)
+		require.NoError(t, err)
+		require.Equal(t, 201, response.StatusCode)
+
+		var enterprisePOSCookie2 *http.Cookie
+		for _, c := range response.Cookies() {
+			if c.Name == constant.EnterprisePOS {
+				enterprisePOSCookie2 = c
+			}
+		}
+		require.NotNil(t, enterprisePOSCookie2)
+
+		// Manually get the jwt payload from cookie
+		claims = jwt.MapClaims{}
+		token, err = common.ClaimJWT(enterprisePOSCookie2.Value, &claims)
+		require.NotEqual(t, "", claims["sub"])
+		sub, ok = claims["sub"].(float64)
+		require.True(t, ok)
+		require.True(t, token.Valid)
+		dummyUser2.Id = int(sub) // here we get the id, will be use for later deletion
+
+		// Tenant
+		// Create tenant and add current dummyUser into this tenant
+		dummyTenant := &model.Tenant{
+			Name:        dummyUser.Name + " Group's",
+			OwnerUserId: dummyUser.Id, // user 1 is the owner
+		}
+
+		bodyBytes, err := json.Marshal(dummyTenant)
+		require.NoError(t, err)
+
+		request := httptest.NewRequest("POST", "/tenants/new", bytes.NewReader(bodyBytes))
+		request.AddCookie(enterprisePOSCookie)
+		request.Header.Set("Content-Type", "application/json")
+		response, err = app.Test(request, int(time.Second*5))
+		require.NoError(t, err)
+
+		// Manually get created tenant
+		var createdTenant *model.Tenant
+		_, err = supabaseClient.From(repository.TenantTable).
+			Select("*", "", false).
+			Eq("name", dummyTenant.Name).
+			Eq("owner_user_id", fmt.Sprint(dummyUser.Id)).
+			Single().ExecuteTo(&createdTenant)
+		require.NoError(t, err)
+
+		// Interaction
+		// Invite 2nd user into tenant
+		type addUserRequestBody struct {
+			UserId      int `json:"user_id"` // To be add user
+			TenantId    int `json:"tenant_id"`
+			PerformerId int `json:"performer_id"`
+		}
+		bodyBytes, err = json.Marshal(&addUserRequestBody{UserId: dummyUser2.Id, TenantId: createdTenant.Id, PerformerId: dummyUser.Id})
+		request = httptest.NewRequest("POST", "/tenants/add_user", bytes.NewReader(bodyBytes))
+		request.AddCookie(enterprisePOSCookie)
+		request.Header.Set("Content-Type", "application/json")
+		response, err = app.Test(request, int(time.Second*5))
+		require.NoError(t, err)
+
+		// here is the test
+		t.Run("NormalGetTenantMembers", func(t *testing.T) {
+			request = httptest.NewRequest("GET", fmt.Sprintf("/tenants/members/%d", createdTenant.Id), nil)
+			request.AddCookie(enterprisePOSCookie)
+			request.Header.Set("Content-Type", "application/json")
+			response, err = app.Test(request, int(time.Second*5))
+			require.NoError(t, err)
+
+			// The test itself
+			responseBody, err := common.ReadBody(response.Body)
+			assert.NoError(t, err)
+			assert.Equal(t, http.StatusOK, response.StatusCode)
+			assert.Contains(t, responseBody, strconv.Itoa(dummyUser.Id))
+			assert.Contains(t, responseBody, strconv.Itoa(dummyUser2.Id))
+		})
+
+		t.Run("NonOwnerRequestingGetTenantMembers", func(t *testing.T) {
+			request = httptest.NewRequest("GET", fmt.Sprintf("/tenants/members/%d", createdTenant.Id), nil)
+			request.AddCookie(enterprisePOSCookie2) // The cookie is from user 2
+			request.Header.Set("Content-Type", "application/json")
+			response, err = app.Test(request, int(time.Second*5))
+			require.NoError(t, err)
+
+			responseBody, err := common.ReadBody(response.Body)
+			assert.NoError(t, err)
+			assert.Equal(t, http.StatusOK, response.StatusCode)
+			assert.Contains(t, responseBody, strconv.Itoa(dummyUser.Id))
+			assert.Contains(t, responseBody, strconv.Itoa(dummyUser2.Id))
+		})
+
+		t.Run("ForbiddenActionByRequestingNotRegisteredInCurrentTenant", func(t *testing.T) {
+			request = httptest.NewRequest("GET", fmt.Sprintf("/tenants/members/%d", 1), nil)
+			request.AddCookie(enterprisePOSCookie)
+			request.Header.Set("Content-Type", "application/json")
+			response, err = app.Test(request, int(time.Second*5))
+			require.NoError(t, err)
+
+			responseBody, err := common.ReadBody(response.Body)
+			assert.NoError(t, err)
+			assert.Equal(t, http.StatusForbidden, response.StatusCode)
+			assert.Contains(t, responseBody, "Forbidden action !")
+		})
+
+		t.Run("BadRequestBecauseParamsNotInt", func(t *testing.T) {
+			request = httptest.NewRequest("GET", fmt.Sprintf("/tenants/members/%s", "something"), nil)
+			request.AddCookie(enterprisePOSCookie)
+			request.Header.Set("Content-Type", "application/json")
+			response, err = app.Test(request, int(time.Second*5))
+			require.NoError(t, err)
+
+			responseBody, err := common.ReadBody(response.Body)
+			assert.NoError(t, err)
+			assert.Equal(t, http.StatusBadRequest, response.StatusCode)
+			assert.Contains(t, responseBody, "Something gone wrong !")
 		})
 
 		// Clean up

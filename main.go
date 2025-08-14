@@ -47,7 +47,10 @@ func main() {
 	supabaseClient := client.CreateSupabaseClient()
 
 	// 02 Middleware, Security
-	// app.Use(cors.New())
+	// app.Use(cors.New(cors.Config{
+	// 	AllowOrigins:     "http://localhost:3000",
+	// 	AllowCredentials: true,
+	// }))
 	app.Use(recover.New(recover.Config{EnableStackTrace: true}))
 
 	// 03 Router (grouping by /api/v1)
@@ -68,6 +71,7 @@ func main() {
 	tenantController := controller.NewTenantControllerImpl(tenantService)
 
 	apiV1.Get("/tenants/:userId", middleware.ProtectedRoute, tenantController.GetTenantWithUser)
+	apiV1.Get("/tenants/members/:tenantId", middleware.ProtectedRoute, tenantController.GetTenantMembers)
 	apiV1.Post("/tenants/new", middleware.ProtectedRoute, tenantController.NewTenant)
 	apiV1.Post("/tenants/add_user", middleware.ProtectedRoute, tenantController.AddUserToTenant)
 	apiV1.Delete("/tenants/remove_user", middleware.ProtectedRoute, tenantController.RemoveUserFromTenant)

@@ -132,3 +132,19 @@ func (repository *TenantRepositoryImpl) RemoveUserFromTenant(userMtmTenant *mode
 
 	return response, nil
 }
+
+// GetTenantMembers implements TenantRepository.
+func (repository *TenantRepositoryImpl) GetTenantMembers(tenantId int) ([]*model.User, error) {
+	data := repository.Client.Rpc("get_tenant_members", "", map[string]interface{}{
+		"p_tenant_id": tenantId,
+	})
+
+	var results []*model.User
+	err := json.Unmarshal([]byte(data), &results)
+	if err != nil {
+		log.Errorf("ERROR ! While unmarshaling data at TenantRepositoryImpl.GetTenantMembers tenantId: %d", tenantId)
+		return nil, err
+	}
+
+	return results, nil
+}
