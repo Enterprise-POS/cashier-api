@@ -21,10 +21,10 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: 1.22
+          go-version: '1.23.x' # matches go.mod version
 
-      - name: Install Go dependencies
-        run: go get
+      - name: Install dependencies
+        run: go mod tidy
 
       - name: Test all Go file
         run: go test -v ./...
