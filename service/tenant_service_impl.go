@@ -5,6 +5,7 @@ import (
 	"cashier-api/repository"
 	"errors"
 	"fmt"
+	"regexp"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -34,6 +35,11 @@ func (service *TenantServiceImpl) NewTenant(tenant *model.Tenant, sub int) error
 	if tenant.OwnerUserId != sub {
 		log.Warnf("Forbidden action detected ! userId: %d, sub: %d; Performing NewTenant", tenant.OwnerUserId, sub)
 		return errors.New("[TenantService:NewTenant:1]")
+	}
+
+	var tenantNameValidator = regexp.MustCompile(`.*[^ ].*`)
+	if !tenantNameValidator.MatchString(tenant.Name) {
+		return errors.New("Tenant name is not allowed. Please try another.")
 	}
 
 	if tenant.Id != 0 {

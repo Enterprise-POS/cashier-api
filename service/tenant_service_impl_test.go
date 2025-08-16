@@ -121,6 +121,31 @@ func TestTenantServiceImpl(t *testing.T) {
 			err := tenantService.NewTenant(dummyTenant, sub)
 			assert.NotNil(t, err)
 		})
+
+		t.Run("InvalidTenantName", func(t *testing.T) {
+			now := time.Now()
+			userId := 1
+			sub := 1
+			dummyTenant := &model.Tenant{
+				Name:        "          ",
+				OwnerUserId: userId,
+				IsActive:    true,
+				CreatedAt:   &now,
+			}
+
+			err := tenantService.NewTenant(dummyTenant, sub)
+			assert.Error(t, err)
+
+			dummyTenant2 := &model.Tenant{
+				Name:        "",
+				OwnerUserId: userId,
+				IsActive:    true,
+				CreatedAt:   &now,
+			}
+
+			err = tenantService.NewTenant(dummyTenant2, sub)
+			assert.Error(t, err)
+		})
 	})
 
 	t.Run("AddUserToTenant", func(t *testing.T) {
