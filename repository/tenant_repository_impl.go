@@ -83,7 +83,7 @@ func (repository *TenantRepositoryImpl) NewTenant(tenant *model.Tenant) error {
 	})
 
 	// space after [ERROR] are required
-	if strings.HasPrefix(response, "[ERROR] ") {
+	if strings.Contains(response, "[ERROR]") {
 		return errors.New(response)
 	}
 	if response == "" {
