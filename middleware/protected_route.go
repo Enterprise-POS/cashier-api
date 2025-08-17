@@ -37,7 +37,7 @@ func ProtectedRoute(ctx *fiber.Ctx) error {
 	sub, ok := claims["sub"].(float64)
 	if !ok {
 		return ctx.Status(fiber.StatusBadRequest).
-			JSON(common.NewWebResponseError(401, common.StatusError, "Unexpected behavior ! could not get the id"))
+			JSON(common.NewWebResponseError(400, common.StatusError, "Unexpected behavior ! could not get the id"))
 	}
 
 	// Store valuable data to send to next handler
