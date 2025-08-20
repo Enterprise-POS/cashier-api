@@ -2,13 +2,15 @@
 
 # setup.bashrc only containing local environment variable
 # example when creating setup.bashrc, 
+# refer to .env.example to see what env should be prepare before run application
 # 
 # #!/bin/bash
 # export MODE=dev
-if [ -f "setup.bashrc" ]; then
+if [ -f "setup.bashr" ]; then
   source ./setup.bashrc
 else
-  echo "[ERROR] setup.bashrc file does not exist."
+  echo "[ERROR] setup.bashrc file does not exist. Please create setup.bashrc"
+  exit
 fi
 
 
