@@ -6,7 +6,7 @@
 # 
 # #!/bin/bash
 # export MODE=dev
-if [ -f "setup.bashr" ]; then
+if [ -f "setup.bashrc" ]; then
   source ./setup.bashrc
 else
   echo "[ERROR] setup.bashrc file does not exist. Please create setup.bashrc"

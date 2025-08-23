@@ -3,6 +3,7 @@ package middleware
 import (
 	common "cashier-api/helper"
 	constant "cashier-api/helper/constant/cookie"
+	"fmt"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v5"
@@ -26,24 +27,30 @@ func ProtectedRoute(ctx *fiber.Ctx) error {
 	if err != nil {
 		log.Warnf("Malformed JWT detected, reason: %s", err.Error())
 		return ctx.Status(fiber.StatusBadRequest).
-			JSON(common.NewWebResponseError(400, common.StatusError, "JWT malformed, try sign in again"))
+			JSON(common.NewWebResponseError(400, common.StatusError, fmt.Sprintf("JWT malformed, Please try sign in again. reason: %s", err.Error())))
 	}
 	if !token.Valid {
 		log.Warn("Invalid token detected")
 		return ctx.Status(fiber.StatusBadRequest).
-			JSON(common.NewWebResponseError(400, common.StatusError, "JWT malformed, try sign in again"))
+			JSON(common.NewWebResponseError(400, common.StatusError, "JWT malformed, Please try sign in again."))
 	}
 
 	sub, ok := claims["sub"].(float64)
 	if !ok {
 		return ctx.Status(fiber.StatusBadRequest).
-			JSON(common.NewWebResponseError(400, common.StatusError, "Unexpected behavior ! could not get the id"))
+			JSON(common.NewWebResponseError(400, common.StatusError, "Unexpected behavior ! JWT body contain invalid value"))
+	}
+	exp, ok := claims["exp"].(float64)
+	if !ok {
+		return ctx.Status(fiber.StatusBadRequest).
+			JSON(common.NewWebResponseError(400, common.StatusError, "Unexpected behavior ! JWT body contain invalid value (2)"))
 	}
 
 	// Store valuable data to send to next handler
 	ctx.Locals("sub", int(sub))
 
 	log.Debugf("Accessing protected route from sub/id: %d", int(sub))
+	log.Debugf("Current user will logged in until: %f", exp)
 
 	// If ok then go to next handler
 	return ctx.Next()
