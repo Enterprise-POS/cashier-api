@@ -66,16 +66,7 @@ func main() {
 		})
 	})
 
-	tenantRepository := repository.NewTenantRepositoryImpl(supabaseClient)
-	tenantService := service.NewTenantServiceImpl(tenantRepository)
-	tenantController := controller.NewTenantControllerImpl(tenantService)
-
-	apiV1.Get("/tenants/:userId", middleware.ProtectedRoute, tenantController.GetTenantWithUser)
-	apiV1.Get("/tenants/members/:tenantId", middleware.ProtectedRoute, tenantController.GetTenantMembers)
-	apiV1.Post("/tenants/new", middleware.ProtectedRoute, tenantController.NewTenant)
-	apiV1.Post("/tenants/add_user", middleware.ProtectedRoute, tenantController.AddUserToTenant)
-	apiV1.Delete("/tenants/remove_user", middleware.ProtectedRoute, tenantController.RemoveUserFromTenant)
-
+	// public
 	userRepository := repository.NewUserRepositoryImpl(supabaseClient)
 	userService := service.NewUserServiceImpl(userRepository)
 	userController := controller.NewUserControllerImpl(userService)
@@ -84,12 +75,28 @@ func main() {
 	apiV1.Post("/users/sign_in", userController.SignInWithEmailAndPassword)
 	apiV1.Delete("/users/sign_out", userController.SignOut)
 
+	// protected only login user
+	apiV1.Use(middleware.ProtectedRoute)
+
+	tenantRepository := repository.NewTenantRepositoryImpl(supabaseClient)
+	tenantService := service.NewTenantServiceImpl(tenantRepository)
+	tenantController := controller.NewTenantControllerImpl(tenantService)
+
+	apiV1.Get("/tenants/:userId", tenantController.GetTenantWithUser)
+	apiV1.Get("/tenants/members/:tenantId", tenantController.GetTenantMembers)
+	apiV1.Post("/tenants/new", tenantController.NewTenant)
+	apiV1.Post("/tenants/add_user", tenantController.AddUserToTenant)
+	apiV1.Delete("/tenants/remove_user", tenantController.RemoveUserFromTenant)
+
+	// protected and restrict by tenantId
+	tenantRestriction := middleware.RestrictByTenant(supabaseClient)
+
 	warehouseRepository := repository.NewWarehouseRepositoryImpl(supabaseClient)
 	warehouseService := service.NewWarehouseServiceImpl(warehouseRepository)
 	warehouseController := controller.NewWarehouseControllerImpl(warehouseService)
 
 	// GET /warehouse/:tenantId?limit=10&page=1
-	apiV1.Get("/warehouses/:id", middleware.ProtectedRoute, warehouseController.Get)
+	apiV1.Get("/warehouses/:tenantId", tenantRestriction, warehouseController.Get)
 
 	// Handle route not found (404)
 	app.All("*", func(ctx *fiber.Ctx) error {

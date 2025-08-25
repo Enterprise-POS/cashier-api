@@ -33,8 +33,14 @@ func (repository *WarehouseRepositoryMock) FindById(itemId int, tenantId int) (_
 	panic("not implemented") // TODO: Implement
 }
 
-func (repository *WarehouseRepositoryMock) CreateItem(items []*model.Item) (_ []*model.Item, _ error) {
-	panic("not implemented") // TODO: Implement
+func (repository *WarehouseRepositoryMock) CreateItem(items []*model.Item) ([]*model.Item, error) {
+	args := repository.Mock.Called(items)
+
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+
+	return args.Get(0).([]*model.Item), nil
 }
 
 func (repository *WarehouseRepositoryMock) Edit(quantity int, item *model.Item) (_ error) {
