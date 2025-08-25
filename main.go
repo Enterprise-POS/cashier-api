@@ -77,6 +77,7 @@ func main() {
 
 	// protected only login user
 	apiV1.Use(middleware.ProtectedRoute)
+
 	tenantRepository := repository.NewTenantRepositoryImpl(supabaseClient)
 	tenantService := service.NewTenantServiceImpl(tenantRepository)
 	tenantController := controller.NewTenantControllerImpl(tenantService)
@@ -88,12 +89,14 @@ func main() {
 	apiV1.Delete("/tenants/remove_user", tenantController.RemoveUserFromTenant)
 
 	// protected and restrict by tenantId
+	tenantRestriction := middleware.RestrictByTenant(supabaseClient)
+
 	warehouseRepository := repository.NewWarehouseRepositoryImpl(supabaseClient)
 	warehouseService := service.NewWarehouseServiceImpl(warehouseRepository)
 	warehouseController := controller.NewWarehouseControllerImpl(warehouseService)
 
 	// GET /warehouse/:tenantId?limit=10&page=1
-	apiV1.Get("/warehouses/:tenantId", middleware.RestrictByTenant(supabaseClient), warehouseController.Get)
+	apiV1.Get("/warehouses/:tenantId", tenantRestriction, warehouseController.Get)
 
 	// Handle route not found (404)
 	app.All("*", func(ctx *fiber.Ctx) error {
