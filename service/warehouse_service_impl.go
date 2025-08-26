@@ -98,11 +98,13 @@ func (service *WarehouseServiceImpl) FindById(itemId, tenantId int) (*model.Item
 
 // Edit implements WarehouseService.
 func (service *WarehouseServiceImpl) Edit(quantity int, item *model.Item) error {
-	if item.ItemId == 0 {
-		return errors.New("Item ID could not be empty or fill with 0")
+	// item.Stocks == 0, is allowed
+
+	if item.ItemId < 1 {
+		return errors.New("Item ID could not be empty or filled with 0 quantity / -quantity is not allowed")
 	}
-	if item.TenantId == 0 {
-		return errors.New("Required tenant id is empty")
+	if item.TenantId < 1 {
+		return errors.New("Required tenant id is empty or filled with 0 quantity / -quantity is not allowed")
 	}
 	itemRegex := regexp.MustCompile(`^[\p{Han}\p{Hiragana}\p{Katakana}a-zA-Z][\p{Han}\p{Hiragana}\p{Katakana}a-zA-Z0-9' ]*$`)
 	if !itemRegex.MatchString(item.ItemName) {
