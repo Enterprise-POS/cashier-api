@@ -94,6 +94,7 @@ func (controller *WarehouseControllerImpl) CreateItem(ctx *fiber.Ctx) error {
 			ItemName: item.ItemName,
 			Stocks:   item.Stocks,
 			TenantId: tenantId,
+			IsActive: true, // Always true because this is creating new item
 		})
 	}
 

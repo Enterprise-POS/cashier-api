@@ -44,7 +44,7 @@ func (service *WarehouseServiceImpl) CreateItem(items []*model.Item) ([]*model.I
 		A B C
 		neal
 	*/
-	itemRegex := regexp.MustCompile(`^[a-zA-Z][a-zA-Z0-9' ]*$`)
+	itemRegex := regexp.MustCompile(`^[\p{Han}\p{Hiragana}\p{Katakana}a-zA-Z][\p{Han}\p{Hiragana}\p{Katakana}a-zA-Z0-9' ]*$`)
 	for _, item := range items {
 		if !itemRegex.MatchString(item.ItemName) {
 			isError = true
@@ -65,8 +65,6 @@ func (service *WarehouseServiceImpl) CreateItem(items []*model.Item) ([]*model.I
 		if item.Stocks < 0 {
 			item.Stocks = 0
 		}
-
-		item.IsActive = true
 	}
 
 	// While scanning, if 1 item get is invalid, then all operation will fail
