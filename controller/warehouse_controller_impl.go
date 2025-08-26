@@ -2,6 +2,7 @@ package controller
 
 import (
 	common "cashier-api/helper"
+	"cashier-api/model"
 	"cashier-api/service"
 	"strconv"
 
@@ -61,4 +62,57 @@ func (controller *WarehouseControllerImpl) Get(ctx *fiber.Ctx) error {
 		"count": count,
 	})
 	return ctx.Status(fiber.StatusOK).JSON(successResponse)
+}
+
+// CreateItem implements WarehouseController.
+func (controller *WarehouseControllerImpl) CreateItem(ctx *fiber.Ctx) error {
+	// It's guaranteed to be not "", because restrict by tenant already did check first
+	tenantId, _ := strconv.Atoi(ctx.Params("tenantId"))
+
+	// Define item fields
+	type BodyItems struct {
+		ItemName string `json:"item_name"`
+		Stocks   int    `json:"stocks"`
+	}
+
+	// Define full request body (embedding BodyItems)
+	type CreateItemRequest struct {
+		Items []*BodyItems `json:"items"`
+	}
+
+	var body CreateItemRequest
+	err := ctx.BodyParser(&body)
+	if err != nil {
+		return ctx.Status(fiber.StatusBadRequest).
+			JSON(common.NewWebResponseError(400, common.StatusError, "Something gone wrong ! The request body is malformed"))
+	}
+
+	// Map to model
+	tobeCreatedItems := make([]*model.Item, 0, len(body.Items))
+	for _, item := range body.Items {
+		tobeCreatedItems = append(tobeCreatedItems, &model.Item{
+			ItemName: item.ItemName,
+			Stocks:   item.Stocks,
+			TenantId: tenantId,
+			IsActive: true, // Always true because this is creating new item
+		})
+	}
+
+	if len(tobeCreatedItems) == 0 {
+		return ctx.Status(fiber.StatusBadRequest).
+			JSON(common.NewWebResponseError(400, common.StatusError, "Could not proceed, items body empty. At least 1 item required"))
+	}
+
+	createdItems, err := controller.Service.CreateItem(tobeCreatedItems)
+	if err != nil {
+		return ctx.Status(fiber.StatusBadRequest).
+			JSON(common.NewWebResponseError(400, common.StatusError, err.Error()))
+	}
+
+	return ctx.Status(fiber.StatusOK).
+		JSON(common.NewWebResponse(200, common.StatusSuccess, fiber.Map{
+			"target_tenant":  tenantId,
+			"new_item_count": len(createdItems),
+			"items":          createdItems,
+		}))
 }

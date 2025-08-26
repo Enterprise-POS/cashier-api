@@ -20,4 +20,10 @@ type WarehouseController interface {
 		Return all warehouse items by using current at given tenant id
 	*/
 	Get(ctx *fiber.Ctx) error
+
+	/*
+		Create new item for current tenantId.
+		Once the item created, will never be erased from DB, only soft delete is allowed
+	*/
+	CreateItem(*fiber.Ctx) error
 }

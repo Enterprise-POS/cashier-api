@@ -24,24 +24,32 @@ func RestrictByTenant(client *supabase.Client) fiber.Handler {
 		}
 
 		// Convert tenantId from route param
-		tenantId := ctx.Params("tenantId")
-		if tenantId == "" {
+		paramTenantId := ctx.Params("tenantId")
+		if paramTenantId == "" {
 			return ctx.Status(fiber.StatusBadRequest).
 				JSON(common.NewWebResponseError(400, common.StatusError, "Missing tenant_id at the parameter"))
+		}
+
+		// Here we don't need the int tenantId, but if there is no error then the next handler is guaranteed to be int
+		// Try to see example for warehouse.CreateItem
+		_, err := strconv.Atoi(paramTenantId)
+		if err != nil {
+			return ctx.Status(fiber.StatusBadRequest).
+				JSON(common.NewWebResponseError(400, common.StatusError, "TenantId is not int"))
 		}
 
 		// Check if relation exists in user_mtm_tenant
 		// supabase returns error when no rows found
 		var exist model.UserMtmTenant
-		_, err := client.From("user_mtm_tenant").
+		_, err = client.From("user_mtm_tenant").
 			Select("user_id, tenant_id", "", false).
 			Eq("user_id", strconv.Itoa(userId)).
-			Eq("tenant_id", tenantId).
+			Eq("tenant_id", paramTenantId).
 			Single().
 			ExecuteTo(&exist)
 
 		if err != nil {
-			log.Warnf("Forbidden action detected. Current user is not associate with requested tenant. From userId: %d, requesting for tenantId: %s", userId, tenantId)
+			log.Warnf("Forbidden action detected. Current user is not associate with requested tenant. From userId: %d, requesting for tenantId: %s", userId, paramTenantId)
 			return ctx.Status(fiber.StatusForbidden).
 				JSON(common.NewWebResponseError(403, common.StatusError, "Access denied to tenant. Current user is not associate with requested tenant."))
 		}
