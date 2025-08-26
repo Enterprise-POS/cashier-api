@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"strings"
 )
 
 type WarehouseServiceImpl struct {
@@ -78,4 +79,65 @@ func (service *WarehouseServiceImpl) CreateItem(items []*model.Item) ([]*model.I
 	}
 
 	return createdItem, nil
+}
+
+// FindById implements WarehouseService.
+func (service *WarehouseServiceImpl) FindById(itemId, tenantId int) (*model.Item, error) {
+	// Parameter is impossible to be Nil, so no need to check.
+	// If in the case user request invalid itemId then Repository will handle it by return nothing
+	requestedItem, err := service.Repository.FindById(itemId, tenantId)
+	if err != nil {
+		if strings.Contains(err.Error(), "PGRST116") {
+			return nil, fmt.Errorf("Item not found for current requested item id. Item Id: %d", itemId)
+		}
+		return nil, err
+	}
+
+	return requestedItem, nil
+}
+
+// Edit implements WarehouseService.
+func (service *WarehouseServiceImpl) Edit(quantity int, item *model.Item) error {
+	// item.Stocks == 0, is allowed
+
+	if item.ItemId < 1 {
+		return errors.New("Item ID could not be empty or filled with 0 quantity / -quantity is not allowed")
+	}
+	if item.TenantId < 1 {
+		return errors.New("Required tenant id is empty or filled with 0 quantity / -quantity is not allowed")
+	}
+	itemRegex := regexp.MustCompile(`^[\p{Han}\p{Hiragana}\p{Katakana}a-zA-Z][\p{Han}\p{Hiragana}\p{Katakana}a-zA-Z0-9' ]*$`)
+	if !itemRegex.MatchString(item.ItemName) {
+		return fmt.Errorf("Could not use this item name: %s\n", item.ItemName)
+	}
+
+	err := service.Repository.Edit(quantity, item)
+	if err != nil {
+		if err.Error() == "[ERROR] Fatal error, current item from store never exist at warehouse" {
+			return errors.New("Fatal error, current item from store never exist at warehouse")
+		}
+		return err
+	}
+
+	return nil
+}
+
+// SetActivate implements WarehouseService.
+func (service *WarehouseServiceImpl) SetActivate(tenantId int, itemId int, setInto bool) error {
+	if itemId == 0 {
+		return errors.New("Item ID could not be empty or fill with 0")
+	}
+	if tenantId == 0 {
+		return errors.New("Required tenant id is empty")
+	}
+
+	err := service.Repository.SetActivate(tenantId, itemId, setInto)
+	if err != nil {
+		if strings.Contains(err.Error(), "PGRST116") {
+			return errors.New("Fatal error, Could not edit current item. current item never exist at warehouse")
+		}
+		return err
+	}
+
+	return nil
 }

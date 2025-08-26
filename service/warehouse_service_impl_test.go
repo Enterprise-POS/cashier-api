@@ -4,6 +4,7 @@ import (
 	"cashier-api/model"
 	"cashier-api/repository"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -229,6 +230,184 @@ func TestWarehouseServiceImpl(t *testing.T) {
 			items, err := warehouseService.CreateItem(illegalInput)
 			assert.Error(t, err)
 			assert.Nil(t, items)
+		})
+	})
+
+	t.Run("FindById", func(t *testing.T) {
+		now := time.Now()
+
+		t.Run("NormalFindById", func(t *testing.T) {
+			expectedItem := &model.Item{
+				ItemId:    1,
+				ItemName:  "Test item 1",
+				Stocks:    10,
+				TenantId:  1,
+				IsActive:  true,
+				CreatedAt: &now,
+			}
+			warehouseRepo.Mock.On("FindById", expectedItem.ItemId, expectedItem.TenantId).Return(expectedItem, nil)
+			items, err := warehouseService.FindById(expectedItem.ItemId, expectedItem.TenantId)
+			assert.NoError(t, err)
+			assert.Equal(t, expectedItem.ItemId, items.ItemId)
+		})
+
+		t.Run("InCaseTenantIdNotFound", func(t *testing.T) {
+			itemId := 1
+			tenantId := 1
+			warehouseRepo.Mock = mock.Mock{}
+			warehouseRepo.Mock.On("FindById", itemId, tenantId).Return(nil, errors.New("(PGRST116) JSON object requested, multiple (or no) rows returned"))
+			items, err := warehouseService.FindById(itemId, tenantId)
+			assert.Error(t, err)
+			assert.Equal(t, err.Error(), fmt.Sprintf("Item not found for current requested item id. Item Id: %d", itemId))
+			assert.Nil(t, items)
+
+			itemId = 1
+			tenantId = 0
+			warehouseRepo.Mock = mock.Mock{}
+			warehouseRepo.Mock.On("FindById", itemId, tenantId).Return(nil, errors.New("(PGRST116) JSON object requested, multiple (or no) rows returned"))
+			items, err = warehouseService.FindById(itemId, tenantId)
+			assert.Error(t, err)
+			assert.Equal(t, err.Error(), fmt.Sprintf("Item not found for current requested item id. Item Id: %d", itemId))
+			assert.Nil(t, items)
+		})
+	})
+
+	t.Run("Edit", func(t *testing.T) {
+		now := time.Now()
+
+		t.Run("NormalEdit", func(t *testing.T) {
+			/*
+				dummyItem := &model.Item{
+					ItemId:    1,
+					ItemName:  "Test item 1",
+					Stocks:    10,
+					TenantId:  1,
+					IsActive:  true,
+					CreatedAt: &now,
+				}
+			*/
+			editedItem := &model.Item{
+				ItemId:    1,
+				ItemName:  "Test item 1 edited",
+				Stocks:    7,
+				TenantId:  1,
+				IsActive:  false,
+				CreatedAt: &now,
+			}
+			warehouseRepo.Mock.On("Edit", -3, editedItem).Return(nil)
+			err := warehouseService.Edit(-3, editedItem)
+			assert.NoError(t, err)
+		})
+
+		t.Run("CurrentItemNotFoundAtWarehouse", func(t *testing.T) {
+			editedItem := &model.Item{
+				ItemId:    1,
+				ItemName:  "Test item 1 edited",
+				Stocks:    7,
+				TenantId:  999,
+				IsActive:  false,
+				CreatedAt: &now,
+			}
+			warehouseRepo.Mock = mock.Mock{}
+			warehouseRepo.Mock.On("Edit", -3, editedItem).Return(errors.New("[ERROR] Fatal error, current item from store never exist at warehouse"))
+			err := warehouseService.Edit(-3, editedItem)
+			assert.Error(t, err)
+			assert.Equal(t, "Fatal error, current item from store never exist at warehouse", err.Error())
+
+			editedItem = &model.Item{
+				ItemId:    999,
+				ItemName:  "Test item 1 edited",
+				Stocks:    7,
+				TenantId:  1,
+				IsActive:  false,
+				CreatedAt: &now,
+			}
+			warehouseRepo.Mock = mock.Mock{}
+			warehouseRepo.Mock.On("Edit", -3, editedItem).Return(errors.New("[ERROR] Fatal error, current item from store never exist at warehouse"))
+			err = warehouseService.Edit(-3, editedItem)
+			assert.Error(t, err)
+			assert.Equal(t, "Fatal error, current item from store never exist at warehouse", err.Error())
+		})
+
+		t.Run("InvalidEditName", func(t *testing.T) {
+			editedItem := &model.Item{
+				ItemId:    1,
+				ItemName:  "Test item 1 (edited)",
+				Stocks:    7,
+				TenantId:  1,
+				IsActive:  false,
+				CreatedAt: &now,
+			}
+			err := warehouseService.Edit(-3, editedItem)
+			assert.Error(t, err)
+			assert.Contains(t, err.Error(), fmt.Sprintf("Could not use this item name: %s", editedItem.ItemName))
+		})
+
+		t.Run("EmptyTenantId", func(t *testing.T) {
+			editedItem := &model.Item{
+				// ItemId:    1,
+				ItemName:  "Test item 1 edited",
+				Stocks:    7,
+				TenantId:  1,
+				IsActive:  false,
+				CreatedAt: &now,
+			}
+			err := warehouseService.Edit(-3, editedItem)
+			assert.Error(t, err)
+			assert.Contains(t, err.Error(), "Item ID could not be empty or filled with 0 quantity / -quantity is not allowed")
+		})
+
+		t.Run("EmptyTenantId", func(t *testing.T) {
+			editedItem := &model.Item{
+				ItemId:   1,
+				ItemName: "Test item 1 edited",
+				Stocks:   7,
+				// TenantId:  1,
+				IsActive:  false,
+				CreatedAt: &now,
+			}
+			err := warehouseService.Edit(-3, editedItem)
+			assert.Error(t, err)
+			assert.Contains(t, err.Error(), "Required tenant id is empty or filled with 0 quantity / -quantity is not allowed")
+		})
+	})
+
+	t.Run("SetActivate", func(t *testing.T) {
+		t.Run("NormalSetActivate", func(t *testing.T) {
+			tenantId := 1
+			itemId := 1
+			setInto := false
+
+			warehouseRepo.Mock.On("SetActivate", tenantId, itemId, setInto).Return(nil)
+			err := warehouseService.SetActivate(tenantId, itemId, setInto)
+			assert.NoError(t, err)
+		})
+
+		t.Run("InvalidItemId", func(t *testing.T) {
+			tenantId := 1
+			itemId := 0
+			setInto := false
+			err := warehouseService.SetActivate(tenantId, itemId, setInto)
+			assert.Error(t, err)
+		})
+
+		t.Run("InvalidTenantId", func(t *testing.T) {
+			tenantId := 0
+			itemId := 1
+			setInto := false
+			err := warehouseService.SetActivate(tenantId, itemId, setInto)
+			assert.Error(t, err)
+		})
+
+		t.Run("NotExistItemAtWarehouse", func(t *testing.T) {
+			itemId := 99
+			tenantId := 99
+			setInto := false
+
+			warehouseRepo.Mock = mock.Mock{}
+			warehouseRepo.Mock.On("SetActivate", itemId, tenantId, setInto).Return(errors.New("PGRST116"))
+			err := warehouseService.SetActivate(tenantId, itemId, setInto)
+			assert.Error(t, err)
 		})
 	})
 }

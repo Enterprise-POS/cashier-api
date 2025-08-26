@@ -18,4 +18,19 @@ type WarehouseService interface {
 		Once the item created, will never be erased from DB, only soft delete is allowed
 	*/
 	CreateItem(items []*model.Item) ([]*model.Item, error)
+
+	/*
+		Return detailed item information
+	*/
+	FindById(itemId int, tenantId int) (*model.Item, error)
+
+	/*
+		Edit/update some specific item quantities
+	*/
+	Edit(quantity int, item *model.Item) error
+
+	/*
+		Deactivate/Activate item, not delete it from DB
+	*/
+	SetActivate(tenantId, itemId int, setInto bool) error
 }

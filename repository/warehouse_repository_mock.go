@@ -29,8 +29,14 @@ func (repository *WarehouseRepositoryMock) Get(tenantId int, limit int, page int
 	return args.Get(0).([]*model.Item), args.Int(1), nil
 }
 
-func (repository *WarehouseRepositoryMock) FindById(itemId int, tenantId int) (_ *model.Item, _ error) {
-	panic("not implemented") // TODO: Implement
+func (repository *WarehouseRepositoryMock) FindById(itemId int, tenantId int) (*model.Item, error) {
+	args := repository.Mock.Called(itemId, tenantId)
+
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+
+	return args.Get(0).(*model.Item), nil
 }
 
 func (repository *WarehouseRepositoryMock) CreateItem(items []*model.Item) ([]*model.Item, error) {
@@ -44,12 +50,22 @@ func (repository *WarehouseRepositoryMock) CreateItem(items []*model.Item) ([]*m
 }
 
 func (repository *WarehouseRepositoryMock) Edit(quantity int, item *model.Item) (_ error) {
-	panic("not implemented") // TODO: Implement
+	args := repository.Mock.Called(quantity, item)
+	if args.Get(0) == nil {
+		return nil
+	}
+
+	return args.Error(0)
 }
 
 /*
 Deactivate/Activate item, not delete it from DB
 */
 func (repository *WarehouseRepositoryMock) SetActivate(tenantId int, itemId int, setInto bool) (_ error) {
-	panic("not implemented") // TODO: Implement
+	args := repository.Mock.Called(tenantId, itemId, setInto)
+	if args.Get(0) == nil {
+		return nil
+	}
+
+	return args.Error(0)
 }
