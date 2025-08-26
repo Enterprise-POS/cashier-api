@@ -4,6 +4,7 @@ import (
 	"cashier-api/model"
 	"cashier-api/repository"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -231,4 +232,47 @@ func TestWarehouseServiceImpl(t *testing.T) {
 			assert.Nil(t, items)
 		})
 	})
+
+	t.Run("FindById", func(t *testing.T) {
+		now := time.Now()
+
+		t.Run("NormalFindById", func(t *testing.T) {
+			expectedItem := &model.Item{
+				ItemId:    1,
+				ItemName:  "Test item 1",
+				Stocks:    10,
+				TenantId:  1,
+				IsActive:  true,
+				CreatedAt: &now,
+			}
+			warehouseRepo.Mock.On("FindById", expectedItem.ItemId, expectedItem.TenantId).Return(expectedItem, nil)
+			items, err := warehouseService.FindById(expectedItem.ItemId, expectedItem.TenantId)
+			assert.NoError(t, err)
+			assert.Equal(t, expectedItem.ItemId, items.ItemId)
+		})
+
+		t.Run("InCaseTenantIdNotFound", func(t *testing.T) {
+			itemId := 1
+			tenantId := 1
+			warehouseRepo.Mock = mock.Mock{}
+			warehouseRepo.Mock.On("FindById", itemId, tenantId).Return(nil, errors.New("(PGRST116) JSON object requested, multiple (or no) rows returned"))
+			items, err := warehouseService.FindById(itemId, tenantId)
+			assert.Error(t, err)
+			assert.Equal(t, err.Error(), fmt.Sprintf("Item not found for current requested item id. Item Id: %d", itemId))
+			assert.Nil(t, items)
+
+			itemId = 1
+			tenantId = 0
+			warehouseRepo.Mock = mock.Mock{}
+			warehouseRepo.Mock.On("FindById", itemId, tenantId).Return(nil, errors.New("(PGRST116) JSON object requested, multiple (or no) rows returned"))
+			items, err = warehouseService.FindById(itemId, tenantId)
+			assert.Error(t, err)
+			assert.Equal(t, err.Error(), fmt.Sprintf("Item not found for current requested item id. Item Id: %d", itemId))
+			assert.Nil(t, items)
+		})
+	})
+
+	t.Run("Edit", func(t *testing.T) {})
+
+	t.Run("SetActivate", func(t *testing.T) {})
 }
