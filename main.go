@@ -97,6 +97,7 @@ func main() {
 
 	// GET /warehouse/:tenantId?limit=10&page=1
 	apiV1.Get("/warehouses/:tenantId", tenantRestriction, warehouseController.Get)
+	apiV1.Post("warehouse/create_item/:tenantId", tenantRestriction, warehouseController.CreateItem)
 
 	// Handle route not found (404)
 	app.All("*", func(ctx *fiber.Ctx) error {
