@@ -370,6 +370,24 @@ func TestWarehouseServiceImpl(t *testing.T) {
 			assert.Error(t, err)
 			assert.Contains(t, err.Error(), "Required tenant id is empty or filled with 0 quantity / -quantity is not allowed")
 		})
+
+		t.Run("IncreasingOrDecreasingTooMuch", func(t *testing.T) {
+			editedItem := &model.Item{
+				ItemId:    1,
+				ItemName:  "Test item 1 edited",
+				Stocks:    7,
+				TenantId:  1,
+				IsActive:  false,
+				CreatedAt: &now,
+			}
+			err := warehouseService.Edit(-1000, editedItem)
+			assert.Error(t, err)
+			assert.Equal(t, err.Error(), "You can only increase an item's quantity up to 999 or decrease by -999")
+
+			err = warehouseService.Edit(1000, editedItem)
+			assert.Error(t, err)
+			assert.Equal(t, err.Error(), "You can only increase an item's quantity up to 999 or decrease by -999")
+		})
 	})
 
 	t.Run("SetActivate", func(t *testing.T) {

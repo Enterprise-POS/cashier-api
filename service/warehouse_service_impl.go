@@ -112,7 +112,7 @@ func (service *WarehouseServiceImpl) Edit(quantity int, item *model.Item) error 
 	}
 
 	if quantity > 999 || quantity < -999 {
-		return errors.New("You can only increase an item’s quantity up to 999 or decrease by -999")
+		return errors.New("You can only increase an item's quantity up to 999 or decrease by -999")
 	}
 
 	err := service.Repository.Edit(quantity, item)
