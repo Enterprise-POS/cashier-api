@@ -33,4 +33,9 @@ type WarehouseController interface {
 		Return detailed item information
 	*/
 	FindById(*fiber.Ctx) error
+
+	/*
+		Edit/update some specific item quantities
+	*/
+	Edit(*fiber.Ctx) error
 }

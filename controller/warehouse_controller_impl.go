@@ -141,3 +141,41 @@ func (controller *WarehouseControllerImpl) FindById(ctx *fiber.Ctx) error {
 			"item":             item,
 		}))
 }
+
+// Edit implements WarehouseController.
+func (controller *WarehouseControllerImpl) Edit(ctx *fiber.Ctx) error {
+	// TenantId & ItemId = Indicate which item will be edit
+	// Currently allowed to update properties
+	// - ItemName
+	// - Quantity (via quantity parameter)
+	type ReqItem struct {
+		ItemName string `json:"item_name"`
+		ItemId   int    `json:"item_id"`
+	}
+	var body struct {
+		Quantity int     `json:"quantity"`
+		Item     ReqItem `json:"item"`
+	}
+
+	err := ctx.BodyParser(&body)
+	if err != nil {
+		return ctx.Status(fiber.StatusBadRequest).
+			JSON(common.NewWebResponseError(400, common.StatusError, "Something gone wrong ! The request body is malformed"))
+	}
+
+	// It's guaranteed to be not "", because restrict by tenant already did check first
+	tenantId, _ := strconv.Atoi(ctx.Params("tenantId"))
+
+	tobeEditItem := &model.Item{
+		ItemId:   body.Item.ItemId,
+		TenantId: tenantId,
+		ItemName: body.Item.ItemName,
+	}
+	err = controller.Service.Edit(body.Quantity, tobeEditItem)
+	if err != nil {
+		return ctx.Status(fiber.StatusBadRequest).
+			JSON(common.NewWebResponseError(400, common.StatusError, err.Error()))
+	}
+
+	return ctx.SendStatus(fiber.StatusAccepted)
+}
