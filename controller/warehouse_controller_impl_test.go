@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -28,6 +29,7 @@ func TestWarehouseControllerImpl(t *testing.T) {
 	if os.Getenv(constant.JWT_S) == "" {
 		t.Skip("Required ENV not available: JWT_S")
 	}
+	testTimeout := int((time.Second * 5).Milliseconds())
 
 	/*
 		In current test file / warehouse test file we skip the
@@ -53,6 +55,9 @@ func TestWarehouseControllerImpl(t *testing.T) {
 	tenantRestriction := middleware.RestrictByTenant(supabaseClient) // User only allowed to access associated tenant
 	app.Get("/warehouses/:tenantId", tenantRestriction, warehouseController.Get)
 	app.Post("/warehouse/create_item/:tenantId", tenantRestriction, warehouseController.CreateItem)
+	app.Post("/warehouse/find/:tenantId", tenantRestriction, warehouseController.FindById)
+	app.Put("/warehouse/edit/:tenantId", tenantRestriction, warehouseController.Edit)
+	app.Put("/warehouse/activate/:tenantId", tenantRestriction, warehouseController.SetActivate)
 
 	uniqueIdentity := strings.ReplaceAll(uuid.NewString(), "-", "")
 	testUser := &model.UserRegisterForm{
@@ -78,7 +83,7 @@ func TestWarehouseControllerImpl(t *testing.T) {
 	request.Header.Set("Content-Type", "application/json")
 
 	// We need to get the cookie
-	response, err := app.Test(request, int(time.Second*5))
+	response, err := app.Test(request, testTimeout)
 	require.NoError(t, err)
 	require.NotNil(t, response)
 	require.Equal(t, http.StatusOK, response.StatusCode)
@@ -105,7 +110,7 @@ func TestWarehouseControllerImpl(t *testing.T) {
 			request = httptest.NewRequest("POST", fmt.Sprintf("/warehouse/create_item/%d", createdTenant.Id), body)
 			request.Header.Set("Content-Type", "application/json")
 			request.AddCookie(enterprisePOSCookie)
-			response, err = app.Test(request, int(time.Second*5))
+			response, err = app.Test(request, testTimeout)
 			require.Nil(t, err)
 			require.NotNil(t, response)
 			require.Equal(t, http.StatusOK, response.StatusCode)
@@ -139,7 +144,7 @@ func TestWarehouseControllerImpl(t *testing.T) {
 			request = httptest.NewRequest("POST", fmt.Sprintf("/warehouse/create_item/%d", createdTenant.Id), body)
 			request.Header.Set("Content-Type", "application/json")
 			request.AddCookie(enterprisePOSCookie)
-			response, err = app.Test(request, int(time.Second*5))
+			response, err = app.Test(request, testTimeout)
 			require.NoError(t, err)
 			require.NotNil(t, response)
 			require.Equal(t, http.StatusOK, response.StatusCode)
@@ -171,7 +176,7 @@ func TestWarehouseControllerImpl(t *testing.T) {
 			request = httptest.NewRequest("POST", fmt.Sprintf("/warehouse/create_item/%d", someoneTenantId), body)
 			request.Header.Set("Content-Type", "application/json")
 			request.AddCookie(enterprisePOSCookie)
-			response, err = app.Test(request, int(time.Second*5))
+			response, err = app.Test(request, testTimeout)
 			assert.NotNil(t, response)
 			assert.NoError(t, err)
 			assert.Equal(t, http.StatusForbidden, response.StatusCode)
@@ -180,6 +185,330 @@ func TestWarehouseControllerImpl(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Contains(t, responseBody, "Access denied to tenant. Current user is not associate with requested tenant.")
 		})
+	})
+
+	t.Run("FindById", func(t *testing.T) {
+		// Create 1 item and use for all current scope test
+		byteBody, err = json.Marshal(fiber.Map{
+			"items": []*fiber.Map{
+				{
+					"item_name": "Test 1 item FindById",
+					"stocks":    10,
+				},
+			},
+		})
+		body = strings.NewReader(string(byteBody))
+		request = httptest.NewRequest("POST", fmt.Sprintf("/warehouse/create_item/%d", createdTenant.Id), body)
+		request.Header.Set("Content-Type", "application/json")
+		request.AddCookie(enterprisePOSCookie)
+		response, err = app.Test(request, testTimeout)
+		require.Equal(t, http.StatusOK, response.StatusCode)
+
+		var createdItemBody common.WebResponse
+		responseBody, err := common.ReadBody(response.Body)
+		require.NoError(t, err)
+		err = json.Unmarshal([]byte(responseBody), &createdItemBody)
+		require.NoError(t, err)
+
+		// Here we take the required item only, since only 1 item created for this test scope,
+		// then we safely to access the first element
+		// Extract the created item
+		dataMap, ok := createdItemBody.Data.(map[string]interface{})
+		require.True(t, ok)
+
+		rawItems, ok := dataMap["items"].([]interface{})
+		require.True(t, ok)
+		require.NotEmpty(t, rawItems)
+
+		// Marshal/unmarshal to proper type
+		var items []*model.Item
+		rawBytes, err := json.Marshal(rawItems)
+		require.NoError(t, err)
+
+		err = json.Unmarshal(rawBytes, &items)
+		require.NoError(t, err)
+
+		item := items[0]
+
+		t.Run("NormalFindById", func(t *testing.T) {
+			// The test itself
+			findRequestBody, err := json.Marshal(fiber.Map{
+				"item_id": item.ItemId,
+			})
+			require.NoError(t, err)
+			body = strings.NewReader(string(findRequestBody))
+			request = httptest.NewRequest("POST", fmt.Sprintf("/warehouse/find/%d", createdTenant.Id), body)
+			request.Header.Set("Content-Type", "application/json")
+			request.AddCookie(enterprisePOSCookie)
+			response, err = app.Test(request, testTimeout)
+			assert.NoError(t, err)
+			assert.Equal(t, http.StatusOK, response.StatusCode)
+		})
+
+		t.Run("NotFoundItemId", func(t *testing.T) {
+			// The test itself
+			findRequestBody, err := json.Marshal(fiber.Map{
+				"item_id": nil,
+			})
+			require.NoError(t, err)
+			body = strings.NewReader(string(findRequestBody))
+			request = httptest.NewRequest("POST", fmt.Sprintf("/warehouse/find/%d", createdTenant.Id), body)
+			request.Header.Set("Content-Type", "application/json")
+			request.AddCookie(enterprisePOSCookie)
+			response, err = app.Test(request, testTimeout)
+			assert.NoError(t, err)
+			assert.Equal(t, http.StatusBadRequest, response.StatusCode)
+		})
+
+		t.Run("InvalidRequestBody", func(t *testing.T) {
+			// The test itself
+			findRequestBody, err := json.Marshal(fiber.Map{
+				"item_id": "wrong type, should be int",
+			})
+			require.NoError(t, err)
+			body = strings.NewReader(string(findRequestBody))
+			request = httptest.NewRequest("POST", fmt.Sprintf("/warehouse/find/%d", createdTenant.Id), body)
+			request.Header.Set("Content-Type", "application/json")
+			request.AddCookie(enterprisePOSCookie)
+			response, err = app.Test(request, testTimeout)
+			assert.NoError(t, err)
+			assert.Equal(t, http.StatusBadRequest, response.StatusCode)
+		})
+
+		// Clean up for FindById
+		_, _, err = supabaseClient.From(repository.WarehouseTable).
+			Delete("", "").
+			Eq("item_id", fmt.Sprint(item.ItemId)).
+			Execute()
+		require.NoError(t, err, "If this fail, then immediately delete the data from TestWarehouseControllerImpl/CreateItem/FindById")
+	})
+
+	t.Run("Edit", func(t *testing.T) {
+		// Create 2 item and use for all current scope test
+		byteBody, err = json.Marshal(fiber.Map{
+			"items": []*fiber.Map{
+				{
+					"item_name": "Test 1 item Edit",
+					"stocks":    10,
+				},
+				{
+					"item_name": "Test 2 item Edit",
+					"stocks":    10,
+				},
+			},
+		})
+		body = strings.NewReader(string(byteBody))
+		request = httptest.NewRequest("POST", fmt.Sprintf("/warehouse/create_item/%d", createdTenant.Id), body)
+		request.Header.Set("Content-Type", "application/json")
+		request.AddCookie(enterprisePOSCookie)
+		response, err = app.Test(request, testTimeout)
+		require.Equal(t, http.StatusOK, response.StatusCode)
+
+		var createdItemBody common.WebResponse
+		responseBody, err := common.ReadBody(response.Body)
+		require.NoError(t, err)
+		err = json.Unmarshal([]byte(responseBody), &createdItemBody)
+		require.NoError(t, err)
+
+		// Here we take the required item only, since only 1 item created for this test scope,
+		// then we safely to access the first element
+		// Extract the created item
+		dataMap, ok := createdItemBody.Data.(map[string]interface{})
+		require.True(t, ok)
+
+		rawItems, ok := dataMap["items"].([]interface{})
+		require.True(t, ok)
+		require.NotEmpty(t, rawItems)
+
+		// Marshal/unmarshal to proper type
+		var items []*model.Item
+		rawBytes, err := json.Marshal(rawItems)
+		require.NoError(t, err)
+
+		err = json.Unmarshal(rawBytes, &items)
+		require.NoError(t, err)
+
+		item1 := items[0]
+		item2 := items[1]
+
+		t.Run("NormalEdit", func(t *testing.T) {
+			byteBody, err := json.Marshal(fiber.Map{
+				"quantity": -3,
+				"item": fiber.Map{
+					"item_id":   item1.ItemId,
+					"item_name": item1.ItemName + " edited",
+				},
+			})
+			require.NoError(t, err)
+			body = strings.NewReader(string(byteBody))
+			request = httptest.NewRequest("PUT", fmt.Sprintf("/warehouse/edit/%d", createdTenant.Id), body)
+			request.Header.Set("Content-Type", "application/json")
+			request.AddCookie(enterprisePOSCookie)
+			response, err = app.Test(request, testTimeout)
+			require.Equal(t, http.StatusAccepted, response.StatusCode)
+
+			// Check
+			var checkItem1 *model.Item
+			_, err = supabaseClient.From(repository.WarehouseTable).
+				Select("*", "", false).
+				Eq("item_id", strconv.Itoa(item1.ItemId)).
+				Single().
+				ExecuteTo(&checkItem1)
+			assert.NoError(t, err)
+			assert.Equal(t, item1.Stocks-3, checkItem1.Stocks)
+			assert.Equal(t, item1.ItemName+" edited", checkItem1.ItemName)
+		})
+
+		t.Run("InvalidQuantitiesByDecreasingTooMuchWhileStocksNotEnough", func(t *testing.T) {
+			byteBody, err := json.Marshal(fiber.Map{
+				"quantity": -999,
+				"item": fiber.Map{
+					"item_id":   item1.ItemId,
+					"item_name": item1.ItemName,
+				},
+			})
+			require.NoError(t, err)
+			body = strings.NewReader(string(byteBody))
+			request = httptest.NewRequest("PUT", fmt.Sprintf("/warehouse/edit/%d", createdTenant.Id), body)
+			request.Header.Set("Content-Type", "application/json")
+			request.AddCookie(enterprisePOSCookie)
+			response, err = app.Test(request, testTimeout)
+			require.Equal(t, http.StatusBadRequest, response.StatusCode)
+		})
+
+		t.Run("InvalidQuantitiesByTooMuchIncreasingOrDecreasing", func(t *testing.T) {
+			// Allowed increasing or decreasing quantities are between -999 and 999
+			byteBody, err := json.Marshal(fiber.Map{
+				"quantity": -1000,
+				"item": fiber.Map{
+					"item_id":   item1.ItemId,
+					"item_name": item1.ItemName,
+				},
+			})
+			require.NoError(t, err)
+			body = strings.NewReader(string(byteBody))
+			request = httptest.NewRequest("PUT", fmt.Sprintf("/warehouse/edit/%d", createdTenant.Id), body)
+			request.Header.Set("Content-Type", "application/json")
+			request.AddCookie(enterprisePOSCookie)
+			response, err = app.Test(request, testTimeout)
+			require.Equal(t, http.StatusBadRequest, response.StatusCode)
+
+			byteBody, err = json.Marshal(fiber.Map{
+				"quantity": 1000,
+				"item": fiber.Map{
+					"item_id":   item1.ItemId,
+					"item_name": item1.ItemName,
+				},
+			})
+			require.NoError(t, err)
+			body = strings.NewReader(string(byteBody))
+			request = httptest.NewRequest("PUT", fmt.Sprintf("/warehouse/edit/%d", createdTenant.Id), body)
+			request.Header.Set("Content-Type", "application/json")
+			request.AddCookie(enterprisePOSCookie)
+			response, err = app.Test(request, testTimeout)
+			require.Equal(t, http.StatusBadRequest, response.StatusCode)
+		})
+
+		// Clean up for Edit
+		_, _, err = supabaseClient.From(repository.WarehouseTable).
+			Delete("", "").
+			In("item_id", []string{fmt.Sprint(item1.ItemId), fmt.Sprint(item2.ItemId)}).
+			Execute()
+		require.NoError(t, err, "If this fail, then immediately delete the data from TestWarehouseControllerImpl/CreateItem/Edit")
+	})
+
+	t.Run("SetActivate", func(t *testing.T) {
+		// Create 2 item and use for all current scope test
+		byteBody, err = json.Marshal(fiber.Map{
+			"items": []*fiber.Map{
+				{
+					"item_name": "Test 1 item SetActivate",
+					"stocks":    10,
+				},
+			},
+		})
+		require.NoError(t, err)
+		body = strings.NewReader(string(byteBody))
+		request = httptest.NewRequest("POST", fmt.Sprintf("/warehouse/create_item/%d", createdTenant.Id), body)
+		request.Header.Set("Content-Type", "application/json")
+		request.AddCookie(enterprisePOSCookie)
+		response, err = app.Test(request, testTimeout)
+		require.Equal(t, http.StatusOK, response.StatusCode)
+
+		var createdItemBody common.WebResponse
+		responseBody, err := common.ReadBody(response.Body)
+		require.NoError(t, err)
+		err = json.Unmarshal([]byte(responseBody), &createdItemBody)
+		require.NoError(t, err)
+
+		// Here we take the required item only, since only 1 item created for this test scope,
+		// then we safely to access the first element
+		// Extract the created item
+		dataMap, ok := createdItemBody.Data.(map[string]interface{})
+		require.True(t, ok)
+
+		rawItems, ok := dataMap["items"].([]interface{})
+		require.True(t, ok)
+		require.NotEmpty(t, rawItems)
+
+		// Marshal/unmarshal to proper type
+		var items []*model.Item
+		rawBytes, err := json.Marshal(rawItems)
+		require.NoError(t, err)
+
+		err = json.Unmarshal(rawBytes, &items)
+		require.NoError(t, err)
+
+		item1 := items[0]
+
+		t.Run("NormalActivate", func(t *testing.T) {
+			byteBody, err := json.Marshal(fiber.Map{
+				"item_id":  item1.ItemId,
+				"set_into": false,
+			})
+			require.NoError(t, err)
+			body = strings.NewReader(string(byteBody))
+			request = httptest.NewRequest("PUT", fmt.Sprintf("/warehouse/activate/%d", createdTenant.Id), body)
+			request.Header.Set("Content-Type", "application/json")
+			request.AddCookie(enterprisePOSCookie)
+			response, err = app.Test(request, testTimeout)
+			require.Equal(t, http.StatusAccepted, response.StatusCode)
+		})
+
+		t.Run("NormalActivate", func(t *testing.T) {
+			byteBody, err := json.Marshal(fiber.Map{
+				"item_id":  item1.ItemId,
+				"set_into": false,
+			})
+			require.NoError(t, err)
+			body = strings.NewReader(string(byteBody))
+			request = httptest.NewRequest("PUT", fmt.Sprintf("/warehouse/activate/%d", createdTenant.Id), body)
+			request.Header.Set("Content-Type", "application/json")
+			request.AddCookie(enterprisePOSCookie)
+			response, err = app.Test(request, testTimeout)
+			require.Equal(t, http.StatusAccepted, response.StatusCode)
+		})
+
+		t.Run("InCaseSetIntoIsNull", func(t *testing.T) {
+			byteBody, err := json.Marshal(fiber.Map{
+				"item_id":  item1.ItemId,
+				"set_into": nil, // By default when converted at warehouse_controller.SetActivate, GO will be transformed into false
+			})
+			require.NoError(t, err)
+			body = strings.NewReader(string(byteBody))
+			request = httptest.NewRequest("PUT", fmt.Sprintf("/warehouse/activate/%d", createdTenant.Id), body)
+			request.Header.Set("Content-Type", "application/json")
+			request.AddCookie(enterprisePOSCookie)
+			response, err = app.Test(request, testTimeout)
+			require.Equal(t, http.StatusAccepted, response.StatusCode)
+		})
+
+		// Clean up for SetActivate
+		_, _, err = supabaseClient.From(repository.WarehouseTable).
+			Delete("", "").
+			Eq("item_id", fmt.Sprint(item1.ItemId)).
+			Execute()
+		require.NoError(t, err, "If this fail, then immediately delete the data from TestWarehouseControllerImpl/CreateItem/SetActivate")
 	})
 
 	// Clean up

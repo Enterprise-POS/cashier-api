@@ -24,7 +24,7 @@ func init() {
 	// Only log the warning severity or above.
 	if os.Getenv("MODE") == "prod" {
 		// Log as JSON instead of the default ASCII formatter.
-		log.SetFormatter(&log.JSONFormatter{})
+		log.SetFormatter(&log.TextFormatter{})
 		log.SetLevel(log.WarnLevel)
 	} else {
 		log.SetFormatter(&log.TextFormatter{})
@@ -97,7 +97,10 @@ func main() {
 
 	// GET /warehouse/:tenantId?limit=10&page=1
 	apiV1.Get("/warehouses/:tenantId", tenantRestriction, warehouseController.Get)
-	apiV1.Post("warehouse/create_item/:tenantId", tenantRestriction, warehouseController.CreateItem)
+	apiV1.Post("/warehouse/create_item/:tenantId", tenantRestriction, warehouseController.CreateItem)
+	apiV1.Post("/warehouse/find/:tenantId", tenantRestriction, warehouseController.FindById)
+	apiV1.Put("/warehouse/edit/:tenantId", tenantRestriction, warehouseController.Edit)
+	apiV1.Put("/warehouse/activate/:tenantId", tenantRestriction, warehouseController.SetActivate)
 
 	// Handle route not found (404)
 	app.All("*", func(ctx *fiber.Ctx) error {

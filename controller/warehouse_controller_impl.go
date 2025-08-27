@@ -116,3 +116,89 @@ func (controller *WarehouseControllerImpl) CreateItem(ctx *fiber.Ctx) error {
 			"items":          createdItems,
 		}))
 }
+
+// FindById implements WarehouseController.
+func (controller *WarehouseControllerImpl) FindById(ctx *fiber.Ctx) error {
+	var body struct {
+		ItemId int `json:"item_id"`
+	}
+	err := ctx.BodyParser(&body)
+	if err != nil {
+		return ctx.Status(fiber.StatusBadRequest).
+			JSON(common.NewWebResponseError(400, common.StatusError, "Something gone wrong ! The request body is malformed"))
+	}
+
+	tenantId, _ := strconv.Atoi(ctx.Params("tenantId"))
+	item, err := controller.Service.FindById(body.ItemId, tenantId)
+	if err != nil {
+		return ctx.Status(fiber.StatusBadRequest).
+			JSON(common.NewWebResponseError(400, common.StatusError, err.Error()))
+	}
+
+	return ctx.Status(fiber.StatusOK).
+		JSON(common.NewWebResponse(200, common.StatusSuccess, fiber.Map{
+			"requested_tenant": tenantId,
+			"item":             item,
+		}))
+}
+
+// Edit implements WarehouseController.
+func (controller *WarehouseControllerImpl) Edit(ctx *fiber.Ctx) error {
+	// TenantId & ItemId = Indicate which item will be edit
+	// Currently allowed to update properties
+	// - ItemName
+	// - Quantity (via quantity parameter)
+	type ReqItem struct {
+		ItemName string `json:"item_name"`
+		ItemId   int    `json:"item_id"`
+	}
+	var body struct {
+		Quantity int     `json:"quantity"`
+		Item     ReqItem `json:"item"`
+	}
+
+	err := ctx.BodyParser(&body)
+	if err != nil {
+		return ctx.Status(fiber.StatusBadRequest).
+			JSON(common.NewWebResponseError(400, common.StatusError, "Something gone wrong ! The request body is malformed"))
+	}
+
+	// It's guaranteed to be not "", because restrict by tenant already did check first
+	tenantId, _ := strconv.Atoi(ctx.Params("tenantId"))
+
+	tobeEditItem := &model.Item{
+		ItemId:   body.Item.ItemId,
+		TenantId: tenantId,
+		ItemName: body.Item.ItemName,
+	}
+	err = controller.Service.Edit(body.Quantity, tobeEditItem)
+	if err != nil {
+		return ctx.Status(fiber.StatusBadRequest).
+			JSON(common.NewWebResponseError(400, common.StatusError, err.Error()))
+	}
+
+	return ctx.SendStatus(fiber.StatusAccepted)
+}
+
+// SetActivate implements WarehouseController.
+func (controller *WarehouseControllerImpl) SetActivate(ctx *fiber.Ctx) error {
+	var body struct {
+		ItemId  int  `json:"item_id"`
+		SetInto bool `json:"set_into"`
+	}
+	err := ctx.BodyParser(&body)
+	if err != nil {
+		return ctx.Status(fiber.StatusBadRequest).
+			JSON(common.NewWebResponseError(400, common.StatusError, "Something gone wrong ! The request body is malformed"))
+	}
+
+	// It's guaranteed to be not "", because restrict by tenant already did check first
+	tenantId, _ := strconv.Atoi(ctx.Params("tenantId"))
+	err = controller.Service.SetActivate(tenantId, body.ItemId, body.SetInto)
+	if err != nil {
+		return ctx.Status(fiber.StatusBadRequest).
+			JSON(common.NewWebResponseError(400, common.StatusError, err.Error()))
+	}
+
+	return ctx.SendStatus(fiber.StatusAccepted)
+}

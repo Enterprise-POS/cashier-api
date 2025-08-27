@@ -1,6 +1,8 @@
 package controller
 
-import "github.com/gofiber/fiber/v2"
+import (
+	"github.com/gofiber/fiber/v2"
+)
 
 /*
 package controller
@@ -26,4 +28,19 @@ type WarehouseController interface {
 		Once the item created, will never be erased from DB, only soft delete is allowed
 	*/
 	CreateItem(*fiber.Ctx) error
+
+	/*
+		Return detailed item information
+	*/
+	FindById(*fiber.Ctx) error
+
+	/*
+		Edit/update some specific item quantities
+	*/
+	Edit(*fiber.Ctx) error
+
+	/*
+		Deactivate/Activate item, not delete it from DB
+	*/
+	SetActivate(*fiber.Ctx) error
 }
