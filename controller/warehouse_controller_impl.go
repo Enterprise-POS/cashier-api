@@ -179,3 +179,26 @@ func (controller *WarehouseControllerImpl) Edit(ctx *fiber.Ctx) error {
 
 	return ctx.SendStatus(fiber.StatusAccepted)
 }
+
+// SetActivate implements WarehouseController.
+func (controller *WarehouseControllerImpl) SetActivate(ctx *fiber.Ctx) error {
+	var body struct {
+		ItemId  int  `json:"item_id"`
+		SetInto bool `json:"set_into"`
+	}
+	err := ctx.BodyParser(&body)
+	if err != nil {
+		return ctx.Status(fiber.StatusBadRequest).
+			JSON(common.NewWebResponseError(400, common.StatusError, "Something gone wrong ! The request body is malformed"))
+	}
+
+	// It's guaranteed to be not "", because restrict by tenant already did check first
+	tenantId, _ := strconv.Atoi(ctx.Params("tenantId"))
+	err = controller.Service.SetActivate(tenantId, body.ItemId, body.SetInto)
+	if err != nil {
+		return ctx.Status(fiber.StatusBadRequest).
+			JSON(common.NewWebResponseError(400, common.StatusError, err.Error()))
+	}
+
+	return ctx.SendStatus(fiber.StatusAccepted)
+}

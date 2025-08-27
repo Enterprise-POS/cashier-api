@@ -38,4 +38,9 @@ type WarehouseController interface {
 		Edit/update some specific item quantities
 	*/
 	Edit(*fiber.Ctx) error
+
+	/*
+		Deactivate/Activate item, not delete it from DB
+	*/
+	SetActivate(*fiber.Ctx) error
 }

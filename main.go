@@ -100,6 +100,7 @@ func main() {
 	apiV1.Post("/warehouse/create_item/:tenantId", tenantRestriction, warehouseController.CreateItem)
 	apiV1.Post("/warehouse/find/:tenantId", tenantRestriction, warehouseController.FindById)
 	apiV1.Put("/warehouse/edit/:tenantId", tenantRestriction, warehouseController.Edit)
+	apiV1.Put("/warehouse/activate/:tenantId", tenantRestriction, warehouseController.SetActivate)
 
 	// Handle route not found (404)
 	app.All("*", func(ctx *fiber.Ctx) error {

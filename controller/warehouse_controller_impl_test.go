@@ -57,6 +57,7 @@ func TestWarehouseControllerImpl(t *testing.T) {
 	app.Post("/warehouse/create_item/:tenantId", tenantRestriction, warehouseController.CreateItem)
 	app.Post("/warehouse/find/:tenantId", tenantRestriction, warehouseController.FindById)
 	app.Put("/warehouse/edit/:tenantId", tenantRestriction, warehouseController.Edit)
+	app.Put("/warehouse/activate/:tenantId", tenantRestriction, warehouseController.SetActivate)
 
 	uniqueIdentity := strings.ReplaceAll(uuid.NewString(), "-", "")
 	testUser := &model.UserRegisterForm{
@@ -279,7 +280,7 @@ func TestWarehouseControllerImpl(t *testing.T) {
 			Delete("", "").
 			Eq("item_id", fmt.Sprint(item.ItemId)).
 			Execute()
-		require.NoError(t, err, "If this fail, then immediately delete the data from TestWarehouseControllerImpl/CreateItem/NormalCreateItem")
+		require.NoError(t, err, "If this fail, then immediately delete the data from TestWarehouseControllerImpl/CreateItem/FindById")
 	})
 
 	t.Run("Edit", func(t *testing.T) {
@@ -413,7 +414,101 @@ func TestWarehouseControllerImpl(t *testing.T) {
 			Delete("", "").
 			In("item_id", []string{fmt.Sprint(item1.ItemId), fmt.Sprint(item2.ItemId)}).
 			Execute()
-		require.NoError(t, err, "If this fail, then immediately delete the data from TestWarehouseControllerImpl/CreateItem/NormalCreateItem")
+		require.NoError(t, err, "If this fail, then immediately delete the data from TestWarehouseControllerImpl/CreateItem/Edit")
+	})
+
+	t.Run("SetActivate", func(t *testing.T) {
+		// Create 2 item and use for all current scope test
+		byteBody, err = json.Marshal(fiber.Map{
+			"items": []*fiber.Map{
+				{
+					"item_name": "Test 1 item SetActivate",
+					"stocks":    10,
+				},
+			},
+		})
+		require.NoError(t, err)
+		body = strings.NewReader(string(byteBody))
+		request = httptest.NewRequest("POST", fmt.Sprintf("/warehouse/create_item/%d", createdTenant.Id), body)
+		request.Header.Set("Content-Type", "application/json")
+		request.AddCookie(enterprisePOSCookie)
+		response, err = app.Test(request, testTimeout)
+		require.Equal(t, http.StatusOK, response.StatusCode)
+
+		var createdItemBody common.WebResponse
+		responseBody, err := common.ReadBody(response.Body)
+		require.NoError(t, err)
+		err = json.Unmarshal([]byte(responseBody), &createdItemBody)
+		require.NoError(t, err)
+
+		// Here we take the required item only, since only 1 item created for this test scope,
+		// then we safely to access the first element
+		// Extract the created item
+		dataMap, ok := createdItemBody.Data.(map[string]interface{})
+		require.True(t, ok)
+
+		rawItems, ok := dataMap["items"].([]interface{})
+		require.True(t, ok)
+		require.NotEmpty(t, rawItems)
+
+		// Marshal/unmarshal to proper type
+		var items []*model.Item
+		rawBytes, err := json.Marshal(rawItems)
+		require.NoError(t, err)
+
+		err = json.Unmarshal(rawBytes, &items)
+		require.NoError(t, err)
+
+		item1 := items[0]
+
+		t.Run("NormalActivate", func(t *testing.T) {
+			byteBody, err := json.Marshal(fiber.Map{
+				"item_id":  item1.ItemId,
+				"set_into": false,
+			})
+			require.NoError(t, err)
+			body = strings.NewReader(string(byteBody))
+			request = httptest.NewRequest("PUT", fmt.Sprintf("/warehouse/activate/%d", createdTenant.Id), body)
+			request.Header.Set("Content-Type", "application/json")
+			request.AddCookie(enterprisePOSCookie)
+			response, err = app.Test(request, testTimeout)
+			require.Equal(t, http.StatusAccepted, response.StatusCode)
+		})
+
+		t.Run("NormalActivate", func(t *testing.T) {
+			byteBody, err := json.Marshal(fiber.Map{
+				"item_id":  item1.ItemId,
+				"set_into": false,
+			})
+			require.NoError(t, err)
+			body = strings.NewReader(string(byteBody))
+			request = httptest.NewRequest("PUT", fmt.Sprintf("/warehouse/activate/%d", createdTenant.Id), body)
+			request.Header.Set("Content-Type", "application/json")
+			request.AddCookie(enterprisePOSCookie)
+			response, err = app.Test(request, testTimeout)
+			require.Equal(t, http.StatusAccepted, response.StatusCode)
+		})
+
+		t.Run("InCaseSetIntoIsNull", func(t *testing.T) {
+			byteBody, err := json.Marshal(fiber.Map{
+				"item_id":  item1.ItemId,
+				"set_into": nil, // By default when converted at warehouse_controller.SetActivate, GO will be transformed into false
+			})
+			require.NoError(t, err)
+			body = strings.NewReader(string(byteBody))
+			request = httptest.NewRequest("PUT", fmt.Sprintf("/warehouse/activate/%d", createdTenant.Id), body)
+			request.Header.Set("Content-Type", "application/json")
+			request.AddCookie(enterprisePOSCookie)
+			response, err = app.Test(request, testTimeout)
+			require.Equal(t, http.StatusAccepted, response.StatusCode)
+		})
+
+		// Clean up for SetActivate
+		_, _, err = supabaseClient.From(repository.WarehouseTable).
+			Delete("", "").
+			Eq("item_id", fmt.Sprint(item1.ItemId)).
+			Execute()
+		require.NoError(t, err, "If this fail, then immediately delete the data from TestWarehouseControllerImpl/CreateItem/SetActivate")
 	})
 
 	// Clean up
