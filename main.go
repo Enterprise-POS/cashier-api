@@ -95,12 +95,12 @@ func main() {
 	warehouseService := service.NewWarehouseServiceImpl(warehouseRepository)
 	warehouseController := controller.NewWarehouseControllerImpl(warehouseService)
 
-	// GET /warehouse/:tenantId?limit=10&page=1
+	// GET /warehouses/:tenantId?limit=10&page=1
 	apiV1.Get("/warehouses/:tenantId", tenantRestriction, warehouseController.Get)
-	apiV1.Post("/warehouse/create_item/:tenantId", tenantRestriction, warehouseController.CreateItem)
-	apiV1.Post("/warehouse/find/:tenantId", tenantRestriction, warehouseController.FindById)
-	apiV1.Put("/warehouse/edit/:tenantId", tenantRestriction, warehouseController.Edit)
-	apiV1.Put("/warehouse/activate/:tenantId", tenantRestriction, warehouseController.SetActivate)
+	apiV1.Post("/warehouses/create_item/:tenantId", tenantRestriction, warehouseController.CreateItem)
+	apiV1.Post("/warehouses/find/:tenantId", tenantRestriction, warehouseController.FindById)
+	apiV1.Put("/warehouses/edit/:tenantId", tenantRestriction, warehouseController.Edit)
+	apiV1.Put("/warehouses/activate/:tenantId", tenantRestriction, warehouseController.SetActivate)
 
 	// Handle route not found (404)
 	app.All("*", func(ctx *fiber.Ctx) error {
