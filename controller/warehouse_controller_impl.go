@@ -19,8 +19,9 @@ func NewWarehouseControllerImpl(service service.WarehouseService) WarehouseContr
 
 func (controller *WarehouseControllerImpl) Get(ctx *fiber.Ctx) error {
 	paramTenantId := ctx.Params("tenantId")
-	paramLimit := ctx.Query("limit", "5") // default 5
-	paramPage := ctx.Query("page", "1")   // default 1
+	paramLimit := ctx.Query("limit", "5")        // default 5
+	paramPage := ctx.Query("page", "1")          // default 1
+	paramNameQuery := ctx.Query("nameQuery", "") // default empty
 
 	tenantId, err := strconv.Atoi(paramTenantId)
 	if err != nil {
@@ -51,7 +52,7 @@ func (controller *WarehouseControllerImpl) Get(ctx *fiber.Ctx) error {
 		'page' may be 1 but should be convert into 0
 		in that case let service handle the logic
 	*/
-	result, count, err := controller.Service.GetWarehouseItems(tenantId, limit, page)
+	result, count, err := controller.Service.GetWarehouseItems(tenantId, limit, page, paramNameQuery)
 	if err != nil {
 		response := common.NewWebResponseError(fiber.StatusBadRequest, common.StatusError, err.Error())
 		return ctx.Status(fiber.StatusBadRequest).JSON(response)

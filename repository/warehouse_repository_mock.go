@@ -10,7 +10,7 @@ type WarehouseRepositoryMock struct {
 	Mock mock.Mock
 }
 
-func (repository *WarehouseRepositoryMock) Get(tenantId int, limit int, page int) ([]*model.Item, int, error) {
+func (repository *WarehouseRepositoryMock) Get(tenantId int, limit int, page int, queryName string) ([]*model.Item, int, error) {
 	// .Called doesn't mean equal the parameter here
 	// so when for example testing tenantId not exist, tenantId = 0
 	// then we hope the return from 'repository' is 'nil'

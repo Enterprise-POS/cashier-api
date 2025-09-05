@@ -11,7 +11,7 @@ type WarehouseRepository interface {
 	/*
 		Return all items from current requested tenantId
 	*/
-	Get(tenantId int, limit int, page int) ([]*model.Item, int, error) // 2nd return is the count of all data
+	Get(tenantId int, limit int, page int, nameQuery string) ([]*model.Item, int, error) // 2nd return is the count of all data
 
 	/*
 		Return detailed item information

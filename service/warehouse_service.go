@@ -11,7 +11,7 @@ type WarehouseService interface {
 	/*
 		Return all items from current requested tenantId
 	*/
-	GetWarehouseItems(tenantId, limit, page int) ([]*model.Item, int, error)
+	GetWarehouseItems(tenantId, limit, page int, nameQuery string) ([]*model.Item, int, error)
 
 	/*
 		Create new item for current tenantId.

@@ -199,20 +199,20 @@ func TestWarehouseRepository(t *testing.T) {
 		// First page
 		currentPage := 1
 		itemPerPage := 2
-		items, count, err := warehouseRepo.Get(1, itemPerPage, currentPage)
+		items, count, err := warehouseRepo.Get(1, itemPerPage, currentPage, "")
 		assert.NotEqual(t, 0, count)
 		assert.Nil(t, err)
 		assert.Equal(t, 2, len(items))
 
 		// Go to next page
 		currentPage += 1
-		items, _, err = warehouseRepo.Get(1, itemPerPage, currentPage)
+		items, _, err = warehouseRepo.Get(1, itemPerPage, currentPage, "")
 		assert.Nil(t, err)
 		assert.Equal(t, 2, len(items))
 
 		// Check page that not even exist
 		currentPage += 999
-		items, _, err = warehouseRepo.Get(1, itemPerPage, currentPage)
+		items, _, err = warehouseRepo.Get(1, itemPerPage, currentPage, "")
 		assert.NotNil(t, err)
 		assert.Equal(t, "(PGRST103) Requested range not satisfiable", err.Error())
 		assert.Equal(t, 0, len(items))
@@ -226,7 +226,7 @@ func TestWarehouseRepository(t *testing.T) {
 		warehouseRepo := NewWarehouseRepositoryImpl(supabaseClient)
 
 		t.Run("TenantIdNotExist", func(t *testing.T) {
-			items, count, err := warehouseRepo.Get(0, 5, 1)
+			items, count, err := warehouseRepo.Get(0, 5, 1, "")
 			assert.NotNil(t, err)
 			assert.Equal(t, "(PGRST103) Requested range not satisfiable", err.Error())
 			assert.Equal(t, 0, len(items))

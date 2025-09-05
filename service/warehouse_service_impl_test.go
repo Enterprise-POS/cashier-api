@@ -70,7 +70,7 @@ func TestWarehouseServiceImpl(t *testing.T) {
 			tenantId, limit, page := 1, 5, 1
 			warehouseRepo.Mock.On("Get", tenantId, limit, page-1).Return(itemDummies, 5, nil)
 
-			result, count, err := warehouseService.GetWarehouseItems(tenantId, limit, page)
+			result, count, err := warehouseService.GetWarehouseItems(tenantId, limit, page, "")
 
 			// fmt.Println(result, count, err)
 			assert.Nil(t, err)
@@ -89,7 +89,7 @@ func TestWarehouseServiceImpl(t *testing.T) {
 			errMessage := "(PGRST103) Requested range not satisfiable"
 			warehouseRepo.Mock.On("Get", tenantId, limit, page-1).Return(nil, 0, errors.New(errMessage))
 
-			result, count, err = warehouseService.GetWarehouseItems(0, 5, 1)
+			result, count, err = warehouseService.GetWarehouseItems(0, 5, 1, "")
 			assert.NotNil(t, err)
 			assert.Nil(t, result)
 			assert.Equal(t, 0, count)

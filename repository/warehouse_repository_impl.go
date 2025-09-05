@@ -23,23 +23,23 @@ func NewWarehouseRepositoryImpl(client *supabase.Client) WarehouseRepository {
 	}
 }
 
-func (warehouse *WarehouseRepositoryImpl) Get(tenantId int, limit int, page int) ([]*model.Item, int, error) {
+func (warehouse *WarehouseRepositoryImpl) Get(tenantId int, limit int, page int, queryName string) ([]*model.Item, int, error) {
 	start := page * limit
 	end := start + limit - 1
 
 	var itemsList []*model.Item
-	count, err := warehouse.Client.
+	query := warehouse.Client.
 		From("warehouse").
-
-		// exact: Will return the total items are there
 		Select("*", "exact", false).
-
-		// Only return the requested tenant
 		Eq("tenant_id", strconv.Itoa(tenantId)).
 		Range(start, end, "").
-		Limit(limit, "").
-		ExecuteTo(&itemsList)
+		Limit(limit, "")
 
+	if queryName != "" {
+		query = query.Like("item_name", "%"+queryName+"%")
+	}
+
+	count, err := query.ExecuteTo(&itemsList)
 	if err != nil {
 		return nil, 0, err
 	}
