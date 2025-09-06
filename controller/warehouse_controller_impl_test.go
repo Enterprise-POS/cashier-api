@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -54,6 +55,7 @@ func TestWarehouseControllerImpl(t *testing.T) {
 	app.Use(middleware.ProtectedRoute)                               // Must login
 	tenantRestriction := middleware.RestrictByTenant(supabaseClient) // User only allowed to access associated tenant
 	app.Get("/warehouses/:tenantId", tenantRestriction, warehouseController.Get)
+	app.Get("/warehouses/active/:tenantId", tenantRestriction, warehouseController.GetActiveItem)
 	app.Post("/warehouses/create_item/:tenantId", tenantRestriction, warehouseController.CreateItem)
 	app.Post("/warehouses/find/:tenantId", tenantRestriction, warehouseController.FindById)
 	app.Put("/warehouses/edit/:tenantId", tenantRestriction, warehouseController.Edit)
@@ -95,6 +97,78 @@ func TestWarehouseControllerImpl(t *testing.T) {
 		}
 	}
 	require.NotNil(t, enterprisePOSCookie)
+
+	t.Run("GetActiveItem", func(t *testing.T) {
+		t.Run("NormalGetActiveItem", func(t *testing.T) {
+			byteBody, err = json.Marshal(fiber.Map{
+				"items": []*fiber.Map{
+					{
+						"item_name": "Test 1 item GetActiveItem NormalGetActiveItem",
+						"stocks":    10,
+					},
+				},
+			})
+			body = strings.NewReader(string(byteBody))
+			request = httptest.NewRequest("POST", fmt.Sprintf("/warehouses/create_item/%d", createdTenant.Id), body)
+			request.Header.Set("Content-Type", "application/json")
+			request.AddCookie(enterprisePOSCookie)
+			response, err = app.Test(request, testTimeout)
+			require.Nil(t, err)
+			require.NotNil(t, response)
+			require.Equal(t, http.StatusOK, response.StatusCode)
+
+			// It will get default param limit=5, page=1
+			// build the URL
+			baseURL := "/warehouses/active/" + strconv.Itoa(createdTenant.Id)
+			parsedUrl, _ := url.Parse(baseURL)
+
+			// Add query parameters
+			query := parsedUrl.Query()
+			query.Set("nameQuery", "NormalGetActiveItem") // or any value
+			parsedUrl.RawQuery = query.Encode()
+
+			// Create the request
+			request := httptest.NewRequest("GET", parsedUrl.String(), nil)
+			request.Header.Set("Content-Type", "application/json")
+			request.AddCookie(enterprisePOSCookie)
+			response, err = app.Test(request, testTimeout)
+			require.NoError(t, err)
+
+			var getItemBody common.WebResponse
+			responseBody, err := common.ReadBody(response.Body)
+			require.NoError(t, err)
+			err = json.Unmarshal([]byte(responseBody), &getItemBody)
+			require.NoError(t, err)
+
+			// Here we take the required item only, since only 1 item created for this test scope,
+			// then we safely to access the first element
+			// Extract the created item
+			dataMap, ok := getItemBody.Data.(map[string]interface{})
+			require.True(t, ok)
+
+			rawItems, ok := dataMap["items"].([]interface{})
+			require.True(t, ok)
+			require.NotEmpty(t, rawItems)
+
+			// Marshal/unmarshal to proper type
+			var items []*model.Item
+			rawBytes, err := json.Marshal(rawItems)
+			require.NoError(t, err)
+
+			err = json.Unmarshal(rawBytes, &items)
+			require.NoError(t, err)
+
+			item := items[0]
+			assert.Equal(t, "Test 1 item GetActiveItem NormalGetActiveItem", item.ItemName)
+
+			// Clean up
+			_, _, err = supabaseClient.From(repository.WarehouseTable).
+				Delete("", "").
+				Eq("item_id", strconv.Itoa(item.ItemId)).
+				Execute()
+			require.NoError(t, err, "If this fail, then immediately delete the data from TestWarehouseControllerImpl/GetActiveItem/NormalGetActiveItem")
+		})
+	})
 
 	t.Run("CreateItem", func(t *testing.T) {
 		t.Run("NormalCreate1Item", func(t *testing.T) {

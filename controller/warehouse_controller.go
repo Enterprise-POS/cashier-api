@@ -24,6 +24,11 @@ type WarehouseController interface {
 	Get(ctx *fiber.Ctx) error
 
 	/*
+		Get activate only warehouse item
+	*/
+	GetActiveItem(ctx *fiber.Ctx) error
+
+	/*
 		Create new item for current tenantId.
 		Once the item created, will never be erased from DB, only soft delete is allowed
 	*/

@@ -39,7 +39,7 @@ func (service *WarehouseServiceImpl) GetActiveItem(tenantId int, limit int, page
 	}
 
 	// By default SQL will be start from 0 index, if page 1 then page have to subtracted by 1 (page = 0)
-	return service.Repository.Get(tenantId, limit, page-1, nameQuery)
+	return service.Repository.GetActiveItem(tenantId, limit, page-1, nameQuery)
 }
 
 // CreateItem implements WarehouseService.
