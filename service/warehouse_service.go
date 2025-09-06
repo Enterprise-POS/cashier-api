@@ -14,6 +14,11 @@ type WarehouseService interface {
 	GetWarehouseItems(tenantId, limit, page int, nameQuery string) ([]*model.Item, int, error)
 
 	/*
+		Get activate only warehouse item
+	*/
+	GetActiveItem(tenantId int, limit int, page int, nameQuery string) ([]*model.Item, int, error)
+
+	/*
 		Create new item for current tenantId.
 		Once the item created, will never be erased from DB, only soft delete is allowed
 	*/

@@ -29,6 +29,19 @@ func (service *WarehouseServiceImpl) GetWarehouseItems(tenantId, limit, page int
 	return service.Repository.Get(tenantId, limit, page-1, nameQuery)
 }
 
+// GetActiveItem implements WarehouseService.
+func (service *WarehouseServiceImpl) GetActiveItem(tenantId int, limit int, page int, nameQuery string) ([]*model.Item, int, error) {
+	if limit < 1 {
+		return nil, 0, fmt.Errorf("limit could not less then 1 (limit >= 1). Given limit %d", limit)
+	}
+	if page < 1 {
+		return nil, 0, fmt.Errorf("page could not less then 1 (page >= 1). Given page %d", page)
+	}
+
+	// By default SQL will be start from 0 index, if page 1 then page have to subtracted by 1 (page = 0)
+	return service.Repository.Get(tenantId, limit, page-1, nameQuery)
+}
+
 // CreateItem implements WarehouseService.
 func (service *WarehouseServiceImpl) CreateItem(items []*model.Item) ([]*model.Item, error) {
 	isError := false
