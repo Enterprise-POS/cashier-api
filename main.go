@@ -97,6 +97,7 @@ func main() {
 
 	// GET /warehouses/:tenantId?limit=10&page=1
 	apiV1.Get("/warehouses/:tenantId", tenantRestriction, warehouseController.Get)
+	apiV1.Get("/warehouses/active/:tenantId", tenantRestriction, warehouseController.GetActiveItem)
 	apiV1.Post("/warehouses/create_item/:tenantId", tenantRestriction, warehouseController.CreateItem)
 	apiV1.Post("/warehouses/find/:tenantId", tenantRestriction, warehouseController.FindById)
 	apiV1.Put("/warehouses/edit/:tenantId", tenantRestriction, warehouseController.Edit)

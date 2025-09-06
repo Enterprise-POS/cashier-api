@@ -65,6 +65,44 @@ func (controller *WarehouseControllerImpl) Get(ctx *fiber.Ctx) error {
 	return ctx.Status(fiber.StatusOK).JSON(successResponse)
 }
 
+// GetActiveItem implements WarehouseController.
+func (controller *WarehouseControllerImpl) GetActiveItem(ctx *fiber.Ctx) error {
+	paramTenantId := ctx.Params("tenantId")
+	paramLimit := ctx.Query("limit", "5")        // default 5
+	paramPage := ctx.Query("page", "1")          // default 1
+	paramNameQuery := ctx.Query("nameQuery", "") // default empty
+
+	tenantId, err := strconv.Atoi(paramTenantId)
+	if err != nil {
+		response := common.NewWebResponseError(fiber.StatusBadRequest, common.StatusError, err.Error())
+		return ctx.Status(fiber.StatusBadRequest).JSON(response)
+	}
+
+	limit, err := strconv.Atoi(paramLimit)
+	if err != nil {
+		response := common.NewWebResponseError(fiber.StatusBadRequest, common.StatusError, err.Error())
+		return ctx.Status(fiber.StatusBadRequest).JSON(response)
+	}
+
+	page, err := strconv.Atoi(paramPage)
+	if err != nil {
+		response := common.NewWebResponseError(fiber.StatusBadRequest, common.StatusError, err.Error())
+		return ctx.Status(fiber.StatusBadRequest).JSON(response)
+	}
+
+	result, count, err := controller.Service.GetWarehouseItems(tenantId, limit, page, paramNameQuery)
+	if err != nil {
+		response := common.NewWebResponseError(fiber.StatusBadRequest, common.StatusError, err.Error())
+		return ctx.Status(fiber.StatusBadRequest).JSON(response)
+	}
+
+	successResponse := common.NewWebResponse(fiber.StatusOK, common.StatusSuccess, fiber.Map{
+		"items": result,
+		"count": count,
+	})
+	return ctx.Status(fiber.StatusOK).JSON(successResponse)
+}
+
 // CreateItem implements WarehouseController.
 func (controller *WarehouseControllerImpl) CreateItem(ctx *fiber.Ctx) error {
 	// It's guaranteed to be not "", because restrict by tenant already did check first
