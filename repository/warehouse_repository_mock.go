@@ -29,6 +29,17 @@ func (repository *WarehouseRepositoryMock) Get(tenantId int, limit int, page int
 	return args.Get(0).([]*model.Item), args.Int(1), nil
 }
 
+func (repository *WarehouseRepositoryMock) GetActiveItem(tenantId int, limit int, page int, nameQuery string) ([]*model.Item, int, error) {
+	args := repository.Mock.Called(tenantId, limit, tenantId, nameQuery)
+
+	if args.Get(0) == nil {
+		return nil, 0, args.Error(2)
+	}
+
+	// Normal situation
+	return args.Get(0).([]*model.Item), args.Int(1), nil
+}
+
 func (repository *WarehouseRepositoryMock) FindById(itemId int, tenantId int) (*model.Item, error) {
 	args := repository.Mock.Called(itemId, tenantId)
 

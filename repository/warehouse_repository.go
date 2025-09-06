@@ -10,8 +10,14 @@ package repository
 type WarehouseRepository interface {
 	/*
 		Return all items from current requested tenantId
+		(non active warehouse item will be included)
 	*/
 	Get(tenantId int, limit int, page int, nameQuery string) ([]*model.Item, int, error) // 2nd return is the count of all data
+
+	/*
+		Get activate only warehouse item
+	*/
+	GetActiveItem(tenantId int, limit int, page int, nameQuery string) ([]*model.Item, int, error)
 
 	/*
 		Return detailed item information

@@ -23,7 +23,33 @@ func NewWarehouseRepositoryImpl(client *supabase.Client) WarehouseRepository {
 	}
 }
 
-func (warehouse *WarehouseRepositoryImpl) Get(tenantId int, limit int, page int, queryName string) ([]*model.Item, int, error) {
+// GetActiveItem implements WarehouseRepository.
+func (warehouse *WarehouseRepositoryImpl) GetActiveItem(tenantId int, limit int, page int, nameQuery string) ([]*model.Item, int, error) {
+	start := page * limit
+	end := start + limit - 1
+
+	var itemsList []*model.Item
+	query := warehouse.Client.
+		From("warehouse").
+		Select("*", "exact", false).
+		Not("is_active", "=", "FALSE"). // Only get active=TRUE warehouse item
+		Eq("tenant_id", strconv.Itoa(tenantId)).
+		Range(start, end, "").
+		Limit(limit, "")
+
+	if nameQuery != "" {
+		query = query.Like("item_name", "%"+nameQuery+"%")
+	}
+
+	count, err := query.ExecuteTo(&itemsList)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return itemsList, int(count), nil
+}
+
+func (warehouse *WarehouseRepositoryImpl) Get(tenantId int, limit int, page int, nameQuery string) ([]*model.Item, int, error) {
 	start := page * limit
 	end := start + limit - 1
 
@@ -35,8 +61,8 @@ func (warehouse *WarehouseRepositoryImpl) Get(tenantId int, limit int, page int,
 		Range(start, end, "").
 		Limit(limit, "")
 
-	if queryName != "" {
-		query = query.Like("item_name", "%"+queryName+"%")
+	if nameQuery != "" {
+		query = query.Like("item_name", "%"+nameQuery+"%")
 	}
 
 	count, err := query.ExecuteTo(&itemsList)

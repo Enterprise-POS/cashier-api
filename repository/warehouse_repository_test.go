@@ -319,4 +319,65 @@ func TestWarehouseRepository(t *testing.T) {
 			assert.Equal(t, "(PGRST116) JSON object requested, multiple (or no) rows returned", err.Error())
 		})
 	})
+
+	t.Run("GetActiveItem", func(t *testing.T) {
+		dummy1 := &model.Item{
+			ItemName: "Test WarehouseRepository_GetActiveItem 1",
+			Stocks:   20,
+			TenantId: 1,
+		}
+		dummy2 := &model.Item{
+			ItemName: "Test WarehouseRepository_GetActiveItem 2",
+			Stocks:   99,
+			TenantId: 1,
+		}
+		dummy3 := &model.Item{
+			ItemName: "Test WarehouseRepository_GetActiveItem 3",
+			Stocks:   99,
+			TenantId: 1,
+		}
+		dummy4 := &model.Item{
+			ItemName: "Test WarehouseRepository_GetActiveItem 4",
+			Stocks:   0,
+			TenantId: 1,
+		}
+
+		dummies := []*model.Item{dummy1, dummy2, dummy3, dummy4}
+
+		warehouseRepo := NewWarehouseRepositoryImpl(supabaseClient)
+		_dummiesFromDB, err := warehouseRepo.CreateItem(dummies)
+		assert.NoError(t, err)
+		assert.Equal(t, 4, len(_dummiesFromDB))
+
+		// First page
+		currentPage := 1
+		itemPerPage := 2
+		items, count, err := warehouseRepo.GetActiveItem(1, itemPerPage, currentPage, "WarehouseRepository_GetActiveItem")
+		assert.NotEqual(t, 0, count)
+		assert.NoError(t, err)
+		assert.Equal(t, 2, len(items))
+
+		// Test without nameQuery
+		items, count, err = warehouseRepo.GetActiveItem(1, itemPerPage, currentPage, "")
+		assert.NotEqual(t, 0, count)
+		assert.Nil(t, err)
+		assert.Equal(t, 2, len(items))
+
+		// Go to next page
+		currentPage += 1
+		items, _, err = warehouseRepo.GetActiveItem(1, itemPerPage, currentPage, "")
+		assert.Nil(t, err)
+		assert.Equal(t, 2, len(items))
+
+		// Check page that not even exist
+		currentPage += 999
+		items, _, err = warehouseRepo.GetActiveItem(1, itemPerPage, currentPage, "")
+		assert.NotNil(t, err)
+		assert.Equal(t, "(PGRST103) Requested range not satisfiable", err.Error())
+		assert.Equal(t, 0, len(items))
+
+		for _, dummy := range dummies {
+			supabaseClient.From("warehouse").Delete("", "").Eq("item_name", dummy.ItemName).Execute()
+		}
+	})
 }
