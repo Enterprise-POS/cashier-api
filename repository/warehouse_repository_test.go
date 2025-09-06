@@ -325,21 +325,25 @@ func TestWarehouseRepository(t *testing.T) {
 			ItemName: "Test WarehouseRepository_GetActiveItem 1",
 			Stocks:   20,
 			TenantId: 1,
+			IsActive: true,
 		}
 		dummy2 := &model.Item{
 			ItemName: "Test WarehouseRepository_GetActiveItem 2",
 			Stocks:   99,
 			TenantId: 1,
+			IsActive: true,
 		}
 		dummy3 := &model.Item{
 			ItemName: "Test WarehouseRepository_GetActiveItem 3",
 			Stocks:   99,
 			TenantId: 1,
+			IsActive: true,
 		}
 		dummy4 := &model.Item{
 			ItemName: "Test WarehouseRepository_GetActiveItem 4",
 			Stocks:   0,
 			TenantId: 1,
+			IsActive: true,
 		}
 
 		dummies := []*model.Item{dummy1, dummy2, dummy3, dummy4}
@@ -349,7 +353,7 @@ func TestWarehouseRepository(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, 4, len(_dummiesFromDB))
 
-		// First page
+		// // First page
 		currentPage := 1
 		itemPerPage := 2
 		items, count, err := warehouseRepo.GetActiveItem(1, itemPerPage, currentPage, "WarehouseRepository_GetActiveItem")

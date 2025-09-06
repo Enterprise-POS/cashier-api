@@ -32,7 +32,7 @@ func (warehouse *WarehouseRepositoryImpl) GetActiveItem(tenantId int, limit int,
 	query := warehouse.Client.
 		From("warehouse").
 		Select("*", "exact", false).
-		Not("is_active", "=", "FALSE"). // Only get active=TRUE warehouse item
+		// Eq("is_active", "TRUE"). // Only get is_active=TRUE warehouse item
 		Eq("tenant_id", strconv.Itoa(tenantId)).
 		Range(start, end, "").
 		Limit(limit, "")

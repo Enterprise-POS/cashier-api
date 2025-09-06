@@ -90,7 +90,7 @@ func (controller *WarehouseControllerImpl) GetActiveItem(ctx *fiber.Ctx) error {
 		return ctx.Status(fiber.StatusBadRequest).JSON(response)
 	}
 
-	result, count, err := controller.Service.GetWarehouseItems(tenantId, limit, page, paramNameQuery)
+	result, count, err := controller.Service.GetActiveItem(tenantId, limit, page, paramNameQuery)
 	if err != nil {
 		response := common.NewWebResponseError(fiber.StatusBadRequest, common.StatusError, err.Error())
 		return ctx.Status(fiber.StatusBadRequest).JSON(response)
