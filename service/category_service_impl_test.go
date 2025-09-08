@@ -220,4 +220,93 @@ func TestCategoryServiceImpl(t *testing.T) {
 			assert.Nil(t, createdCategories)
 		})
 	})
+
+	t.Run("Register", func(t *testing.T) {
+		t.Run("NormalRegister", func(t *testing.T) {
+			tobeRegisters := []*model.CategoryMtmWarehouse{
+				{
+					CategoryId: 1,
+					ItemId:     1,
+				},
+				{
+					CategoryId: 1,
+					ItemId:     2,
+				},
+				{
+					CategoryId: 2,
+					ItemId:     1,
+				},
+			}
+			categoryRepository.Mock.On("Register", tobeRegisters).Return(nil)
+			err := categoryService.Register(tobeRegisters)
+			assert.NoError(t, err)
+		})
+
+		t.Run("GiveParameterEmptySlice", func(t *testing.T) {
+			err := categoryService.Register([]*model.CategoryMtmWarehouse{})
+			assert.Error(t, err)
+		})
+
+		t.Run("InvalidRegisterBody", func(t *testing.T) {
+			// categoryId
+			tobeRegisters := []*model.CategoryMtmWarehouse{
+				{
+					// CategoryId: 1,
+					ItemId: 1,
+				},
+			}
+			err := categoryService.Register(tobeRegisters)
+			assert.Error(t, err)
+
+			// itemId
+			tobeRegisters = []*model.CategoryMtmWarehouse{
+				{
+					CategoryId: 1,
+					// ItemId:     1,
+				},
+			}
+			err = categoryService.Register(tobeRegisters)
+			assert.Error(t, err)
+
+			// id specified
+			tobeRegisters = []*model.CategoryMtmWarehouse{
+				{
+					Id:         1, // not allowed
+					CategoryId: 1,
+					ItemId:     1,
+				},
+			}
+			err = categoryService.Register(tobeRegisters)
+			assert.Error(t, err)
+
+			// createdAt specified
+			now := time.Now()
+			tobeRegisters = []*model.CategoryMtmWarehouse{
+				{
+					CategoryId: 1,
+					ItemId:     1,
+					CreatedAt:  &now, // Not allowed
+				},
+			}
+			err = categoryService.Register(tobeRegisters)
+			assert.Error(t, err)
+		})
+
+		t.Run("DuplicateItem", func(t *testing.T) {
+			tobeRegisters := []*model.CategoryMtmWarehouse{
+				{
+					CategoryId: 1,
+					ItemId:     1,
+				},
+				{
+					CategoryId: 1,
+					ItemId:     1,
+				},
+			}
+
+			categoryRepository.Mock.On("Register", tobeRegisters).Return(errors.New("(23505)"))
+			err := categoryService.Register(tobeRegisters)
+			assert.Equal(t, "Error, Current items with category already added", err.Error())
+		})
+	})
 }

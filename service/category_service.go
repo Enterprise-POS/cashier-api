@@ -12,4 +12,10 @@ type CategoryService interface {
 		Create new category
 	*/
 	Create(tenantId int, categories []*model.Category) ([]*model.Category, error)
+
+	/*
+		Register warehouse.item into category,
+		this will inserting data into category_mtm_warehouse
+	*/
+	Register(tobeRegisters []*model.CategoryMtmWarehouse) error
 }

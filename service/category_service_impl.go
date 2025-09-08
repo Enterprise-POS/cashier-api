@@ -90,3 +90,38 @@ func (service *CategoryServiceImpl) Get(tenantId int, page int, limit int) ([]*m
 
 	return categories, count, err
 }
+
+// Register implements CategoryService.
+func (service *CategoryServiceImpl) Register(tobeRegisters []*model.CategoryMtmWarehouse) error {
+	if len(tobeRegisters) == 0 {
+		return errors.New("Invalid request. Fill at least 1 category and item to be add")
+	}
+
+	// categoryId
+	// itemId
+	for _, tobeRegister := range tobeRegisters {
+		if tobeRegister.ItemId < 1 || tobeRegister.CategoryId < 1 {
+			return fmt.Errorf("Required item id or category id is not valid. item id: %d, category id: %d", tobeRegister.ItemId, tobeRegister.CategoryId)
+		}
+
+		// User does not allowed to specify id
+		if tobeRegister.Id != 0 {
+			return fmt.Errorf("Fatal error ! Id should not not be specify. invalid id: %d", tobeRegister.Id)
+		}
+
+		if tobeRegister.CreatedAt != nil {
+			return fmt.Errorf("Fatal error ! Created at should not not be specify. invalid id: %d", tobeRegister.Id)
+		}
+	}
+
+	err := service.Repository.Register(tobeRegisters)
+	if err != nil {
+		if strings.Contains(err.Error(), "(23505)") {
+			return fmt.Errorf("Error, Current items with category already added")
+		}
+
+		return err
+	}
+
+	return nil
+}
