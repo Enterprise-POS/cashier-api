@@ -117,7 +117,7 @@ func (service *CategoryServiceImpl) Register(tobeRegisters []*model.CategoryMtmW
 	err := service.Repository.Register(tobeRegisters)
 	if err != nil {
 		if strings.Contains(err.Error(), "(23505)") {
-			return fmt.Errorf("Error, Current items with category already added")
+			return errors.New("Error, Current items with category already added")
 		}
 
 		return err
