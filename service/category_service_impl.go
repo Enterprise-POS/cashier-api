@@ -71,5 +71,22 @@ func (service *CategoryServiceImpl) Create(tenantId int, categories []*model.Cat
 
 // Get implements CategoryService.
 func (service *CategoryServiceImpl) Get(tenantId int, page int, limit int) ([]*model.Category, int, error) {
-	panic("unimplemented")
+	// 0 means, usually null but GO does not allow null so instead null will get 0
+	if tenantId < 1 {
+		return nil, 0, errors.New("Invalid tenant id")
+	}
+
+	if limit < 1 {
+		return nil, 0, fmt.Errorf("limit could not less then 1 (limit >= 1). Given limit %d", limit)
+	}
+	if page < 1 {
+		return nil, 0, fmt.Errorf("page could not less then 1 (page >= 1). Given page %d", page)
+	}
+
+	categories, count, err := service.Repository.Get(tenantId, page, limit)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return categories, count, err
 }

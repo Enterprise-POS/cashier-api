@@ -4,6 +4,7 @@ import (
 	"cashier-api/model"
 	"cashier-api/repository"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -14,6 +15,72 @@ import (
 func TestCategoryServiceImpl(t *testing.T) {
 	categoryRepository := repository.NewCategoryRepositoryMock(&mock.Mock{}).(*repository.CategoryRepositoryMock)
 	categoryService := NewCategoryServiceImpl(categoryRepository)
+
+	t.Run("Get", func(t *testing.T) {
+		tenantId := 1
+		now := time.Now()
+
+		t.Run("NormalGet", func(t *testing.T) {
+			expectedCategory := []*model.Category{
+				{
+					Id:           1,
+					CategoryName: "Fruit",
+					TenantId:     tenantId,
+					CreatedAt:    &now,
+				},
+				{
+					Id:           2,
+					CategoryName: "Milk",
+					TenantId:     tenantId,
+					CreatedAt:    &now,
+				},
+				{
+					Id:           3,
+					CategoryName: "Italian_Food",
+					TenantId:     tenantId,
+					CreatedAt:    &now,
+				},
+			}
+
+			limit, page := 5, 1
+			categoryRepository.Mock.On("Get", tenantId, page, limit).Return(expectedCategory, len(expectedCategory), nil)
+			categories, count, err := categoryService.Get(tenantId, page, limit)
+			assert.NoError(t, err)
+			assert.Equal(t, len(expectedCategory), count)
+			assert.NotNil(t, categories)
+			for i, category := range categories {
+				assert.Equal(t, expectedCategory[i].Id, category.Id)
+				assert.Equal(t, expectedCategory[i].CategoryName, category.CategoryName)
+				assert.Equal(t, expectedCategory[i].TenantId, category.TenantId)
+			}
+		})
+
+		t.Run("InvalidParameter", func(t *testing.T) {
+			// tenant id
+			limit, page := 5, 1
+			categories, count, err := categoryService.Get(0, page, limit)
+			assert.Error(t, err)
+			assert.Equal(t, "Invalid tenant id", err.Error())
+			assert.Nil(t, categories)
+			assert.Equal(t, 0, count)
+
+			// limit
+			limit, page = 0, 1
+			categories, count, err = categoryService.Get(tenantId, page, limit)
+			assert.Error(t, err)
+			assert.Equal(t, 0, count)
+			assert.Nil(t, categories)
+			assert.Equal(t, fmt.Sprintf("limit could not less then 1 (limit >= 1). Given limit %d", limit), err.Error())
+
+			// page
+			limit, page = 5, 0
+			categories, count, err = categoryService.Get(tenantId, page, limit)
+			assert.Error(t, err)
+			assert.Equal(t, 0, count)
+			assert.Nil(t, categories)
+			assert.Equal(t, fmt.Sprintf("page could not less then 1 (page >= 1). Given page %d", page), err.Error())
+		})
+	})
 
 	t.Run("Create", func(t *testing.T) {
 		tenantId := 1 // Mock tenant id
