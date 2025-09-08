@@ -12,8 +12,7 @@ import (
 )
 
 type CategoryRepositoryImpl struct {
-	Client        *supabase.Client
-	CategoryTable string
+	Client *supabase.Client
 }
 
 const CategoryTable string = "category"

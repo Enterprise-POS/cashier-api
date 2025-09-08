@@ -1,0 +1,75 @@
+package service
+
+import (
+	"cashier-api/model"
+	"cashier-api/repository"
+	"errors"
+	"fmt"
+	"regexp"
+	"strings"
+)
+
+type CategoryServiceImpl struct {
+	Repository repository.CategoryRepository
+}
+
+func NewCategoryServiceImpl(repository repository.CategoryRepository) CategoryService {
+	return &CategoryServiceImpl{
+		Repository: repository,
+	}
+}
+
+// Create implements CategoryService.
+func (service *CategoryServiceImpl) Create(tenantId int, categories []*model.Category) ([]*model.Category, error) {
+	// 0 means, usually null but GO does not allow null so instead null will get 0
+	if tenantId == 0 {
+		return nil, errors.New("Tenant Id is not valid")
+	}
+
+	if len(categories) == 0 {
+		return nil, errors.New("Please fill at least 1 category")
+	}
+
+	for _, category := range categories {
+		// Check for name. Only allowed up to 15 characters
+		var itemNameRegex = regexp.MustCompile(`^[a-zA-Z0-9_ ]{1,15}$`)
+		if !itemNameRegex.MatchString(category.CategoryName) {
+			return nil, fmt.Errorf("Current category name is not allowed: %s", category.CategoryName)
+		}
+
+		// category.id must be 0
+		if category.Id != 0 {
+			return nil, errors.New("Invalid / not allowed category structure (id)")
+		}
+
+		if category.CreatedAt != nil {
+			return nil, errors.New("Invalid / not allowed category structure (created at)")
+		}
+
+		if category.TenantId != 0 {
+			return nil, errors.New("Invalid / not allowed category structure (tenant id)")
+		}
+
+		// Fill category tenant id manually (required)
+		category.TenantId = tenantId
+	}
+
+	// If all categories is valid then access repository
+	createdCategory, err := service.Repository.Create(tenantId, categories)
+	if err != nil {
+		// 23505: unique_violation
+		// https://www.postgresql.org/docs/current/errcodes-appendix.html
+		if strings.Contains(err.Error(), "(23505)") {
+			return nil, errors.New("Something gone wrong. Duplicate category detected")
+		}
+
+		return nil, err
+	}
+
+	return createdCategory, nil
+}
+
+// Get implements CategoryService.
+func (service *CategoryServiceImpl) Get(tenantId int, page int, limit int) ([]*model.Category, int, error) {
+	panic("unimplemented")
+}
