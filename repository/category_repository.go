@@ -38,7 +38,7 @@ type CategoryRepository interface {
 	Unregister(toUnregister *model.CategoryMtmWarehouse) error
 
 	/*
-		Update existing category
+		Update existing category (Not updating category_mtm_warehouse table)
 		- only category name allowed to edit
 		- only update 1 category
 	*/

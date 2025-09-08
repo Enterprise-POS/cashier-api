@@ -24,4 +24,11 @@ type CategoryService interface {
 		- Only 1 operation allowed for now
 	*/
 	Unregister(toUnregister *model.CategoryMtmWarehouse) error
+
+	/*
+		Update existing category (Not updating category_mtm_warehouse table)
+		- only category name allowed to edit
+		- only update 1 category
+	*/
+	Update(tenantId int, categoryId int, tobeChangeCategoryName string) (*model.Category, error)
 }

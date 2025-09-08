@@ -350,4 +350,64 @@ func TestCategoryServiceImpl(t *testing.T) {
 			assert.Equal(t, fmt.Sprintf("Warning ! Handled error, no data deleted from categoryId: %d, itemId: %d", toUnregister.CategoryId, toUnregister.ItemId), err.Error())
 		})
 	})
+
+	t.Run("Update", func(t *testing.T) {
+		now := time.Now()
+		tenantId := 1
+		categoryId := 1
+		tobeChangeCategoryName := "New Name"
+
+		t.Run("NormalUpdate", func(t *testing.T) {
+			expectedUpdatedCategory := &model.Category{
+				Id:           categoryId,
+				CategoryName: tobeChangeCategoryName,
+				TenantId:     tenantId,
+				CreatedAt:    &now,
+			}
+
+			categoryRepository.Mock.On("Update", tenantId, categoryId, tobeChangeCategoryName).Return(expectedUpdatedCategory, nil)
+			updatedCategory, err := categoryService.Update(tenantId, categoryId, tobeChangeCategoryName)
+			assert.NoError(t, err)
+			assert.Equal(t, expectedUpdatedCategory.CategoryName, updatedCategory.CategoryName)
+			assert.Equal(t, expectedUpdatedCategory.TenantId, updatedCategory.TenantId)
+			assert.Equal(t, expectedUpdatedCategory.Id, updatedCategory.Id)
+		})
+
+		t.Run("InvalidParameterValue", func(t *testing.T) {
+			// Invalid tenant id
+			invalidTenantId := 0
+			updatedCategory, err := categoryService.Update(invalidTenantId, categoryId, tobeChangeCategoryName)
+			assert.Error(t, err)
+			assert.Nil(t, updatedCategory)
+
+			invalidTenantId = -1
+			updatedCategory, err = categoryService.Update(invalidTenantId, categoryId, tobeChangeCategoryName)
+			assert.Error(t, err)
+			assert.Nil(t, updatedCategory)
+
+			// Invalid category id
+			invalidCategoryId := 0
+			updatedCategory, err = categoryService.Update(tenantId, invalidCategoryId, tobeChangeCategoryName)
+			assert.Error(t, err)
+			assert.Nil(t, updatedCategory)
+
+			invalidCategoryId = -1
+			updatedCategory, err = categoryService.Update(tenantId, invalidCategoryId, tobeChangeCategoryName)
+			assert.Error(t, err)
+			assert.Nil(t, updatedCategory)
+			assert.Equal(t, fmt.Sprintf("Invalid tenant id or category id: tenant id: %d category id: %d", tenantId, invalidCategoryId), err.Error())
+
+			// Invalid tobe change category name
+			invalidTobeChangeCategoryName := "@ something"
+			updatedCategory, err = categoryService.Update(tenantId, invalidCategoryId, invalidTobeChangeCategoryName)
+			assert.Error(t, err)
+			assert.Nil(t, updatedCategory)
+
+			invalidTobeChangeCategoryName = "Something that too long" // max 15 characters
+			updatedCategory, err = categoryService.Update(tenantId, categoryId, invalidTobeChangeCategoryName)
+			assert.Error(t, err)
+			assert.Nil(t, updatedCategory)
+			assert.Equal(t, fmt.Sprintf("Current category name is not allowed: %s", invalidTobeChangeCategoryName), err.Error())
+		})
+	})
 }

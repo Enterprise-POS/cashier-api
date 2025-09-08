@@ -76,6 +76,12 @@ func (repository *CategoryRepositoryMock) Unregister(toUnregister *model.Categor
 }
 
 // Update implements CategoryRepository.
-func (c *CategoryRepositoryMock) Update(tenantId int, categoryId int, tobeChangeCategoryName string) (*model.Category, error) {
-	panic("unimplemented")
+func (repository *CategoryRepositoryMock) Update(tenantId int, categoryId int, tobeChangeCategoryName string) (*model.Category, error) {
+	args := repository.Mock.Called(tenantId, categoryId, tobeChangeCategoryName)
+
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+
+	return args.Get(0).(*model.Category), nil
 }

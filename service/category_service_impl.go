@@ -10,12 +10,14 @@ import (
 )
 
 type CategoryServiceImpl struct {
-	Repository repository.CategoryRepository
+	Repository        repository.CategoryRepository
+	CategoryNameRegex *regexp.Regexp
 }
 
 func NewCategoryServiceImpl(repository repository.CategoryRepository) CategoryService {
 	return &CategoryServiceImpl{
-		Repository: repository,
+		Repository:        repository,
+		CategoryNameRegex: regexp.MustCompile(`^[a-zA-Z0-9_ ]{1,15}$`),
 	}
 }
 
@@ -32,8 +34,7 @@ func (service *CategoryServiceImpl) Create(tenantId int, categories []*model.Cat
 
 	for _, category := range categories {
 		// Check for name. Only allowed up to 15 characters
-		var itemNameRegex = regexp.MustCompile(`^[a-zA-Z0-9_ ]{1,15}$`)
-		if !itemNameRegex.MatchString(category.CategoryName) {
+		if !service.CategoryNameRegex.MatchString(category.CategoryName) {
 			return nil, fmt.Errorf("Current category name is not allowed: %s", category.CategoryName)
 		}
 
@@ -141,4 +142,23 @@ func (service *CategoryServiceImpl) Unregister(toUnregister *model.CategoryMtmWa
 	}
 
 	return nil
+}
+
+// Update implements CategoryService.
+func (service *CategoryServiceImpl) Update(tenantId int, categoryId int, tobeChangeCategoryName string) (*model.Category, error) {
+	// only 1 category allowed to change /per request
+	if tenantId < 1 || categoryId < 1 {
+		return nil, fmt.Errorf("Invalid tenant id or category id: tenant id: %d category id: %d", tenantId, categoryId)
+	}
+
+	if !service.CategoryNameRegex.MatchString(tobeChangeCategoryName) {
+		return nil, fmt.Errorf("Current category name is not allowed: %s", tobeChangeCategoryName)
+	}
+
+	updatedCategory, err := service.Repository.Update(tenantId, categoryId, tobeChangeCategoryName)
+	if err != nil {
+		return nil, err
+	}
+
+	return updatedCategory, nil
 }
