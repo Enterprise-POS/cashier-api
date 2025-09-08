@@ -18,4 +18,10 @@ type CategoryService interface {
 		this will inserting data into category_mtm_warehouse
 	*/
 	Register(tobeRegisters []*model.CategoryMtmWarehouse) error
+
+	/*
+		Unregister, deleting category_mtm_warehouse
+		- Only 1 operation allowed for now
+	*/
+	Unregister(toUnregister *model.CategoryMtmWarehouse) error
 }

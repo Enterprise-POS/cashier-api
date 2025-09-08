@@ -65,8 +65,14 @@ func (repository *CategoryRepositoryMock) Register(tobeRegisters []*model.Catego
 }
 
 // Unregister implements CategoryRepository.
-func (c *CategoryRepositoryMock) Unregister(toUnregister *model.CategoryMtmWarehouse) error {
-	panic("unimplemented")
+func (repository *CategoryRepositoryMock) Unregister(toUnregister *model.CategoryMtmWarehouse) error {
+	args := repository.Mock.Called(toUnregister)
+
+	if args.Get(0) != nil {
+		return args.Error(0)
+	} else {
+		return nil
+	}
 }
 
 // Update implements CategoryRepository.

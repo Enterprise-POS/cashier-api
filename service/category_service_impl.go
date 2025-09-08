@@ -125,3 +125,20 @@ func (service *CategoryServiceImpl) Register(tobeRegisters []*model.CategoryMtmW
 
 	return nil
 }
+
+// Unregister implements CategoryService.
+func (service *CategoryServiceImpl) Unregister(toUnregister *model.CategoryMtmWarehouse) error {
+	// controller will guaranteed parameter not nil
+
+	if toUnregister.CategoryId < 1 || toUnregister.ItemId < 1 {
+		return fmt.Errorf("Invalid category id or item id: category id: %d item id: %d", toUnregister.CategoryId, toUnregister.ItemId)
+	}
+
+	// Repository will only take category_id and item_id, other properties will be ignored
+	err := service.Repository.Unregister(toUnregister)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}

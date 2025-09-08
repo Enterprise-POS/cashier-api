@@ -309,4 +309,45 @@ func TestCategoryServiceImpl(t *testing.T) {
 			assert.Equal(t, "Error, Current items with category already added", err.Error())
 		})
 	})
+
+	t.Run("Unregister", func(t *testing.T) {
+		t.Run("NormalUnregister", func(t *testing.T) {
+			toUnregister := &model.CategoryMtmWarehouse{
+				CategoryId: 1,
+				ItemId:     1,
+			}
+
+			categoryRepository.Mock.On("Unregister", toUnregister).Return(nil)
+			err := categoryService.Unregister(toUnregister)
+			assert.NoError(t, err)
+		})
+
+		t.Run("InvalidToUnregisterRequest", func(t *testing.T) {
+			toUnregister := &model.CategoryMtmWarehouse{
+				// CategoryId: 1,
+				ItemId: 1,
+			}
+			err := categoryService.Unregister(toUnregister)
+			assert.Error(t, err)
+
+			toUnregister = &model.CategoryMtmWarehouse{
+				CategoryId: 1,
+				// ItemId:     1,
+			}
+			err = categoryService.Unregister(toUnregister)
+			assert.Error(t, err)
+		})
+
+		t.Run("IllegalActionNoDataDeleted", func(t *testing.T) {
+			toUnregister := &model.CategoryMtmWarehouse{
+				CategoryId: 1,
+				ItemId:     1,
+			}
+
+			categoryRepository.Mock = &mock.Mock{}
+			categoryRepository.Mock.On("Unregister", toUnregister).Return(fmt.Errorf("Warning ! Handled error, no data deleted from categoryId: %d, itemId: %d", toUnregister.CategoryId, toUnregister.ItemId))
+			err := categoryService.Unregister(toUnregister)
+			assert.Equal(t, fmt.Sprintf("Warning ! Handled error, no data deleted from categoryId: %d, itemId: %d", toUnregister.CategoryId, toUnregister.ItemId), err.Error())
+		})
+	})
 }
