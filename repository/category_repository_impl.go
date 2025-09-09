@@ -202,6 +202,11 @@ func (repository *CategoryRepositoryImpl) Update(tenantId int, categoryId int, t
 }
 
 func (repository *CategoryRepositoryImpl) Delete(category *model.Category) error {
+	/*
+		NOTE
+		When category deleted then category_mtm_warehouse that have the
+		same deleted category id will be automatically deleted
+	*/
 	_, count, err := repository.Client.From(CategoryTable).
 		Delete("", "exact").
 		Eq("tenant_id", strconv.Itoa(category.TenantId)).
