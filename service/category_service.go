@@ -4,6 +4,12 @@ import "cashier-api/model"
 
 type CategoryService interface {
 	/*
+		Return an all items within category,
+		items maybe double return, but different category id is required
+	*/
+	GetCategoryWithItems(tenantId, page, limit int, doCount bool) ([]*model.CategoryWithItem, int, error)
+
+	/*
 		Get the category name only
 	*/
 	Get(tenantId, page, limit int) ([]*model.Category, int, error)

@@ -410,4 +410,72 @@ func TestCategoryServiceImpl(t *testing.T) {
 			assert.Equal(t, fmt.Sprintf("Current category name is not allowed: %s", invalidTobeChangeCategoryName), err.Error())
 		})
 	})
+
+	t.Run("GetCategoryWithItems", func(t *testing.T) {
+		tenantId := 1
+		doCount := true
+		limit, page := 5, 1
+
+		t.Run("NormalGetCategoryWithItems", func(t *testing.T) {
+			expectedCategoryWithItems := []*model.CategoryWithItem{
+				{
+					CategoryId:   1,
+					CategoryName: "Fruits",
+					ItemId:       1,
+					ItemName:     "Apple",
+					Stocks:       10,
+				},
+				{
+					CategoryId:   1,
+					CategoryName: "Fruits",
+					ItemId:       2,
+					ItemName:     "Banana",
+					Stocks:       10,
+				},
+			}
+
+			categoryRepository.Mock.On("GetCategoryWithItems", tenantId, page, limit, doCount).Return(expectedCategoryWithItems, len(expectedCategoryWithItems), nil)
+			categoryWithItems, count, err := categoryService.GetCategoryWithItems(tenantId, page, limit, doCount)
+			assert.NoError(t, err)
+			assert.Equal(t, count, len(categoryWithItems))
+			assert.NotNil(t, categoryWithItems)
+			for i, categoryWithItem := range categoryWithItems {
+				assert.Equal(t, expectedCategoryWithItems[i].CategoryId, categoryWithItem.CategoryId)
+				assert.Equal(t, expectedCategoryWithItems[i].CategoryName, categoryWithItem.CategoryName)
+				assert.Equal(t, expectedCategoryWithItems[i].ItemId, categoryWithItem.ItemId)
+				assert.Equal(t, expectedCategoryWithItems[i].ItemName, categoryWithItem.ItemName)
+				assert.Equal(t, expectedCategoryWithItems[i].Stocks, categoryWithItem.Stocks)
+			}
+		})
+
+		t.Run("ReturnNothing", func(t *testing.T) {
+			notExistPage := 999
+			categoryRepository.Mock = &mock.Mock{}
+			categoryRepository.Mock.On("GetCategoryWithItems", tenantId, notExistPage, limit, doCount).Return(nil, 0, errors.New("(PGRST103)"))
+			categoryWithItems, count, err := categoryService.GetCategoryWithItems(tenantId, notExistPage, limit, doCount)
+			assert.Error(t, err)
+			assert.Equal(t, 0, count)
+			assert.Nil(t, categoryWithItems)
+		})
+
+		t.Run("InvalidParameter", func(t *testing.T) {
+			// tenant id
+			categoryWithItems, count, err := categoryService.GetCategoryWithItems(0, page, limit, doCount)
+			assert.Error(t, err)
+			assert.Equal(t, 0, count)
+			assert.Nil(t, categoryWithItems)
+
+			// limit
+			categoryWithItems, count, err = categoryService.GetCategoryWithItems(tenantId, page, 0, doCount)
+			assert.Error(t, err)
+			assert.Equal(t, 0, count)
+			assert.Nil(t, categoryWithItems)
+
+			// page
+			categoryWithItems, count, err = categoryService.GetCategoryWithItems(tenantId, 0, limit, doCount)
+			assert.Error(t, err)
+			assert.Equal(t, 0, count)
+			assert.Nil(t, categoryWithItems)
+		})
+	})
 }
