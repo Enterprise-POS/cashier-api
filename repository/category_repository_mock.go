@@ -55,8 +55,14 @@ func (repository *CategoryRepositoryMock) GetCategoryWithItems(tenantId int, pag
 }
 
 // GetItemsByCategoryId implements CategoryRepository.
-func (c *CategoryRepositoryMock) GetItemsByCategoryId(tenantId int, categoryId int, limit int, page int) ([]*model.CategoryWithItem, error) {
-	panic("unimplemented")
+func (repository *CategoryRepositoryMock) GetItemsByCategoryId(tenantId int, categoryId int, limit int, page int) ([]*model.CategoryWithItem, error) {
+	args := repository.Mock.Called(tenantId, categoryId, limit, page)
+
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	} else {
+		return args.Get(0).([]*model.CategoryWithItem), nil
+	}
 }
 
 // Register implements CategoryRepository.

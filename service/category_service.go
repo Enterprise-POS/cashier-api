@@ -4,6 +4,12 @@ import "cashier-api/model"
 
 type CategoryService interface {
 	/*
+		Items = Warehouse Table Item
+		Written by category but 'id' needed, not 'category_name'
+	*/
+	GetItemsByCategoryId(tenantId, categoryId, limit, page int) ([]*model.CategoryWithItem, error)
+
+	/*
 		Return an all items within category,
 		items maybe double return, but different category id is required
 	*/

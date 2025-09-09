@@ -478,4 +478,69 @@ func TestCategoryServiceImpl(t *testing.T) {
 			assert.Nil(t, categoryWithItems)
 		})
 	})
+
+	t.Run("GetItemsByCategoryId", func(t *testing.T) {
+		tenantId := 1
+		categoryId := 1
+		limit, page := 5, 1
+
+		t.Run("NormalGetItemsByCategoryId", func(t *testing.T) {
+			// Category id must the same.
+			expectedCategoryWithItems := []*model.CategoryWithItem{
+				{
+					CategoryId:   categoryId,
+					CategoryName: "Fruits",
+					ItemId:       1,
+					ItemName:     "Apple",
+					Stocks:       10,
+				},
+				{
+					CategoryId:   categoryId,
+					CategoryName: "Fruits",
+					ItemId:       2,
+					ItemName:     "Banana",
+					Stocks:       10,
+				},
+			}
+
+			categoryRepository.Mock.On("GetItemsByCategoryId", tenantId, categoryId, page, limit).Return(expectedCategoryWithItems, nil)
+			categoryWithItems, err := categoryService.GetItemsByCategoryId(tenantId, categoryId, page, limit)
+			assert.NoError(t, err)
+			assert.Equal(t, len(expectedCategoryWithItems), len(categoryWithItems))
+			assert.NotNil(t, categoryWithItems)
+			for i, categoryWithItem := range categoryWithItems {
+				assert.Equal(t, expectedCategoryWithItems[i].CategoryId, categoryWithItem.CategoryId)
+				assert.Equal(t, expectedCategoryWithItems[i].CategoryName, categoryWithItem.CategoryName)
+				assert.Equal(t, expectedCategoryWithItems[i].ItemId, categoryWithItem.ItemId)
+				assert.Equal(t, expectedCategoryWithItems[i].ItemName, categoryWithItem.ItemName)
+				assert.Equal(t, expectedCategoryWithItems[i].Stocks, categoryWithItem.Stocks)
+			}
+		})
+
+		t.Run("InvalidParameter", func(t *testing.T) {
+			// tenantId
+			invalidTenantId := 0
+			categoryWithItems, err := categoryService.GetItemsByCategoryId(invalidTenantId, categoryId, limit, page)
+			assert.Error(t, err)
+			assert.Nil(t, categoryWithItems)
+
+			// categoryId
+			invalidCategoryId := 0
+			categoryWithItems, err = categoryService.GetItemsByCategoryId(tenantId, invalidCategoryId, limit, page)
+			assert.Error(t, err)
+			assert.Nil(t, categoryWithItems)
+
+			// limit
+			invalidLimit := 0
+			categoryWithItems, err = categoryService.GetItemsByCategoryId(tenantId, categoryId, invalidLimit, page)
+			assert.Error(t, err)
+			assert.Nil(t, categoryWithItems)
+
+			// page
+			invalidPage := 0
+			categoryWithItems, err = categoryService.GetItemsByCategoryId(tenantId, categoryId, limit, invalidPage)
+			assert.Error(t, err)
+			assert.Nil(t, categoryWithItems)
+		})
+	})
 }

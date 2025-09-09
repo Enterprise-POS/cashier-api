@@ -187,3 +187,28 @@ func (service *CategoryServiceImpl) GetCategoryWithItems(tenantId int, page int,
 
 	return categoryWithItems, count, nil
 }
+
+// GetItemsByCategoryId implements CategoryService.
+func (service *CategoryServiceImpl) GetItemsByCategoryId(tenantId int, categoryId int, limit int, page int) ([]*model.CategoryWithItem, error) {
+	if tenantId < 1 {
+		return nil, fmt.Errorf("Fatal Error, Invalid tenant id, tenant id: %d", tenantId)
+	}
+
+	if categoryId < 1 {
+		return nil, fmt.Errorf("Fatal Error, Invalid category id, category id: %d", categoryId)
+	}
+
+	if limit < 1 {
+		return nil, fmt.Errorf("limit could not less then 1 (limit >= 1). Given limit %d", limit)
+	}
+	if page < 1 {
+		return nil, fmt.Errorf("page could not less then 1 (page >= 1). Given page %d", page)
+	}
+
+	categoryWithItems, err := service.Repository.GetItemsByCategoryId(tenantId, categoryId, limit, page)
+	if err != nil {
+		return nil, err
+	}
+
+	return categoryWithItems, nil
+}
