@@ -1,8 +1,8 @@
-package repository
+package service
 
 import "cashier-api/model"
 
-type CategoryRepository interface {
+type CategoryService interface {
 	/*
 		Items = Warehouse Table Item
 		Written by category but 'id' needed, not 'category_name'
@@ -47,5 +47,5 @@ type CategoryRepository interface {
 	/*
 		Deleting category; NOT category_mtm_warehouse
 	*/
-	Delete(*model.Category) error
+	Delete(category *model.Category) error
 }

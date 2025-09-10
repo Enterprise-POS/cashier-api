@@ -12,8 +12,7 @@ import (
 )
 
 type CategoryRepositoryImpl struct {
-	Client        *supabase.Client
-	CategoryTable string
+	Client *supabase.Client
 }
 
 const CategoryTable string = "category"
@@ -24,7 +23,7 @@ func NewCategoryRepositoryImpl(client *supabase.Client) CategoryRepository {
 	}
 }
 
-const categoryMtmWarehouseTable string = "category_mtm_warehouse"
+const CategoryMtmWarehouseTable string = "category_mtm_warehouse"
 
 func (repository *CategoryRepositoryImpl) GetItemsByCategoryId(tenantId int, categoryId int, limit int, page int) ([]*model.CategoryWithItem, error) {
 	start := page * limit
@@ -146,7 +145,7 @@ func (repository *CategoryRepositoryImpl) Register(tobeRegisters []*model.Catego
 	var results []*model.CategoryMtmWarehouse
 
 	// WARN: inconsistent constant naming
-	_, err := repository.Client.From(categoryMtmWarehouseTable).Insert(tobeRegisters, false, "", "", "").ExecuteTo(&results)
+	_, err := repository.Client.From(CategoryMtmWarehouseTable).Insert(tobeRegisters, false, "", "", "").ExecuteTo(&results)
 	if err != nil {
 		return err
 	}
@@ -155,7 +154,7 @@ func (repository *CategoryRepositoryImpl) Register(tobeRegisters []*model.Catego
 }
 
 func (repository *CategoryRepositoryImpl) Unregister(toUnregister *model.CategoryMtmWarehouse) error {
-	_, count, err := repository.Client.From(categoryMtmWarehouseTable).
+	_, count, err := repository.Client.From(CategoryMtmWarehouseTable).
 		Delete("", "exact").
 		Eq("category_id", strconv.Itoa(toUnregister.CategoryId)).
 		Eq("item_id", strconv.Itoa(toUnregister.ItemId)).
