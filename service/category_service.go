@@ -43,4 +43,9 @@ type CategoryService interface {
 		- only update 1 category
 	*/
 	Update(tenantId int, categoryId int, tobeChangeCategoryName string) (*model.Category, error)
+
+	/*
+		Deleting category; NOT category_mtm_warehouse
+	*/
+	Delete(category *model.Category) error
 }

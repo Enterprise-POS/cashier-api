@@ -212,3 +212,26 @@ func (service *CategoryServiceImpl) GetItemsByCategoryId(tenantId int, categoryI
 
 	return categoryWithItems, nil
 }
+
+// Delete implements CategoryService.
+func (service *CategoryServiceImpl) Delete(category *model.Category) error {
+	if category == nil {
+		return errors.New("Category should not empty")
+	}
+
+	// Tenant Id, category id
+	if category.TenantId < 1 {
+		return fmt.Errorf("Fatal Error, Invalid tenant id, tenant id: %d", category.TenantId)
+	}
+
+	if category.Id < 1 {
+		return fmt.Errorf("Fatal Error, Invalid category id, category id: %d", category.Id)
+	}
+
+	err := service.Repository.Delete(category)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}

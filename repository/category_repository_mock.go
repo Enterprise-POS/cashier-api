@@ -28,8 +28,14 @@ func (repository *CategoryRepositoryMock) Create(tenantId int, categories []*mod
 }
 
 // Delete implements CategoryRepository.
-func (c *CategoryRepositoryMock) Delete(*model.Category) error {
-	panic("unimplemented")
+func (repository *CategoryRepositoryMock) Delete(category *model.Category) error {
+	args := repository.Mock.Called(category)
+
+	if args.Get(0) == nil {
+		return nil
+	} else {
+		return args.Error(0)
+	}
 }
 
 // Get implements CategoryRepository.

@@ -15,10 +15,10 @@ import (
 func TestCategoryServiceImpl(t *testing.T) {
 	categoryRepository := repository.NewCategoryRepositoryMock(&mock.Mock{}).(*repository.CategoryRepositoryMock)
 	categoryService := NewCategoryServiceImpl(categoryRepository)
+	now := time.Now()
 
 	t.Run("Get", func(t *testing.T) {
 		tenantId := 1
-		now := time.Now()
 
 		t.Run("NormalGet", func(t *testing.T) {
 			expectedCategory := []*model.Category{
@@ -179,7 +179,6 @@ func TestCategoryServiceImpl(t *testing.T) {
 			assert.Error(t, err)
 			assert.Nil(t, createdCategories)
 
-			now := time.Now()
 			categories = []*model.Category{
 				{
 					CategoryName: "Fruit But With Long Category Name",
@@ -280,7 +279,6 @@ func TestCategoryServiceImpl(t *testing.T) {
 			assert.Error(t, err)
 
 			// createdAt specified
-			now := time.Now()
 			tobeRegisters = []*model.CategoryMtmWarehouse{
 				{
 					CategoryId: 1,
@@ -352,7 +350,6 @@ func TestCategoryServiceImpl(t *testing.T) {
 	})
 
 	t.Run("Update", func(t *testing.T) {
-		now := time.Now()
 		tenantId := 1
 		categoryId := 1
 		tobeChangeCategoryName := "New Name"
@@ -541,6 +538,65 @@ func TestCategoryServiceImpl(t *testing.T) {
 			categoryWithItems, err = categoryService.GetItemsByCategoryId(tenantId, categoryId, limit, invalidPage)
 			assert.Error(t, err)
 			assert.Nil(t, categoryWithItems)
+		})
+	})
+
+	t.Run("Delete", func(t *testing.T) {
+		t.Run("NormalDelete", func(t *testing.T) {
+			category := &model.Category{
+				Id:       1,
+				TenantId: 1,
+
+				// Not Required
+				CategoryName: "Test Category Name",
+
+				// Not Required
+				CreatedAt: &now,
+			}
+
+			categoryRepository.Mock.On("Delete", category).Return(nil)
+			err := categoryService.Delete(category)
+			assert.NoError(t, err)
+		})
+
+		t.Run("NoDataDeleted", func(t *testing.T) {
+			category := &model.Category{
+				Id:           1,
+				CategoryName: "Test Category Name",
+				CreatedAt:    &now,
+				TenantId:     1,
+			}
+
+			categoryRepository.Mock = &mock.Mock{}
+			categoryRepository.Mock.On("Delete", category).Return(fmt.Errorf("Warning ! Handled error, no data deleted from categoryId: %d, tenantId: %d", category.Id, category.TenantId))
+			err := categoryService.Delete(category)
+			assert.Error(t, err)
+		})
+
+		t.Run("InvalidCategoryBody", func(t *testing.T) {
+			invalidCategory := &model.Category{
+				// Id: 1, // Invalid
+				CategoryName: "Test Category Name",
+				CreatedAt:    &now,
+				TenantId:     1,
+			}
+			err := categoryService.Delete(invalidCategory)
+			assert.Error(t, err)
+
+			invalidCategory = &model.Category{
+				Id:           1, // Invalid
+				CategoryName: "Test Category Name",
+				CreatedAt:    &now,
+				// TenantId:     1,
+			}
+			err = categoryService.Delete(invalidCategory)
+			assert.Error(t, err)
+		})
+
+		t.Run("InvalidParameter", func(t *testing.T) {
+			// Since pointer parameter, nil is allowed by GO
+			err := categoryService.Delete(nil)
+			assert.Error(t, err)
 		})
 	})
 }
