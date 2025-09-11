@@ -21,11 +21,8 @@ func (controller *CategoryControllerImpl) Create(ctx *fiber.Ctx) error {
 	// It's guaranteed to be not "", because restrict by tenant already did check first
 	tenantId, _ := strconv.Atoi(ctx.Params("tenantId"))
 
-	type BodyCategory struct {
-		CategoryName string `json:"category_name"`
-	}
 	type RequestBody struct {
-		Categories []*BodyCategory `json:"categories"`
+		Categories []string `json:"categories"`
 	}
 	var body RequestBody
 	err := ctx.BodyParser(&body)
@@ -34,11 +31,7 @@ func (controller *CategoryControllerImpl) Create(ctx *fiber.Ctx) error {
 			JSON(common.NewWebResponseError(400, common.StatusError, "Something gone wrong ! The request body is malformed"))
 	}
 
-	tobeCreatedCategories := make([]string, 0, len(body.Categories))
-	for _, category := range body.Categories {
-		tobeCreatedCategories = append(tobeCreatedCategories, category.CategoryName)
-	}
-	categories, err := controller.Service.Create(tenantId, tobeCreatedCategories)
+	categories, err := controller.Service.Create(tenantId, body.Categories)
 	if err != nil {
 		return ctx.Status(fiber.StatusBadRequest).
 			JSON(common.NewWebResponseError(400, common.StatusError, err.Error()))
