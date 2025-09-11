@@ -23,7 +23,7 @@ type CategoryService interface {
 	/*
 		Create new category
 	*/
-	Create(tenantId int, categories []*model.Category) ([]*model.Category, error)
+	Create(tenantId int, categoryName []string) ([]*model.Category, error)
 
 	/*
 		Register warehouse.item into category,

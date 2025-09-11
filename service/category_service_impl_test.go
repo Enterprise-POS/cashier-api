@@ -86,27 +86,38 @@ func TestCategoryServiceImpl(t *testing.T) {
 		tenantId := 1 // Mock tenant id
 
 		t.Run("NormalCreate", func(t *testing.T) {
-			categories := []*model.Category{
+			categories := []string{
+				"Fruit",
+				"Milk",
+				"Italian_Food",
+				"3 Best Food",
+			}
+
+			expectedCategories := []*model.Category{
 				{
 					CategoryName: "Fruit",
+					TenantId:     tenantId,
 				},
 				{
 					CategoryName: "Milk",
+					TenantId:     tenantId,
 				},
 				{
 					CategoryName: "Italian_Food",
+					TenantId:     tenantId,
 				},
 				{
 					CategoryName: "3 Best Food",
+					TenantId:     tenantId,
 				},
 			}
 
 			// Instead of calling real CategoryRepository, CategoryRepositoryMock will replace real repository
 			categoryRepository.Mock.
 				// Add required parameter for CategoryRepository.Create ex: service.Repository.Create(tenantId, categories)
-				On("Create", tenantId, categories).
+				On("Create", tenantId, expectedCategories).
 				// What CategoryRepository.Create want to return
-				Return(categories, nil)
+				Return(expectedCategories, nil)
 
 			createdCategories, err := categoryService.Create(tenantId, categories)
 			assert.NoError(t, err)
@@ -114,14 +125,14 @@ func TestCategoryServiceImpl(t *testing.T) {
 		})
 
 		t.Run("InvalidRequiredParameter", func(t *testing.T) {
-			categories := []*model.Category{}
+			categories := []string{}
 
 			createdCategories, err := categoryService.Create(0, categories)
 			assert.Error(t, err)
 			assert.Nil(t, createdCategories)
 			assert.Equal(t, "Tenant Id is not valid", err.Error())
 
-			categories = []*model.Category{}
+			categories = []string{}
 			createdCategories, err = categoryService.Create(tenantId, categories)
 			assert.Error(t, err)
 			assert.Nil(t, createdCategories)
@@ -130,10 +141,8 @@ func TestCategoryServiceImpl(t *testing.T) {
 
 		t.Run("CreateWithInvalidName", func(t *testing.T) {
 			// Invalid characters
-			categories := []*model.Category{
-				{
-					CategoryName: "Fruit@",
-				},
+			categories := []string{
+				"Fruit@",
 			}
 
 			createdCategories, err := categoryService.Create(tenantId, categories)
@@ -141,10 +150,8 @@ func TestCategoryServiceImpl(t *testing.T) {
 			assert.Nil(t, createdCategories)
 
 			// Category name more than 15 characters
-			categories = []*model.Category{
-				{
-					CategoryName: "Fruit But With Long Category Name",
-				},
+			categories = []string{
+				"Fruit But With Long Category Name",
 			}
 
 			createdCategories, err = categoryService.Create(tenantId, categories)
@@ -152,10 +159,8 @@ func TestCategoryServiceImpl(t *testing.T) {
 			assert.Nil(t, createdCategories)
 
 			// Empty string
-			categories = []*model.Category{
-				{
-					CategoryName: "",
-				},
+			categories = []string{
+				"",
 			}
 
 			createdCategories, err = categoryService.Create(tenantId, categories)
@@ -168,52 +173,29 @@ func TestCategoryServiceImpl(t *testing.T) {
 			// Id
 			// createdAt
 			// tenantId
-			categories := []*model.Category{
-				{
-					Id:           1,
-					CategoryName: "Fruits",
-				},
-			}
 
+			categories := []string{"Fruit But With Long Category Name"}
 			createdCategories, err := categoryService.Create(tenantId, categories)
-			assert.Error(t, err)
-			assert.Nil(t, createdCategories)
-
-			categories = []*model.Category{
-				{
-					CategoryName: "Fruit But With Long Category Name",
-					CreatedAt:    &now,
-				},
-			}
-
-			createdCategories, err = categoryService.Create(tenantId, categories)
-			assert.Error(t, err)
-			assert.Nil(t, createdCategories)
-
-			categories = []*model.Category{
-				{
-					CategoryName: "Fruit But With Long Category Name",
-					TenantId:     1,
-				},
-			}
-			createdCategories, err = categoryService.Create(tenantId, categories)
 			assert.Error(t, err)
 			assert.Nil(t, createdCategories)
 		})
 
 		t.Run("DuplicateCategoryName", func(t *testing.T) {
 			// Duplicate category name handled by postgreSQL constraints
-			categories := []*model.Category{
+			categories := []string{"Fruits", "Fruits"}
+			expectedCategories := []*model.Category{
 				{
 					CategoryName: "Fruits",
+					TenantId:     tenantId,
 				},
 				{
 					CategoryName: "Fruits",
+					TenantId:     tenantId,
 				},
 			}
 
 			categoryRepository.Mock = &mock.Mock{}
-			categoryRepository.Mock.On("Create", tenantId, categories).Return(nil, errors.New("(23505)"))
+			categoryRepository.Mock.On("Create", tenantId, expectedCategories).Return(nil, errors.New("(23505)"))
 			createdCategories, err := categoryService.Create(tenantId, categories)
 			assert.Error(t, err)
 			assert.Nil(t, createdCategories)

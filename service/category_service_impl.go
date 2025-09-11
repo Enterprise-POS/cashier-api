@@ -22,37 +22,25 @@ func NewCategoryServiceImpl(repository repository.CategoryRepository) CategorySe
 }
 
 // Create implements CategoryService.
-func (service *CategoryServiceImpl) Create(tenantId int, categories []*model.Category) ([]*model.Category, error) {
+func (service *CategoryServiceImpl) Create(tenantId int, categoryNames []string) ([]*model.Category, error) {
 	// 0 means, usually null but GO does not allow null so instead null will get 0
 	if tenantId == 0 {
 		return nil, errors.New("Tenant Id is not valid")
 	}
 
-	if len(categories) == 0 {
+	if len(categoryNames) == 0 {
 		return nil, errors.New("Please fill at least 1 category")
 	}
 
-	for _, category := range categories {
+	var categories []*model.Category
+	for _, categoryName := range categoryNames {
 		// Check for name. Only allowed up to 15 characters
-		if !service.CategoryNameRegex.MatchString(category.CategoryName) {
-			return nil, fmt.Errorf("Current category name is not allowed: %s", category.CategoryName)
-		}
-
-		// category.id must be 0
-		if category.Id != 0 {
-			return nil, errors.New("Invalid / not allowed category structure (id)")
-		}
-
-		if category.CreatedAt != nil {
-			return nil, errors.New("Invalid / not allowed category structure (created at)")
-		}
-
-		if category.TenantId != 0 {
-			return nil, errors.New("Invalid / not allowed category structure (tenant id)")
+		if !service.CategoryNameRegex.MatchString(categoryName) {
+			return nil, fmt.Errorf("Current category name is not allowed: %s", categoryName)
 		}
 
 		// Fill category tenant id manually (required)
-		category.TenantId = tenantId
+		categories = append(categories, &model.Category{CategoryName: categoryName, TenantId: tenantId})
 	}
 
 	// If all categories is valid then access repository
