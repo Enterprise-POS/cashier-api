@@ -13,6 +13,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"strings"
 	"testing"
@@ -45,6 +46,7 @@ func TestCategoryControllerImpl(t *testing.T) {
 
 	tenantRestriction := middleware.RestrictByTenant(supabase) // User only allowed to access associated tenant
 	app.Post("/categories/create/:tenantId", tenantRestriction, categoryController.Create)
+	app.Get("/categories/:tenantId", tenantRestriction, categoryController.Get)
 
 	uniqueIdentity := strings.ReplaceAll(uuid.NewString(), "-", "")
 	testUser := &model.UserRegisterForm{
@@ -92,6 +94,66 @@ func TestCategoryControllerImpl(t *testing.T) {
 	// 	},
 	// })
 	// require.NoError(t, err)
+
+	t.Run("Get", func(t *testing.T) {
+		dummyCategories := []*model.Category{
+			{
+				CategoryName: "Category Get",
+				TenantId:     createdTenant.Id,
+			},
+		}
+
+		var expectedDummyCategories []*model.Category
+		_, err = supabase.From(repository.CategoryTable).
+			Insert(dummyCategories, false, "", "representation", "").
+			ExecuteTo(&expectedDummyCategories)
+		require.NoError(t, err)
+
+		t.Run("NormalGet", func(t *testing.T) {
+			request := httptest.NewRequest("GET", fmt.Sprintf("/categories/%d", createdTenant.Id), nil)
+			request.Header.Set("Content-Type", "application/json")
+			request.AddCookie(enterprisePOSCookie)
+			response, err := app.Test(request, testTimeout)
+			assert.Nil(t, err)
+			assert.NotNil(t, response)
+			assert.Equal(t, http.StatusOK, response.StatusCode)
+
+			body, err := io.ReadAll(response.Body)
+			assert.NoError(t, err)
+			assert.Contains(t, string(body), dummyCategories[0].CategoryName)
+		})
+
+		t.Run("OverlapRange", func(t *testing.T) {
+			page, limit := "2", "5"
+			url, err := url.Parse(fmt.Sprintf("/categories/%d", createdTenant.Id))
+			require.NoError(t, err)
+
+			query := url.Query()
+			query.Set("page", page)
+			query.Set("limit", limit)
+			url.RawQuery = query.Encode()
+
+			request := httptest.NewRequest("GET", url.String(), nil)
+			request.Header.Set("Content-Type", "application/json")
+			request.AddCookie(enterprisePOSCookie)
+			response, err := app.Test(request, testTimeout)
+			assert.Nil(t, err)
+			assert.NotNil(t, response)
+			assert.Equal(t, http.StatusBadRequest, response.StatusCode)
+
+			body, err := io.ReadAll(response.Body)
+			assert.NoError(t, err)
+			assert.Contains(t, string(body), "Requested range not satisfiable")
+		})
+
+		t.Cleanup(func() {
+			_, _, err := supabase.From(repository.CategoryTable).
+				Delete("", "").
+				Eq("id", fmt.Sprint(expectedDummyCategories[0].Id)).
+				Execute()
+			require.NoError(t, err)
+		})
+	})
 
 	t.Run("Create", func(t *testing.T) {
 		t.Run("NormalCreate", func(t *testing.T) {

@@ -43,7 +43,7 @@ func TestCategoryServiceImpl(t *testing.T) {
 			}
 
 			limit, page := 5, 1
-			categoryRepository.Mock.On("Get", tenantId, page, limit).Return(expectedCategory, len(expectedCategory), nil)
+			categoryRepository.Mock.On("Get", tenantId, page-1, limit).Return(expectedCategory, len(expectedCategory), nil)
 			categories, count, err := categoryService.Get(tenantId, page, limit)
 			assert.NoError(t, err)
 			assert.Equal(t, len(expectedCategory), count)
@@ -413,7 +413,7 @@ func TestCategoryServiceImpl(t *testing.T) {
 				},
 			}
 
-			categoryRepository.Mock.On("GetCategoryWithItems", tenantId, page, limit, doCount).Return(expectedCategoryWithItems, len(expectedCategoryWithItems), nil)
+			categoryRepository.Mock.On("GetCategoryWithItems", tenantId, page-1, limit, doCount).Return(expectedCategoryWithItems, len(expectedCategoryWithItems), nil)
 			categoryWithItems, count, err := categoryService.GetCategoryWithItems(tenantId, page, limit, doCount)
 			assert.NoError(t, err)
 			assert.Equal(t, count, len(categoryWithItems))
@@ -430,7 +430,7 @@ func TestCategoryServiceImpl(t *testing.T) {
 		t.Run("ReturnNothing", func(t *testing.T) {
 			notExistPage := 999
 			categoryRepository.Mock = &mock.Mock{}
-			categoryRepository.Mock.On("GetCategoryWithItems", tenantId, notExistPage, limit, doCount).Return(nil, 0, errors.New("(PGRST103)"))
+			categoryRepository.Mock.On("GetCategoryWithItems", tenantId, notExistPage-1, limit, doCount).Return(nil, 0, errors.New("(PGRST103)"))
 			categoryWithItems, count, err := categoryService.GetCategoryWithItems(tenantId, notExistPage, limit, doCount)
 			assert.Error(t, err)
 			assert.Equal(t, 0, count)

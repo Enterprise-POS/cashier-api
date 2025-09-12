@@ -72,12 +72,13 @@ func (service *CategoryServiceImpl) Get(tenantId int, page int, limit int) ([]*m
 		return nil, 0, fmt.Errorf("page could not less then 1 (page >= 1). Given page %d", page)
 	}
 
-	categories, count, err := service.Repository.Get(tenantId, page, limit)
+	// By default SQL will be start from 0 index, if page 1 then page have to subtracted by 1 (page = 0)
+	categories, count, err := service.Repository.Get(tenantId, page-1, limit)
 	if err != nil {
 		return nil, 0, err
 	}
 
-	return categories, count, err
+	return categories, count, nil
 }
 
 // Register implements CategoryService.
@@ -164,7 +165,7 @@ func (service *CategoryServiceImpl) GetCategoryWithItems(tenantId int, page int,
 		return nil, 0, fmt.Errorf("page could not less then 1 (page >= 1). Given page %d", page)
 	}
 
-	categoryWithItems, count, err := service.Repository.GetCategoryWithItems(tenantId, page, limit, doCount)
+	categoryWithItems, count, err := service.Repository.GetCategoryWithItems(tenantId, page-1, limit, doCount)
 	if err != nil {
 		if strings.Contains(err.Error(), "(PGRST103)") {
 			return nil, 0, errors.New("Requested range not satisfiable")
