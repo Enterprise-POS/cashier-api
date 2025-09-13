@@ -22,37 +22,25 @@ func NewCategoryServiceImpl(repository repository.CategoryRepository) CategorySe
 }
 
 // Create implements CategoryService.
-func (service *CategoryServiceImpl) Create(tenantId int, categories []*model.Category) ([]*model.Category, error) {
+func (service *CategoryServiceImpl) Create(tenantId int, categoryNames []string) ([]*model.Category, error) {
 	// 0 means, usually null but GO does not allow null so instead null will get 0
 	if tenantId == 0 {
 		return nil, errors.New("Tenant Id is not valid")
 	}
 
-	if len(categories) == 0 {
+	if len(categoryNames) == 0 {
 		return nil, errors.New("Please fill at least 1 category")
 	}
 
-	for _, category := range categories {
+	var categories []*model.Category
+	for _, categoryName := range categoryNames {
 		// Check for name. Only allowed up to 15 characters
-		if !service.CategoryNameRegex.MatchString(category.CategoryName) {
-			return nil, fmt.Errorf("Current category name is not allowed: %s", category.CategoryName)
-		}
-
-		// category.id must be 0
-		if category.Id != 0 {
-			return nil, errors.New("Invalid / not allowed category structure (id)")
-		}
-
-		if category.CreatedAt != nil {
-			return nil, errors.New("Invalid / not allowed category structure (created at)")
-		}
-
-		if category.TenantId != 0 {
-			return nil, errors.New("Invalid / not allowed category structure (tenant id)")
+		if !service.CategoryNameRegex.MatchString(categoryName) {
+			return nil, fmt.Errorf("Current category name is not allowed: %s", categoryName)
 		}
 
 		// Fill category tenant id manually (required)
-		category.TenantId = tenantId
+		categories = append(categories, &model.Category{CategoryName: categoryName, TenantId: tenantId})
 	}
 
 	// If all categories is valid then access repository
@@ -84,12 +72,13 @@ func (service *CategoryServiceImpl) Get(tenantId int, page int, limit int) ([]*m
 		return nil, 0, fmt.Errorf("page could not less then 1 (page >= 1). Given page %d", page)
 	}
 
-	categories, count, err := service.Repository.Get(tenantId, page, limit)
+	// By default SQL will be start from 0 index, if page 1 then page have to subtracted by 1 (page = 0)
+	categories, count, err := service.Repository.Get(tenantId, page-1, limit)
 	if err != nil {
 		return nil, 0, err
 	}
 
-	return categories, count, err
+	return categories, count, nil
 }
 
 // Register implements CategoryService.
@@ -104,21 +93,16 @@ func (service *CategoryServiceImpl) Register(tobeRegisters []*model.CategoryMtmW
 		if tobeRegister.ItemId < 1 || tobeRegister.CategoryId < 1 {
 			return fmt.Errorf("Required item id or category id is not valid. item id: %d, category id: %d", tobeRegister.ItemId, tobeRegister.CategoryId)
 		}
-
-		// User does not allowed to specify id
-		if tobeRegister.Id != 0 {
-			return fmt.Errorf("Fatal error ! Id should not not be specify. invalid id: %d", tobeRegister.Id)
-		}
-
-		if tobeRegister.CreatedAt != nil {
-			return fmt.Errorf("Fatal error ! Created at should not not be specify. invalid id: %d", tobeRegister.Id)
-		}
 	}
 
 	err := service.Repository.Register(tobeRegisters)
 	if err != nil {
 		if strings.Contains(err.Error(), "(23505)") {
 			return errors.New("Error, Current items with category already added")
+		}
+
+		if strings.Contains(err.Error(), "(23503)") {
+			return errors.New("Forbidden action ! non exist category id or item id")
 		}
 
 		return err
@@ -176,7 +160,7 @@ func (service *CategoryServiceImpl) GetCategoryWithItems(tenantId int, page int,
 		return nil, 0, fmt.Errorf("page could not less then 1 (page >= 1). Given page %d", page)
 	}
 
-	categoryWithItems, count, err := service.Repository.GetCategoryWithItems(tenantId, page, limit, doCount)
+	categoryWithItems, count, err := service.Repository.GetCategoryWithItems(tenantId, page-1, limit, doCount)
 	if err != nil {
 		if strings.Contains(err.Error(), "(PGRST103)") {
 			return nil, 0, errors.New("Requested range not satisfiable")

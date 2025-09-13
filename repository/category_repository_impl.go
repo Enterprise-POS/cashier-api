@@ -111,10 +111,11 @@ func (repository *CategoryRepositoryImpl) Get(tenantId, page, limit int) ([]*mod
 	end := start + limit - 1
 
 	var results []*model.Category
-	count, err := repository.Client.From("category").
+	count, err := repository.Client.From(CategoryTable).
 		Select("*", "exact", false).
 		Eq("tenant_id", strconv.Itoa(tenantId)).
 		Range(start, end, "").
+		Limit(limit, "").
 		ExecuteTo(&results)
 	if err != nil {
 		return nil, 0, err
