@@ -101,6 +101,10 @@ func (service *CategoryServiceImpl) Register(tobeRegisters []*model.CategoryMtmW
 			return errors.New("Error, Current items with category already added")
 		}
 
+		if strings.Contains(err.Error(), "(23503)") {
+			return errors.New("Forbidden action ! non exist category id or item id")
+		}
+
 		return err
 	}
 

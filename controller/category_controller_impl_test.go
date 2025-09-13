@@ -372,6 +372,31 @@ func TestCategoryControllerImpl(t *testing.T) {
 			assert.Contains(t, string(byteBody), fmt.Sprintf("Required item id or category id is not valid. item id: %d, category id: %d", 0, categories[0].Id))
 		})
 
+		t.Run("NotExistCategoryId", func(t *testing.T) {
+			requestBody = fiber.Map{
+				"tobe_registers": []fiber.Map{
+					{
+						"category_id": 1,   // Not valid
+						"item_id":     999, // Not valid / not even exist
+					},
+				},
+			}
+			byteBody, err = json.Marshal(&requestBody)
+			require.NoError(t, err)
+
+			body = strings.NewReader(string(byteBody))
+			request = httptest.NewRequest("POST", fmt.Sprintf("/categories/register/%d", createdTenant.Id), body)
+			request.Header.Set("Content-Type", "application/json")
+			request.AddCookie(enterprisePOSCookie)
+			response, err = app.Test(request, testTimeout)
+			assert.Nil(t, err)
+			assert.NotNil(t, response)
+			assert.Equal(t, http.StatusBadRequest, response.StatusCode)
+
+			byteBody, err = io.ReadAll(response.Body)
+			assert.Contains(t, string(byteBody), "Forbidden action ! non exist category id or item id")
+		})
+
 		t.Cleanup(func() {
 			// category_mtm_warehouse
 			_, _, err := supabase.From(repository.CategoryMtmWarehouseTable).
