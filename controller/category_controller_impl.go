@@ -2,6 +2,7 @@ package controller
 
 import (
 	common "cashier-api/helper"
+	"cashier-api/model"
 	"cashier-api/service"
 	"strconv"
 	"strings"
@@ -84,5 +85,35 @@ func (controller *CategoryControllerImpl) Get(ctx *fiber.Ctx) error {
 
 // Register implements CategoryController.
 func (controller *CategoryControllerImpl) Register(ctx *fiber.Ctx) error {
-	panic("unimplemented")
+	type BodyCategories struct {
+		CategoryId int `json:"category_id"`
+		ItemId     int `json:"item_id"`
+	}
+
+	type RequestBody struct {
+		TobeRegisters []BodyCategories `json:"tobe_registers"`
+	}
+
+	var body RequestBody
+	err := ctx.BodyParser(&body)
+	if err != nil {
+		return ctx.Status(fiber.StatusBadRequest).
+			JSON(common.NewWebResponseError(400, common.StatusError, "Something gone wrong ! The request body is malformed"))
+	}
+
+	categoriesMtmWarehouse := make([]*model.CategoryMtmWarehouse, 0, len(body.TobeRegisters))
+	for _, tobeRegister := range body.TobeRegisters {
+		categoriesMtmWarehouse = append(categoriesMtmWarehouse, &model.CategoryMtmWarehouse{
+			CategoryId: tobeRegister.CategoryId,
+			ItemId:     tobeRegister.ItemId,
+		})
+	}
+
+	err = controller.Service.Register(categoriesMtmWarehouse)
+	if err != nil {
+		return ctx.Status(fiber.StatusBadRequest).
+			JSON(common.NewWebResponseError(400, common.StatusError, err.Error()))
+	}
+
+	return ctx.SendStatus(fiber.StatusCreated)
 }

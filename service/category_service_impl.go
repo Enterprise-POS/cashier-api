@@ -93,15 +93,6 @@ func (service *CategoryServiceImpl) Register(tobeRegisters []*model.CategoryMtmW
 		if tobeRegister.ItemId < 1 || tobeRegister.CategoryId < 1 {
 			return fmt.Errorf("Required item id or category id is not valid. item id: %d, category id: %d", tobeRegister.ItemId, tobeRegister.CategoryId)
 		}
-
-		// User does not allowed to specify id
-		if tobeRegister.Id != 0 {
-			return fmt.Errorf("Fatal error ! Id should not not be specify. invalid id: %d", tobeRegister.Id)
-		}
-
-		if tobeRegister.CreatedAt != nil {
-			return fmt.Errorf("Fatal error ! Created at should not not be specify. invalid id: %d", tobeRegister.Id)
-		}
 	}
 
 	err := service.Repository.Register(tobeRegisters)
