@@ -1,8 +1,6 @@
 package controller
 
-import (
-	"github.com/gofiber/fiber/v2"
-)
+import "github.com/gofiber/fiber/v2"
 
 type CategoryController interface {
 	/*
@@ -20,4 +18,10 @@ type CategoryController interface {
 		this will inserting data into category_mtm_warehouse
 	*/
 	Register(*fiber.Ctx) error
+
+	/*
+		Unregister, deleting category_mtm_warehouse
+		- Only 1 operation allowed for now
+	*/
+	Unregister(*fiber.Ctx) error
 }

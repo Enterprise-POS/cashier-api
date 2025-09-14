@@ -48,6 +48,7 @@ func TestCategoryControllerImpl(t *testing.T) {
 	app.Post("/categories/create/:tenantId", tenantRestriction, categoryController.Create)
 	app.Post("/categories/register/:tenantId", tenantRestriction, categoryController.Register)
 	app.Get("/categories/:tenantId", tenantRestriction, categoryController.Get)
+	app.Delete("/categories/unregister/:tenantId", tenantRestriction, categoryController.Unregister)
 
 	uniqueIdentity := strings.ReplaceAll(uuid.NewString(), "-", "")
 	testUser := &model.UserRegisterForm{
@@ -405,6 +406,148 @@ func TestCategoryControllerImpl(t *testing.T) {
 				Eq("item_id", fmt.Sprint(items[0].ItemId)).
 				Execute()
 			require.NoError(t, err)
+
+			// category
+			_, _, err = supabase.From(repository.CategoryTable).
+				Delete("", "").
+				Eq("id", fmt.Sprint(categories[0].Id)).
+				Execute()
+			require.NoError(t, err)
+
+			// warehouse item
+			_, _, err = supabase.From(repository.WarehouseTable).
+				Delete("", "").
+				Eq("item_id", fmt.Sprint(items[0].ItemId)).
+				Execute()
+			require.NoError(t, err)
+		})
+	})
+
+	t.Run("Unregister", func(t *testing.T) {
+		// Create category for current Register scope only
+		dummyCategories := []string{"Test Unregister"}
+
+		// Create new category for register
+		requestBody := fiber.Map{
+			"categories": dummyCategories,
+		}
+		byteBody, err = json.Marshal(&requestBody)
+		body = strings.NewReader(string(byteBody))
+		request = httptest.NewRequest("POST", fmt.Sprintf("/categories/create/%d", createdTenant.Id), body)
+		request.Header.Set("Content-Type", "application/json")
+		request.AddCookie(enterprisePOSCookie)
+		response, err = app.Test(request, testTimeout)
+		require.Nil(t, err)
+		require.NotNil(t, response)
+		require.Equal(t, http.StatusOK, response.StatusCode)
+
+		// Get the id
+		var getItemBody common.WebResponse
+		responseBody, err := common.ReadBody(response.Body)
+		require.NoError(t, err)
+		err = json.Unmarshal([]byte(responseBody), &getItemBody)
+		require.NoError(t, err)
+
+		dataMap, ok := getItemBody.Data.(map[string]interface{})
+		require.True(t, ok)
+
+		rawCategories, ok := dataMap["categories"].([]interface{})
+		require.True(t, ok)
+		require.NotEmpty(t, rawCategories)
+
+		// Marshal/unmarshal to proper type
+		var categories []*model.Category
+		rawBytes, err := json.Marshal(&rawCategories)
+		require.NoError(t, err)
+
+		err = json.Unmarshal(rawBytes, &categories)
+		require.NoError(t, err)
+
+		dummyItems := []*model.Item{
+			{
+				ItemName: "Test Category Register 1",
+				Stocks:   10,
+				TenantId: createdTenant.Id,
+				IsActive: true,
+			},
+		}
+
+		items, err := createItems(supabase, dummyItems)
+		require.NoError(t, err)
+
+		t.Run("NormalUnregister", func(t *testing.T) {
+			// Use register path to register item first
+			requestBody = fiber.Map{
+				"tobe_registers": []fiber.Map{
+					{
+						"category_id": categories[0].Id,
+						"item_id":     items[0].ItemId,
+					},
+				},
+			}
+			byteBody, err = json.Marshal(&requestBody)
+			require.NoError(t, err)
+
+			body = strings.NewReader(string(byteBody))
+			request = httptest.NewRequest("POST", fmt.Sprintf("/categories/register/%d", createdTenant.Id), body)
+			request.Header.Set("Content-Type", "application/json")
+			request.AddCookie(enterprisePOSCookie)
+			response, err = app.Test(request, testTimeout)
+			require.Nil(t, err)
+			require.NotNil(t, response)
+			require.Equal(t, http.StatusCreated, response.StatusCode)
+
+			byteBody, err = io.ReadAll(response.Body)
+			require.Equal(t, "Created", string(byteBody))
+
+			// The test itself
+			requestBody := &model.CategoryMtmWarehouse{
+				CategoryId: categories[0].Id,
+				ItemId:     items[0].ItemId,
+			}
+			byteBody, err = json.Marshal(requestBody)
+			require.NoError(t, err)
+
+			body = strings.NewReader(string(byteBody))
+			request = httptest.NewRequest("DELETE", fmt.Sprintf("/categories/unregister/%d", createdTenant.Id), body)
+			request.Header.Set("Content-Type", "application/json")
+			request.AddCookie(enterprisePOSCookie)
+			response, err = app.Test(request, testTimeout)
+			assert.Nil(t, err)
+			assert.NotNil(t, response)
+			assert.Equal(t, http.StatusNoContent, response.StatusCode)
+		})
+
+		t.Run("NonExistCategoryIdOrTenantId", func(t *testing.T) {
+			// Use register path to register item first
+			requestBody = fiber.Map{
+				"tobe_registers": []fiber.Map{
+					{
+						"category_id": 999,
+						"item_id":     999,
+					},
+				},
+			}
+			byteBody, err = json.Marshal(&requestBody)
+			require.NoError(t, err)
+
+			body = strings.NewReader(string(byteBody))
+			request = httptest.NewRequest("POST", fmt.Sprintf("/categories/register/%d", createdTenant.Id), body)
+			request.Header.Set("Content-Type", "application/json")
+			request.AddCookie(enterprisePOSCookie)
+			response, err = app.Test(request, testTimeout)
+			require.Nil(t, err)
+			require.NotNil(t, response)
+			require.Equal(t, http.StatusBadRequest, response.StatusCode)
+
+			byteBody, err = io.ReadAll(response.Body)
+			assert.Contains(t, string(byteBody), "Forbidden action ! non exist category id or item id")
+		})
+
+		t.Cleanup(func() {
+			// category_mtm_warehouse
+			// Don't need to delete category_mtm_warehouse because already deleted by
+			// unregister method
 
 			// category
 			_, _, err = supabase.From(repository.CategoryTable).

@@ -117,3 +117,24 @@ func (controller *CategoryControllerImpl) Register(ctx *fiber.Ctx) error {
 
 	return ctx.SendStatus(fiber.StatusCreated)
 }
+
+// Unregister implements CategoryController.
+func (controller *CategoryControllerImpl) Unregister(ctx *fiber.Ctx) error {
+	var body struct {
+		CategoryId int `json:"category_id"`
+		ItemId     int `json:"item_id"`
+	}
+	err := ctx.BodyParser(&body)
+	if err != nil {
+		return ctx.Status(fiber.StatusBadRequest).
+			JSON(common.NewWebResponseError(400, common.StatusError, "Something gone wrong ! The request body is malformed"))
+	}
+
+	err = controller.Service.Unregister(&model.CategoryMtmWarehouse{CategoryId: body.CategoryId, ItemId: body.ItemId})
+	if err != nil {
+		return ctx.Status(fiber.StatusBadRequest).
+			JSON(common.NewWebResponseError(400, common.StatusError, err.Error()))
+	}
+
+	return ctx.SendStatus(fiber.StatusNoContent)
+}
