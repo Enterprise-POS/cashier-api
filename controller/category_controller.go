@@ -1,6 +1,8 @@
 package controller
 
-import "github.com/gofiber/fiber/v2"
+import (
+	"github.com/gofiber/fiber/v2"
+)
 
 type CategoryController interface {
 	/*
@@ -24,4 +26,11 @@ type CategoryController interface {
 		- Only 1 operation allowed for now
 	*/
 	Unregister(*fiber.Ctx) error
+
+	/*
+		Update existing category (Not updating category_mtm_warehouse table)
+		- only category name allowed to edit
+		- only update 1 category
+	*/
+	Update(*fiber.Ctx) error
 }

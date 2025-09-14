@@ -141,6 +141,9 @@ func (service *CategoryServiceImpl) Update(tenantId int, categoryId int, tobeCha
 
 	updatedCategory, err := service.Repository.Update(tenantId, categoryId, tobeChangeCategoryName)
 	if err != nil {
+		if strings.Contains(err.Error(), "(PGRST116)") {
+			return nil, fmt.Errorf("Nothing is updated from category_id: %d, tenant_id: %d", categoryId, tenantId)
+		}
 		return nil, err
 	}
 

@@ -48,6 +48,7 @@ func TestCategoryControllerImpl(t *testing.T) {
 	app.Post("/categories/create/:tenantId", tenantRestriction, categoryController.Create)
 	app.Post("/categories/register/:tenantId", tenantRestriction, categoryController.Register)
 	app.Get("/categories/:tenantId", tenantRestriction, categoryController.Get)
+	app.Put("/categories/update/:tenantId", tenantRestriction, categoryController.Update)
 	app.Delete("/categories/unregister/:tenantId", tenantRestriction, categoryController.Unregister)
 
 	uniqueIdentity := strings.ReplaceAll(uuid.NewString(), "-", "")
@@ -518,13 +519,13 @@ func TestCategoryControllerImpl(t *testing.T) {
 			assert.Equal(t, http.StatusNoContent, response.StatusCode)
 		})
 
-		t.Run("NonExistCategoryIdOrTenantId", func(t *testing.T) {
+		t.Run("NonExistCategoryIdOrItemId", func(t *testing.T) {
 			// Use register path to register item first
 			requestBody = fiber.Map{
-				"tobe_registers": []fiber.Map{
+				"tobe_registers": []*model.CategoryMtmWarehouse{
 					{
-						"category_id": 999,
-						"item_id":     999,
+						CategoryId: 999,
+						ItemId:     999,
 					},
 				},
 			}
@@ -536,9 +537,9 @@ func TestCategoryControllerImpl(t *testing.T) {
 			request.Header.Set("Content-Type", "application/json")
 			request.AddCookie(enterprisePOSCookie)
 			response, err = app.Test(request, testTimeout)
-			require.Nil(t, err)
-			require.NotNil(t, response)
-			require.Equal(t, http.StatusBadRequest, response.StatusCode)
+			assert.Nil(t, err)
+			assert.NotNil(t, response)
+			assert.Equal(t, http.StatusBadRequest, response.StatusCode)
 
 			byteBody, err = io.ReadAll(response.Body)
 			assert.Contains(t, string(byteBody), "Forbidden action ! non exist category id or item id")
@@ -560,6 +561,139 @@ func TestCategoryControllerImpl(t *testing.T) {
 			_, _, err = supabase.From(repository.WarehouseTable).
 				Delete("", "").
 				Eq("item_id", fmt.Sprint(items[0].ItemId)).
+				Execute()
+			require.NoError(t, err)
+		})
+	})
+
+	t.Run("Update", func(t *testing.T) {
+		// Update category itself not warehouse item
+		// Create category for current Register scope only
+		dummyCategories := []string{"Test Update"}
+
+		// Create new category for register
+		requestBody := fiber.Map{
+			"categories": dummyCategories,
+		}
+		byteBody, err = json.Marshal(&requestBody)
+		body = strings.NewReader(string(byteBody))
+		request = httptest.NewRequest("POST", fmt.Sprintf("/categories/create/%d", createdTenant.Id), body)
+		request.Header.Set("Content-Type", "application/json")
+		request.AddCookie(enterprisePOSCookie)
+		response, err = app.Test(request, testTimeout)
+		require.Nil(t, err)
+		require.NotNil(t, response)
+		require.Equal(t, http.StatusOK, response.StatusCode)
+
+		// Get the id
+		var getItemBody common.WebResponse
+		responseBody, err := common.ReadBody(response.Body)
+		require.NoError(t, err)
+		err = json.Unmarshal([]byte(responseBody), &getItemBody)
+		require.NoError(t, err)
+
+		dataMap, ok := getItemBody.Data.(map[string]interface{})
+		require.True(t, ok)
+
+		rawCategories, ok := dataMap["categories"].([]interface{})
+		require.True(t, ok)
+		require.NotEmpty(t, rawCategories)
+
+		rawBytes, err := json.Marshal(&rawCategories)
+		require.NoError(t, err)
+
+		// Marshal/unmarshal to proper type
+		var categories []*model.Category
+		err = json.Unmarshal(rawBytes, &categories)
+		require.NoError(t, err)
+
+		t.Run("NormalUpdate", func(t *testing.T) {
+			requestBody := fiber.Map{
+				"category_id":   categories[0].Id,
+				"category_name": "Updated ctg", // Tobe changed category name / will update name
+			}
+			byteBody, err = json.Marshal(&requestBody)
+			body = strings.NewReader(string(byteBody))
+			request = httptest.NewRequest("PUT", fmt.Sprintf("/categories/update/%d", createdTenant.Id), body)
+			request.Header.Set("Content-Type", "application/json")
+			request.AddCookie(enterprisePOSCookie)
+			response, err = app.Test(request, testTimeout)
+			assert.Nil(t, err)
+			assert.NotNil(t, response)
+			assert.Equal(t, http.StatusOK, response.StatusCode)
+
+			byteBody, err = io.ReadAll(response.Body)
+			assert.Contains(t, string(byteBody), requestBody["category_name"])
+		})
+
+		t.Run("NonExistCategoryIdOrTenantId", func(t *testing.T) {
+			requestBody := fiber.Map{
+				"category_id":   999,
+				"category_name": "Updated ctg", // Tobe changed category name / will update name
+			}
+			byteBody, err = json.Marshal(&requestBody)
+			require.NoError(t, err)
+
+			body = strings.NewReader(string(byteBody))
+			request = httptest.NewRequest("PUT", fmt.Sprintf("/categories/update/%d", createdTenant.Id), body)
+			request.Header.Set("Content-Type", "application/json")
+			request.AddCookie(enterprisePOSCookie)
+			response, err = app.Test(request, testTimeout)
+			assert.Nil(t, err)
+			assert.NotNil(t, response)
+			assert.Equal(t, http.StatusBadRequest, response.StatusCode)
+
+			byteBody, err = io.ReadAll(response.Body)
+			assert.Contains(t, string(byteBody), fmt.Sprintf("Nothing is updated from category_id: %d, tenant_id: %d", 999, createdTenant.Id))
+		})
+
+		t.Run("InvalidUpdateCategoryName", func(t *testing.T) {
+			// Too long for category name
+			requestBody := fiber.Map{
+				"category_id":   categories[0].Id,
+				"category_name": "Too long name for categories", // Tobe changed category name / will update name
+			}
+			byteBody, err = json.Marshal(&requestBody)
+			require.NoError(t, err)
+
+			body = strings.NewReader(string(byteBody))
+			request = httptest.NewRequest("PUT", fmt.Sprintf("/categories/update/%d", createdTenant.Id), body)
+			request.Header.Set("Content-Type", "application/json")
+			request.AddCookie(enterprisePOSCookie)
+			response, err = app.Test(request, testTimeout)
+			assert.Nil(t, err)
+			assert.NotNil(t, response)
+			assert.Equal(t, http.StatusBadRequest, response.StatusCode)
+
+			byteBody, err = io.ReadAll(response.Body)
+			assert.Contains(t, string(byteBody), fmt.Sprintf("Current category name is not allowed: %s", requestBody["category_name"]))
+
+			// Invalid characters
+			requestBody = fiber.Map{
+				"category_id":   categories[0].Id,
+				"category_name": "Inval!d", // Tobe changed category name / will update name
+			}
+			byteBody, err = json.Marshal(&requestBody)
+			require.NoError(t, err)
+
+			body = strings.NewReader(string(byteBody))
+			request = httptest.NewRequest("PUT", fmt.Sprintf("/categories/update/%d", createdTenant.Id), body)
+			request.Header.Set("Content-Type", "application/json")
+			request.AddCookie(enterprisePOSCookie)
+			response, err = app.Test(request, testTimeout)
+			assert.Nil(t, err)
+			assert.NotNil(t, response)
+			assert.Equal(t, http.StatusBadRequest, response.StatusCode)
+
+			byteBody, err = io.ReadAll(response.Body)
+			assert.Contains(t, string(byteBody), fmt.Sprintf("Current category name is not allowed: %s", requestBody["category_name"]))
+		})
+
+		t.Cleanup(func() {
+			// Category
+			_, _, err = supabase.From(repository.CategoryTable).
+				Delete("", "").
+				Eq("id", fmt.Sprint(categories[0].Id)).
 				Execute()
 			require.NoError(t, err)
 		})

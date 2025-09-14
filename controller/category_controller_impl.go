@@ -138,3 +138,30 @@ func (controller *CategoryControllerImpl) Unregister(ctx *fiber.Ctx) error {
 
 	return ctx.SendStatus(fiber.StatusNoContent)
 }
+
+// Update implements CategoryController.
+func (controller *CategoryControllerImpl) Update(ctx *fiber.Ctx) error {
+	var body struct {
+		CategoryId   int    `json:"category_id"`
+		CategoryName string `json:"category_name"`
+	}
+
+	err := ctx.BodyParser(&body)
+	if err != nil {
+		return ctx.Status(fiber.StatusBadRequest).
+			JSON(common.NewWebResponseError(400, common.StatusError, "Something gone wrong ! The request body is malformed"))
+	}
+
+	tenantId, _ := strconv.Atoi(ctx.Params("tenantId"))
+
+	updatedCategory, err := controller.Service.Update(tenantId, body.CategoryId, body.CategoryName)
+	if err != nil {
+		return ctx.Status(fiber.StatusBadRequest).
+			JSON(common.NewWebResponseError(400, common.StatusError, err.Error()))
+	}
+
+	return ctx.Status(fiber.StatusOK).
+		JSON(common.NewWebResponse(200, common.StatusSuccess, fiber.Map{
+			"updated_category": updatedCategory,
+		}))
+}
