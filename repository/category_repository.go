@@ -46,6 +46,8 @@ type CategoryRepository interface {
 
 	/*
 		Deleting category; NOT category_mtm_warehouse
+		If 1 category deleted, the other warehouse item that
+		associate with that category also deleted at category_mtn_warehouse
 	*/
 	Delete(*model.Category) error
 }

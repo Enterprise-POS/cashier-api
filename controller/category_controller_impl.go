@@ -165,3 +165,30 @@ func (controller *CategoryControllerImpl) Update(ctx *fiber.Ctx) error {
 			"updated_category": updatedCategory,
 		}))
 }
+
+// Delete implements CategoryController.
+func (controller *CategoryControllerImpl) Delete(ctx *fiber.Ctx) error {
+	var body struct {
+		CategoryId int `json:"category_id"`
+	}
+
+	err := ctx.BodyParser(&body)
+	if err != nil {
+		return ctx.Status(fiber.StatusBadRequest).
+			JSON(common.NewWebResponseError(400, common.StatusError, "Something gone wrong ! The request body is malformed"))
+	}
+
+	tenantId, _ := strconv.Atoi(ctx.Params("tenantId"))
+
+	tobeDeletedCategory := &model.Category{
+		Id:       body.CategoryId,
+		TenantId: tenantId,
+	}
+	err = controller.Service.Delete(tobeDeletedCategory)
+	if err != nil {
+		return ctx.Status(fiber.StatusBadRequest).
+			JSON(common.NewWebResponseError(400, common.StatusError, err.Error()))
+	}
+
+	return ctx.SendStatus(fiber.StatusNoContent)
+}

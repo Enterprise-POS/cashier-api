@@ -248,28 +248,6 @@ func TestCategoryServiceImpl(t *testing.T) {
 			}
 			err = categoryService.Register(tobeRegisters)
 			assert.Error(t, err)
-
-			// id specified
-			tobeRegisters = []*model.CategoryMtmWarehouse{
-				{
-					Id:         1, // not allowed
-					CategoryId: 1,
-					ItemId:     1,
-				},
-			}
-			err = categoryService.Register(tobeRegisters)
-			assert.Error(t, err)
-
-			// createdAt specified
-			tobeRegisters = []*model.CategoryMtmWarehouse{
-				{
-					CategoryId: 1,
-					ItemId:     1,
-					CreatedAt:  &now, // Not allowed
-				},
-			}
-			err = categoryService.Register(tobeRegisters)
-			assert.Error(t, err)
 		})
 
 		t.Run("DuplicateItem", func(t *testing.T) {

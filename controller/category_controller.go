@@ -33,4 +33,13 @@ type CategoryController interface {
 		- only update 1 category
 	*/
 	Update(*fiber.Ctx) error
+
+	/*
+		Deleting category; NOT category_mtm_warehouse
+		If 1 category deleted, the other warehouse item that
+		associate with that category also deleted at category_mtn_warehouse
+
+		Only 1 category could be delete at the moment
+	*/
+	Delete(*fiber.Ctx) error
 }

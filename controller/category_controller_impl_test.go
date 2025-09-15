@@ -50,6 +50,7 @@ func TestCategoryControllerImpl(t *testing.T) {
 	app.Get("/categories/:tenantId", tenantRestriction, categoryController.Get)
 	app.Put("/categories/update/:tenantId", tenantRestriction, categoryController.Update)
 	app.Delete("/categories/unregister/:tenantId", tenantRestriction, categoryController.Unregister)
+	app.Delete("/categories/:tenantId", tenantRestriction, categoryController.Delete)
 
 	uniqueIdentity := strings.ReplaceAll(uuid.NewString(), "-", "")
 	testUser := &model.UserRegisterForm{
@@ -694,6 +695,147 @@ func TestCategoryControllerImpl(t *testing.T) {
 			_, _, err = supabase.From(repository.CategoryTable).
 				Delete("", "").
 				Eq("id", fmt.Sprint(categories[0].Id)).
+				Execute()
+			require.NoError(t, err)
+		})
+	})
+
+	t.Run("Delete", func(t *testing.T) {
+		// Update category itself not warehouse item
+		// Create category for current Register scope only
+		dummyCategories := []string{"Test Delete"}
+
+		// Create new category for register
+		requestBody := fiber.Map{
+			"categories": dummyCategories,
+		}
+		byteBody, err = json.Marshal(&requestBody)
+		body = strings.NewReader(string(byteBody))
+		request = httptest.NewRequest("POST", fmt.Sprintf("/categories/create/%d", createdTenant.Id), body)
+		request.Header.Set("Content-Type", "application/json")
+		request.AddCookie(enterprisePOSCookie)
+		response, err = app.Test(request, testTimeout)
+		require.Nil(t, err)
+		require.NotNil(t, response)
+		require.Equal(t, http.StatusOK, response.StatusCode)
+
+		// Get the id
+		var getItemBody common.WebResponse
+		responseBody, err := common.ReadBody(response.Body)
+		require.NoError(t, err)
+		err = json.Unmarshal([]byte(responseBody), &getItemBody)
+		require.NoError(t, err)
+
+		dataMap, ok := getItemBody.Data.(map[string]interface{})
+		require.True(t, ok)
+
+		rawCategories, ok := dataMap["categories"].([]interface{})
+		require.True(t, ok)
+		require.NotEmpty(t, rawCategories)
+
+		rawBytes, err := json.Marshal(&rawCategories)
+		require.NoError(t, err)
+
+		// Marshal/unmarshal to proper type
+		var categories []*model.Category
+		err = json.Unmarshal(rawBytes, &categories)
+		require.NoError(t, err)
+
+		// Add warehouse items to current category
+		dummyItems := []*model.Item{
+			{
+				ItemName: "Test Category Delete 1",
+				Stocks:   10,
+				TenantId: createdTenant.Id,
+				IsActive: true,
+			},
+			{
+				ItemName: "Test Category Delete 2",
+				Stocks:   10,
+				TenantId: createdTenant.Id,
+				IsActive: true,
+			},
+		}
+
+		items, err := createItems(supabase, dummyItems)
+		require.NoError(t, err)
+		requestBody = fiber.Map{
+			"tobe_registers": []fiber.Map{
+				{
+					"category_id": categories[0].Id, // Must be the same otherwise test will be fail
+					"item_id":     items[0].ItemId,
+				},
+				{
+					"category_id": categories[0].Id, // Must be the same otherwise test will be fail
+					"item_id":     items[1].ItemId,
+				},
+			},
+		}
+		byteBody, err = json.Marshal(&requestBody)
+		require.NoError(t, err)
+
+		// Register created items into current category
+		body = strings.NewReader(string(byteBody))
+		request = httptest.NewRequest("POST", fmt.Sprintf("/categories/register/%d", createdTenant.Id), body)
+		request.Header.Set("Content-Type", "application/json")
+		request.AddCookie(enterprisePOSCookie)
+		response, err = app.Test(request, testTimeout)
+		assert.Nil(t, err)
+		assert.NotNil(t, response)
+		assert.Equal(t, http.StatusCreated, response.StatusCode)
+
+		byteBody, err = io.ReadAll(response.Body)
+		assert.Equal(t, "Created", string(byteBody))
+
+		t.Run("NormalDelete", func(t *testing.T) {
+			requestBody = fiber.Map{
+				"category_id": categories[0].Id,
+			}
+			byteBody, err = json.Marshal(&requestBody)
+			body = strings.NewReader(string(byteBody))
+			request = httptest.NewRequest("DELETE", fmt.Sprintf("/categories/%d", createdTenant.Id), body)
+			request.Header.Set("Content-Type", "application/json")
+			request.AddCookie(enterprisePOSCookie)
+			response, err = app.Test(request, testTimeout)
+			assert.Nil(t, err)
+			assert.NotNil(t, response)
+			assert.Equal(t, http.StatusNoContent, response.StatusCode)
+			byteBody, err = io.ReadAll(response.Body)
+
+			// Check if category actually deleted
+			var testCategory []*model.Category
+			_, err = supabase.From(repository.CategoryTable).
+				Select("*", "exact", false).
+				Eq("id", fmt.Sprint(categories[0].Id)).
+				ExecuteTo(&testCategory)
+			assert.NoError(t, err)
+			assert.Len(t, testCategory, 0)
+		})
+
+		t.Run("NoCategoryDeleted", func(t *testing.T) {
+			/*
+				If only run current test scope, test might be fail
+				due to warehouse items not yet deleted
+			*/
+			requestBody = fiber.Map{
+				"category_id": 1, // Non exist category for current tenant
+			}
+			byteBody, err = json.Marshal(&requestBody)
+			body = strings.NewReader(string(byteBody))
+			request = httptest.NewRequest("DELETE", fmt.Sprintf("/categories/%d", createdTenant.Id), body)
+			request.Header.Set("Content-Type", "application/json")
+			request.AddCookie(enterprisePOSCookie)
+			response, err = app.Test(request, testTimeout)
+			assert.Nil(t, err)
+			assert.NotNil(t, response)
+			assert.Equal(t, http.StatusBadRequest, response.StatusCode)
+		})
+
+		t.Cleanup(func() {
+			// Warehouse items
+			_, _, err = supabase.From(repository.WarehouseTable).
+				Delete("", "").
+				In("item_id", []string{fmt.Sprint(items[0].ItemId), fmt.Sprint(items[1].ItemId)}).
 				Execute()
 			require.NoError(t, err)
 		})
