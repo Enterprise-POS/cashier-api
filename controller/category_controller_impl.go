@@ -192,3 +192,32 @@ func (controller *CategoryControllerImpl) Delete(ctx *fiber.Ctx) error {
 
 	return ctx.SendStatus(fiber.StatusNoContent)
 }
+
+// GetItemsByCategoryId implements CategoryController.
+func (controller *CategoryControllerImpl) GetItemsByCategoryId(ctx *fiber.Ctx) error {
+	// It will be POST method so URL param will not use here
+	var body struct {
+		CategoryId int `json:"category_id"`
+		Page       int `json:"page"`
+		Limit      int `json:"limit"`
+	}
+
+	err := ctx.BodyParser(&body)
+	if err != nil {
+		return ctx.Status(fiber.StatusBadRequest).
+			JSON(common.NewWebResponseError(400, common.StatusError, "Something gone wrong ! The request body is malformed"))
+	}
+
+	tenantId, _ := strconv.Atoi(ctx.Params("tenantId"))
+
+	categoryWithItems, err := controller.Service.GetItemsByCategoryId(tenantId, body.CategoryId, body.Limit, body.Page)
+	if err != nil {
+		return ctx.Status(fiber.StatusBadRequest).
+			JSON(common.NewWebResponseError(400, common.StatusError, err.Error()))
+	}
+
+	return ctx.Status(fiber.StatusOK).
+		JSON(common.NewWebResponse(200, common.StatusSuccess, fiber.Map{
+			"categories": categoryWithItems,
+		}))
+}

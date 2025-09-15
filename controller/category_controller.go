@@ -6,6 +6,12 @@ import (
 
 type CategoryController interface {
 	/*
+		Items = Warehouse Table Item
+		Written by category but 'id' needed, not 'category_name'
+	*/
+	GetItemsByCategoryId(*fiber.Ctx) error
+
+	/*
 		Create new category
 	*/
 	Create(*fiber.Ctx) error
