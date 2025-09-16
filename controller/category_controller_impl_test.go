@@ -46,6 +46,7 @@ func TestCategoryControllerImpl(t *testing.T) {
 
 	tenantRestriction := middleware.RestrictByTenant(supabase) // User only allowed to access associated tenant
 	app.Post("/categories/items_by_category_id/:tenantId", tenantRestriction, categoryController.GetItemsByCategoryId)
+	app.Post("/categories/category_with_items/:tenantId", tenantRestriction, categoryController.GetCategoryWithItems)
 	app.Post("/categories/create/:tenantId", tenantRestriction, categoryController.Create)
 	app.Post("/categories/register/:tenantId", tenantRestriction, categoryController.Register)
 	app.Get("/categories/:tenantId", tenantRestriction, categoryController.Get)
@@ -147,6 +148,134 @@ func TestCategoryControllerImpl(t *testing.T) {
 				Eq("id", fmt.Sprint(expectedDummyCategories[0].Id)).
 				Execute()
 			require.NoError(t, err)
+		})
+	})
+
+	t.Run("GetCategoryWithItems", func(t *testing.T) {
+		dummyCategories := []*model.Category{
+			{
+				CategoryName: "GItemsByCtgry",
+				TenantId:     createdTenant.Id,
+			},
+		}
+
+		var categories []*model.Category
+		_, err = supabase.From(repository.CategoryTable).
+			Insert(dummyCategories, false, "", "representation", "").
+			ExecuteTo(&categories)
+		require.NoError(t, err)
+
+		testItems := []*model.Item{
+			{
+				ItemName: "Test 1 Get Category With Items",
+				Stocks:   10,
+				IsActive: true,
+				TenantId: createdTenant.Id,
+			},
+			{
+				ItemName: "Test 2 Get Category With Items",
+				Stocks:   10,
+				IsActive: true,
+				TenantId: createdTenant.Id,
+			},
+			{
+				ItemName: "Test 3 Get Category With Items",
+				Stocks:   10,
+				IsActive: true,
+				TenantId: createdTenant.Id,
+			},
+		}
+
+		createdItems, err := createItems(supabase, testItems)
+		require.NoError(t, err)
+		require.Len(t, testItems, len(testItems))
+
+		// Register
+		requestBody := fiber.Map{
+			"tobe_registers": []*model.CategoryMtmWarehouse{
+				{
+					CategoryId: categories[0].Id,
+					ItemId:     createdItems[0].ItemId,
+				},
+				{
+					CategoryId: categories[0].Id,
+					ItemId:     createdItems[1].ItemId,
+				},
+				{
+					CategoryId: categories[0].Id,
+					ItemId:     createdItems[2].ItemId,
+				},
+			},
+		}
+		byteBody, err = json.Marshal(&requestBody)
+		require.NoError(t, err)
+
+		body = strings.NewReader(string(byteBody))
+		request = httptest.NewRequest("POST", fmt.Sprintf("/categories/register/%d", createdTenant.Id), body)
+		request.Header.Set("Content-Type", "application/json")
+		request.AddCookie(enterprisePOSCookie)
+		response, err = app.Test(request, testTimeout)
+		require.Nil(t, err)
+		require.NotNil(t, response)
+		require.Equal(t, http.StatusCreated, response.StatusCode)
+
+		byteBody, err = io.ReadAll(response.Body)
+		require.NoError(t, err)
+		require.Equal(t, "Created", string(byteBody))
+
+		t.Run("NormalGetCategoryWithItems", func(t *testing.T) {
+			page, limit := 1, 5
+			requestBody := fiber.Map{
+				"page":  page,
+				"limit": limit,
+			}
+			byteBody, err = json.Marshal(&requestBody)
+			require.NoError(t, err)
+
+			body = strings.NewReader(string(byteBody))
+			request = httptest.NewRequest("POST", fmt.Sprintf("/categories/category_with_items/%d", createdTenant.Id), body)
+			request.Header.Set("Content-Type", "application/json")
+			request.AddCookie(enterprisePOSCookie)
+			response, err = app.Test(request, testTimeout)
+			assert.Nil(t, err)
+			assert.NotNil(t, response)
+			assert.Equal(t, http.StatusOK, response.StatusCode)
+		})
+
+		t.Run("PageOverflow", func(t *testing.T) {
+			page, limit := 100, 5
+			requestBody := fiber.Map{
+				"page":  page,
+				"limit": limit,
+			}
+			byteBody, err = json.Marshal(&requestBody)
+			require.NoError(t, err)
+
+			body = strings.NewReader(string(byteBody))
+			request = httptest.NewRequest("POST", fmt.Sprintf("/categories/category_with_items/%d", createdTenant.Id), body)
+			request.Header.Set("Content-Type", "application/json")
+			request.AddCookie(enterprisePOSCookie)
+			response, err = app.Test(request, testTimeout)
+			assert.Nil(t, err)
+			assert.NotNil(t, response)
+
+			// Will return empty slice if page is overflow at RPC
+			assert.Equal(t, http.StatusOK, response.StatusCode)
+		})
+
+		t.Cleanup(func() {
+			// It will delete also category_mtm_warehouse
+			_, _, err = supabase.From(repository.CategoryTable).
+				Delete("", "").
+				Eq("id", fmt.Sprint(categories[0].Id)).
+				Execute()
+			require.NoError(t, err)
+
+			// Items
+			_, _, err = supabase.From(repository.WarehouseTable).
+				Delete("", "").
+				In("item_id", []string{fmt.Sprint(createdItems[0].ItemId), fmt.Sprint(createdItems[1].ItemId), fmt.Sprint(createdItems[2].ItemId)}).
+				Execute()
 		})
 	})
 

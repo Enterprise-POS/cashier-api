@@ -6,6 +6,12 @@ import (
 
 type CategoryController interface {
 	/*
+		Return an all items within category,
+		items maybe double return, but different category id is required
+	*/
+	GetCategoryWithItems(*fiber.Ctx) error
+
+	/*
 		Items = Warehouse Table Item
 		Written by category but 'id' needed, not 'category_name'
 	*/
