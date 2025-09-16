@@ -30,6 +30,8 @@ type CategoryWithItem struct {
 	ItemId   int    `json:"item_id"`
 	ItemName string `json:"item_name"`
 	Stocks   int    `json:"stocks"`
+
+	TotalCount int `json:"total_count"`
 }
 
 type CategoryMtmWarehouse struct {

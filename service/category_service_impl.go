@@ -151,7 +151,7 @@ func (service *CategoryServiceImpl) Update(tenantId int, categoryId int, tobeCha
 }
 
 // GetCategoryWithItems implements CategoryService.
-func (service *CategoryServiceImpl) GetCategoryWithItems(tenantId int, page int, limit int, doCount bool) ([]*model.CategoryWithItem, int, error) {
+func (service *CategoryServiceImpl) GetCategoryWithItems(tenantId int, page int, limit int) ([]*model.CategoryWithItem, int, error) {
 	if tenantId < 1 {
 		return nil, 0, fmt.Errorf("Fatal Error, Invalid tenant id, tenant id: %d", tenantId)
 	}
@@ -163,7 +163,7 @@ func (service *CategoryServiceImpl) GetCategoryWithItems(tenantId int, page int,
 		return nil, 0, fmt.Errorf("page could not less then 1 (page >= 1). Given page %d", page)
 	}
 
-	categoryWithItems, count, err := service.Repository.GetCategoryWithItems(tenantId, page-1, limit, doCount)
+	categoryWithItems, count, err := service.Repository.GetCategoryWithItems(tenantId, page, limit)
 	if err != nil {
 		if strings.Contains(err.Error(), "(PGRST103)") {
 			return nil, 0, errors.New("Requested range not satisfiable")
