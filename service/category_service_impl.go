@@ -163,7 +163,7 @@ func (service *CategoryServiceImpl) GetCategoryWithItems(tenantId int, page int,
 		return nil, 0, fmt.Errorf("page could not less then 1 (page >= 1). Given page %d", page)
 	}
 
-	categoryWithItems, count, err := service.Repository.GetCategoryWithItems(tenantId, page, limit)
+	categoryWithItems, count, err := service.Repository.GetCategoryWithItems(tenantId, page-1, limit)
 	if err != nil {
 		if strings.Contains(err.Error(), "(PGRST103)") {
 			return nil, 0, errors.New("Requested range not satisfiable")
@@ -192,7 +192,7 @@ func (service *CategoryServiceImpl) GetItemsByCategoryId(tenantId int, categoryI
 		return nil, 0, fmt.Errorf("page could not less then 1 (page >= 1). Given page %d", page)
 	}
 
-	categoryWithItems, count, err := service.Repository.GetItemsByCategoryId(tenantId, categoryId, limit, page)
+	categoryWithItems, count, err := service.Repository.GetItemsByCategoryId(tenantId, categoryId, limit, page-1)
 	if err != nil {
 		return nil, 0, err
 	}

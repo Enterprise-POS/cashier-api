@@ -218,7 +218,9 @@ func (controller *CategoryControllerImpl) GetItemsByCategoryId(ctx *fiber.Ctx) e
 
 	return ctx.Status(fiber.StatusOK).
 		JSON(common.NewWebResponse(200, common.StatusSuccess, fiber.Map{
-			"count":      count,
-			"categories": categoryWithItems,
+			"requested_by_tenant_id": tenantId,
+			"category_id":            body.CategoryId,
+			"count":                  count,
+			"categories":             categoryWithItems,
 		}))
 }

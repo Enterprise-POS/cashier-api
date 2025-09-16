@@ -150,6 +150,136 @@ func TestCategoryControllerImpl(t *testing.T) {
 		})
 	})
 
+	t.Run("GetItemsByCategory", func(t *testing.T) {
+		dummyCategories := []*model.Category{
+			{
+				CategoryName: "GItemsByCtgry",
+				TenantId:     createdTenant.Id,
+			},
+		}
+
+		var categories []*model.Category
+		_, err = supabase.From(repository.CategoryTable).
+			Insert(dummyCategories, false, "", "representation", "").
+			ExecuteTo(&categories)
+		require.NoError(t, err)
+
+		testItems := []*model.Item{
+			{
+				ItemName: "Test 1 Get Items By Category",
+				Stocks:   10,
+				IsActive: true,
+				TenantId: createdTenant.Id,
+			},
+			{
+				ItemName: "Test 2 Get Items By Category",
+				Stocks:   10,
+				IsActive: true,
+				TenantId: createdTenant.Id,
+			},
+			{
+				ItemName: "Test 3 Get Items By Category",
+				Stocks:   10,
+				IsActive: true,
+				TenantId: createdTenant.Id,
+			},
+		}
+
+		createdItems, err := createItems(supabase, testItems)
+		require.NoError(t, err)
+		require.Len(t, testItems, len(testItems))
+
+		// Register
+		requestBody := fiber.Map{
+			"tobe_registers": []*model.CategoryMtmWarehouse{
+				{
+					CategoryId: categories[0].Id,
+					ItemId:     createdItems[0].ItemId,
+				},
+				{
+					CategoryId: categories[0].Id,
+					ItemId:     createdItems[1].ItemId,
+				},
+				{
+					CategoryId: categories[0].Id,
+					ItemId:     createdItems[2].ItemId,
+				},
+			},
+		}
+		byteBody, err = json.Marshal(&requestBody)
+		require.NoError(t, err)
+
+		body = strings.NewReader(string(byteBody))
+		request = httptest.NewRequest("POST", fmt.Sprintf("/categories/register/%d", createdTenant.Id), body)
+		request.Header.Set("Content-Type", "application/json")
+		request.AddCookie(enterprisePOSCookie)
+		response, err = app.Test(request, testTimeout)
+		require.Nil(t, err)
+		require.NotNil(t, response)
+		require.Equal(t, http.StatusCreated, response.StatusCode)
+
+		byteBody, err = io.ReadAll(response.Body)
+		require.NoError(t, err)
+		require.Equal(t, "Created", string(byteBody))
+
+		t.Run("NormalGetItemsByCategory", func(t *testing.T) {
+			page, limit := 1, 5
+			requestBody := fiber.Map{
+				"category_id": categories[0].Id,
+				"page":        page,
+				"limit":       limit,
+			}
+			byteBody, err = json.Marshal(&requestBody)
+			require.NoError(t, err)
+
+			body = strings.NewReader(string(byteBody))
+			request = httptest.NewRequest("POST", fmt.Sprintf("/categories/items_by_category_id/%d", createdTenant.Id), body)
+			request.Header.Set("Content-Type", "application/json")
+			request.AddCookie(enterprisePOSCookie)
+			response, err = app.Test(request, testTimeout)
+			assert.Nil(t, err)
+			assert.NotNil(t, response)
+			assert.Equal(t, http.StatusOK, response.StatusCode)
+		})
+
+		t.Run("PageOverflow", func(t *testing.T) {
+			page, limit := 100, 5
+			requestBody := fiber.Map{
+				"category_id": categories[0].Id,
+				"page":        page,
+				"limit":       limit,
+			}
+			byteBody, err = json.Marshal(&requestBody)
+			require.NoError(t, err)
+
+			body = strings.NewReader(string(byteBody))
+			request = httptest.NewRequest("POST", fmt.Sprintf("/categories/items_by_category_id/%d", createdTenant.Id), body)
+			request.Header.Set("Content-Type", "application/json")
+			request.AddCookie(enterprisePOSCookie)
+			response, err = app.Test(request, testTimeout)
+			assert.Nil(t, err)
+			assert.NotNil(t, response)
+
+			// Will return empty slice if page is overflow at RPC
+			assert.Equal(t, http.StatusOK, response.StatusCode)
+		})
+
+		t.Cleanup(func() {
+			// It will delete also category_mtm_warehouse
+			_, _, err = supabase.From(repository.CategoryTable).
+				Delete("", "").
+				Eq("id", fmt.Sprint(categories[0].Id)).
+				Execute()
+			require.NoError(t, err)
+
+			// Items
+			_, _, err = supabase.From(repository.WarehouseTable).
+				Delete("", "").
+				In("item_id", []string{fmt.Sprint(createdItems[0].ItemId), fmt.Sprint(createdItems[1].ItemId), fmt.Sprint(createdItems[2].ItemId)}).
+				Execute()
+		})
+	})
+
 	t.Run("Create", func(t *testing.T) {
 		t.Run("NormalCreate", func(t *testing.T) {
 			requestBody := fiber.Map{
