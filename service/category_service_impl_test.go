@@ -410,7 +410,6 @@ func TestCategoryServiceImpl(t *testing.T) {
 
 	t.Run("GetCategoryWithItems", func(t *testing.T) {
 		tenantId := 1
-		doCount := true
 		limit, page := 5, 1
 
 		t.Run("NormalGetCategoryWithItems", func(t *testing.T) {
@@ -431,8 +430,8 @@ func TestCategoryServiceImpl(t *testing.T) {
 				},
 			}
 
-			categoryRepository.Mock.On("GetCategoryWithItems", tenantId, page, limit, doCount).Return(expectedCategoryWithItems, len(expectedCategoryWithItems), nil)
-			categoryWithItems, count, err := categoryService.GetCategoryWithItems(tenantId, page, limit, doCount)
+			categoryRepository.Mock.On("GetCategoryWithItems", tenantId, page, limit).Return(expectedCategoryWithItems, len(expectedCategoryWithItems), nil)
+			categoryWithItems, count, err := categoryService.GetCategoryWithItems(tenantId, page, limit)
 			assert.NoError(t, err)
 			assert.Equal(t, count, len(categoryWithItems))
 			assert.NotNil(t, categoryWithItems)
@@ -448,8 +447,8 @@ func TestCategoryServiceImpl(t *testing.T) {
 		t.Run("ReturnNothing", func(t *testing.T) {
 			notExistPage := 999
 			categoryRepository.Mock = &mock.Mock{}
-			categoryRepository.Mock.On("GetCategoryWithItems", tenantId, notExistPage, limit, doCount).Return(nil, 0, errors.New("(PGRST103)"))
-			categoryWithItems, count, err := categoryService.GetCategoryWithItems(tenantId, notExistPage, limit, doCount)
+			categoryRepository.Mock.On("GetCategoryWithItems", tenantId, notExistPage, limit).Return(nil, 0, errors.New("(PGRST103)"))
+			categoryWithItems, count, err := categoryService.GetCategoryWithItems(tenantId, notExistPage, limit)
 			assert.Error(t, err)
 			assert.Equal(t, 0, count)
 			assert.Nil(t, categoryWithItems)
@@ -457,19 +456,19 @@ func TestCategoryServiceImpl(t *testing.T) {
 
 		t.Run("InvalidParameter", func(t *testing.T) {
 			// tenant id
-			categoryWithItems, count, err := categoryService.GetCategoryWithItems(0, page, limit, doCount)
+			categoryWithItems, count, err := categoryService.GetCategoryWithItems(0, page, limit)
 			assert.Error(t, err)
 			assert.Equal(t, 0, count)
 			assert.Nil(t, categoryWithItems)
 
 			// limit
-			categoryWithItems, count, err = categoryService.GetCategoryWithItems(tenantId, page, 0, doCount)
+			categoryWithItems, count, err = categoryService.GetCategoryWithItems(tenantId, page, 0)
 			assert.Error(t, err)
 			assert.Equal(t, 0, count)
 			assert.Nil(t, categoryWithItems)
 
 			// page
-			categoryWithItems, count, err = categoryService.GetCategoryWithItems(tenantId, 0, limit, doCount)
+			categoryWithItems, count, err = categoryService.GetCategoryWithItems(tenantId, 0, limit)
 			assert.Error(t, err)
 			assert.Equal(t, 0, count)
 			assert.Nil(t, categoryWithItems)

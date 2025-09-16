@@ -67,7 +67,7 @@ func (repository *CategoryRepositoryImpl) GetItemsByCategoryId(tenantId int, cat
 	return results, nil
 }
 
-func (repository *CategoryRepositoryImpl) GetCategoryWithItems(tenantId, page, limit int, doCount bool) ([]*model.CategoryWithItem, int, error) {
+func (repository *CategoryRepositoryImpl) GetCategoryWithItems(tenantId, page, limit int) ([]*model.CategoryWithItem, int, error) {
 	start := page * limit
 	// end := start + limit - 1
 
@@ -83,6 +83,15 @@ func (repository *CategoryRepositoryImpl) GetCategoryWithItems(tenantId, page, l
 
 		Instead will be using Rpc with the same query as above
 	*/
+
+	/*
+		Return
+		- category_id
+		- category_name
+		- warehouse.item_id
+		- warehouse.item_name
+		- warehouse.stocks
+	*/
 	data := repository.Client.Rpc("get_category_with_items", "", map[string]interface{}{
 		"p_tenant_id": tenantId,
 		"p_limit":     limit,
@@ -91,16 +100,20 @@ func (repository *CategoryRepositoryImpl) GetCategoryWithItems(tenantId, page, l
 	var results []*model.CategoryWithItem
 	err := json.Unmarshal([]byte(data), &results)
 	if err != nil {
+		// If the query fails, most likely return string
+		var errorMessage string
+		err = json.Unmarshal([]byte(data), &errorMessage)
+		if err != nil {
+			return nil, 0, errors.New("Fatal Error, something gone wrong with the server")
+		}
+
+		// Return error message from rpc
 		return nil, 0, err
 	}
 
 	countResult := 0
-	if doCount {
-		_, count, err := repository.Client.From("warehouse").Select("item_id", "exact", false).Execute()
-		if err != nil {
-			return nil, 0, err
-		}
-		countResult = int(count)
+	if len(results) > 0 {
+		countResult = results[0].TotalCount // same value for all rows
 	}
 
 	return results, countResult, nil

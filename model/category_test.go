@@ -29,6 +29,7 @@ func TestCategoryWithItem(t *testing.T) {
 		ItemId:       1,
 		ItemName:     "Apple",
 		Stocks:       10,
+		TotalCount:   1,
 	}
 
 	assert.Equal(t, 1, categoryWithItem.CategoryId)
@@ -36,6 +37,7 @@ func TestCategoryWithItem(t *testing.T) {
 	assert.Equal(t, 1, categoryWithItem.ItemId)
 	assert.Equal(t, "Apple", categoryWithItem.ItemName)
 	assert.Equal(t, 10, categoryWithItem.Stocks)
+	assert.Equal(t, 1, categoryWithItem.TotalCount)
 }
 
 func TestCategoryMtmWarehouse(t *testing.T) {
