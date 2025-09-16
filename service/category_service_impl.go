@@ -176,28 +176,28 @@ func (service *CategoryServiceImpl) GetCategoryWithItems(tenantId int, page int,
 }
 
 // GetItemsByCategoryId implements CategoryService.
-func (service *CategoryServiceImpl) GetItemsByCategoryId(tenantId int, categoryId int, limit int, page int) ([]*model.CategoryWithItem, error) {
+func (service *CategoryServiceImpl) GetItemsByCategoryId(tenantId int, categoryId int, limit int, page int) ([]*model.CategoryWithItem, int, error) {
 	if tenantId < 1 {
-		return nil, fmt.Errorf("Fatal Error, Invalid tenant id, tenant id: %d", tenantId)
+		return nil, 0, fmt.Errorf("Fatal Error, Invalid tenant id, tenant id: %d", tenantId)
 	}
 
 	if categoryId < 1 {
-		return nil, fmt.Errorf("Fatal Error, Invalid category id, category id: %d", categoryId)
+		return nil, 0, fmt.Errorf("Fatal Error, Invalid category id, category id: %d", categoryId)
 	}
 
 	if limit < 1 {
-		return nil, fmt.Errorf("limit could not less then 1 (limit >= 1). Given limit %d", limit)
+		return nil, 0, fmt.Errorf("limit could not less then 1 (limit >= 1). Given limit %d", limit)
 	}
 	if page < 1 {
-		return nil, fmt.Errorf("page could not less then 1 (page >= 1). Given page %d", page)
+		return nil, 0, fmt.Errorf("page could not less then 1 (page >= 1). Given page %d", page)
 	}
 
-	categoryWithItems, err := service.Repository.GetItemsByCategoryId(tenantId, categoryId, limit, page)
+	categoryWithItems, count, err := service.Repository.GetItemsByCategoryId(tenantId, categoryId, limit, page)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
-	return categoryWithItems, nil
+	return categoryWithItems, count, nil
 }
 
 // Delete implements CategoryService.

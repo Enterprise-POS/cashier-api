@@ -61,13 +61,13 @@ func (repository *CategoryRepositoryMock) GetCategoryWithItems(tenantId int, pag
 }
 
 // GetItemsByCategoryId implements CategoryRepository.
-func (repository *CategoryRepositoryMock) GetItemsByCategoryId(tenantId int, categoryId int, limit int, page int) ([]*model.CategoryWithItem, error) {
+func (repository *CategoryRepositoryMock) GetItemsByCategoryId(tenantId int, categoryId int, limit int, page int) ([]*model.CategoryWithItem, int, error) {
 	args := repository.Mock.Called(tenantId, categoryId, limit, page)
 
 	if args.Get(0) == nil {
-		return nil, args.Error(1)
+		return nil, args.Int(1), args.Error(1)
 	} else {
-		return args.Get(0).([]*model.CategoryWithItem), nil
+		return args.Get(0).([]*model.CategoryWithItem), args.Int(1), nil
 	}
 }
 

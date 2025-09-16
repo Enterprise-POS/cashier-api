@@ -210,7 +210,7 @@ func (controller *CategoryControllerImpl) GetItemsByCategoryId(ctx *fiber.Ctx) e
 
 	tenantId, _ := strconv.Atoi(ctx.Params("tenantId"))
 
-	categoryWithItems, err := controller.Service.GetItemsByCategoryId(tenantId, body.CategoryId, body.Limit, body.Page)
+	categoryWithItems, count, err := controller.Service.GetItemsByCategoryId(tenantId, body.CategoryId, body.Limit, body.Page)
 	if err != nil {
 		return ctx.Status(fiber.StatusBadRequest).
 			JSON(common.NewWebResponseError(400, common.StatusError, err.Error()))
@@ -218,6 +218,7 @@ func (controller *CategoryControllerImpl) GetItemsByCategoryId(ctx *fiber.Ctx) e
 
 	return ctx.Status(fiber.StatusOK).
 		JSON(common.NewWebResponse(200, common.StatusSuccess, fiber.Map{
+			"count":      count,
 			"categories": categoryWithItems,
 		}))
 }

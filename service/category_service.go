@@ -7,7 +7,7 @@ type CategoryService interface {
 		Items = Warehouse Table Item
 		Written by category but 'id' needed, not 'category_name'
 	*/
-	GetItemsByCategoryId(tenantId, categoryId, limit, page int) ([]*model.CategoryWithItem, error)
+	GetItemsByCategoryId(tenantId, categoryId, limit, page int) ([]*model.CategoryWithItem, int, error)
 
 	/*
 		Return an all items within category,
