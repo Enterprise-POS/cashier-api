@@ -7,13 +7,13 @@ type CategoryService interface {
 		Items = Warehouse Table Item
 		Written by category but 'id' needed, not 'category_name'
 	*/
-	GetItemsByCategoryId(tenantId, categoryId, limit, page int) ([]*model.CategoryWithItem, error)
+	GetItemsByCategoryId(tenantId, categoryId, limit, page int) ([]*model.CategoryWithItem, int, error)
 
 	/*
 		Return an all items within category,
 		items maybe double return, but different category id is required
 	*/
-	GetCategoryWithItems(tenantId, page, limit int, doCount bool) ([]*model.CategoryWithItem, int, error)
+	GetCategoryWithItems(tenantId, page, limit int) ([]*model.CategoryWithItem, int, error)
 
 	/*
 		Get the category name only
@@ -23,7 +23,7 @@ type CategoryService interface {
 	/*
 		Create new category
 	*/
-	Create(tenantId int, categories []*model.Category) ([]*model.Category, error)
+	Create(tenantId int, categoryName []string) ([]*model.Category, error)
 
 	/*
 		Register warehouse.item into category,
@@ -46,6 +46,8 @@ type CategoryService interface {
 
 	/*
 		Deleting category; NOT category_mtm_warehouse
+		If 1 category deleted, the other warehouse item that
+		associate with that category also deleted at category_mtn_warehouse
 	*/
 	Delete(category *model.Category) error
 }

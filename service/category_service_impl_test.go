@@ -43,7 +43,7 @@ func TestCategoryServiceImpl(t *testing.T) {
 			}
 
 			limit, page := 5, 1
-			categoryRepository.Mock.On("Get", tenantId, page, limit).Return(expectedCategory, len(expectedCategory), nil)
+			categoryRepository.Mock.On("Get", tenantId, page-1, limit).Return(expectedCategory, len(expectedCategory), nil)
 			categories, count, err := categoryService.Get(tenantId, page, limit)
 			assert.NoError(t, err)
 			assert.Equal(t, len(expectedCategory), count)
@@ -86,27 +86,38 @@ func TestCategoryServiceImpl(t *testing.T) {
 		tenantId := 1 // Mock tenant id
 
 		t.Run("NormalCreate", func(t *testing.T) {
-			categories := []*model.Category{
+			categories := []string{
+				"Fruit",
+				"Milk",
+				"Italian_Food",
+				"3 Best Food",
+			}
+
+			expectedCategories := []*model.Category{
 				{
 					CategoryName: "Fruit",
+					TenantId:     tenantId,
 				},
 				{
 					CategoryName: "Milk",
+					TenantId:     tenantId,
 				},
 				{
 					CategoryName: "Italian_Food",
+					TenantId:     tenantId,
 				},
 				{
 					CategoryName: "3 Best Food",
+					TenantId:     tenantId,
 				},
 			}
 
 			// Instead of calling real CategoryRepository, CategoryRepositoryMock will replace real repository
 			categoryRepository.Mock.
 				// Add required parameter for CategoryRepository.Create ex: service.Repository.Create(tenantId, categories)
-				On("Create", tenantId, categories).
+				On("Create", tenantId, expectedCategories).
 				// What CategoryRepository.Create want to return
-				Return(categories, nil)
+				Return(expectedCategories, nil)
 
 			createdCategories, err := categoryService.Create(tenantId, categories)
 			assert.NoError(t, err)
@@ -114,14 +125,14 @@ func TestCategoryServiceImpl(t *testing.T) {
 		})
 
 		t.Run("InvalidRequiredParameter", func(t *testing.T) {
-			categories := []*model.Category{}
+			categories := []string{}
 
 			createdCategories, err := categoryService.Create(0, categories)
 			assert.Error(t, err)
 			assert.Nil(t, createdCategories)
 			assert.Equal(t, "Tenant Id is not valid", err.Error())
 
-			categories = []*model.Category{}
+			categories = []string{}
 			createdCategories, err = categoryService.Create(tenantId, categories)
 			assert.Error(t, err)
 			assert.Nil(t, createdCategories)
@@ -130,10 +141,8 @@ func TestCategoryServiceImpl(t *testing.T) {
 
 		t.Run("CreateWithInvalidName", func(t *testing.T) {
 			// Invalid characters
-			categories := []*model.Category{
-				{
-					CategoryName: "Fruit@",
-				},
+			categories := []string{
+				"Fruit@",
 			}
 
 			createdCategories, err := categoryService.Create(tenantId, categories)
@@ -141,10 +150,8 @@ func TestCategoryServiceImpl(t *testing.T) {
 			assert.Nil(t, createdCategories)
 
 			// Category name more than 15 characters
-			categories = []*model.Category{
-				{
-					CategoryName: "Fruit But With Long Category Name",
-				},
+			categories = []string{
+				"Fruit But With Long Category Name",
 			}
 
 			createdCategories, err = categoryService.Create(tenantId, categories)
@@ -152,10 +159,8 @@ func TestCategoryServiceImpl(t *testing.T) {
 			assert.Nil(t, createdCategories)
 
 			// Empty string
-			categories = []*model.Category{
-				{
-					CategoryName: "",
-				},
+			categories = []string{
+				"",
 			}
 
 			createdCategories, err = categoryService.Create(tenantId, categories)
@@ -168,52 +173,29 @@ func TestCategoryServiceImpl(t *testing.T) {
 			// Id
 			// createdAt
 			// tenantId
-			categories := []*model.Category{
-				{
-					Id:           1,
-					CategoryName: "Fruits",
-				},
-			}
 
+			categories := []string{"Fruit But With Long Category Name"}
 			createdCategories, err := categoryService.Create(tenantId, categories)
-			assert.Error(t, err)
-			assert.Nil(t, createdCategories)
-
-			categories = []*model.Category{
-				{
-					CategoryName: "Fruit But With Long Category Name",
-					CreatedAt:    &now,
-				},
-			}
-
-			createdCategories, err = categoryService.Create(tenantId, categories)
-			assert.Error(t, err)
-			assert.Nil(t, createdCategories)
-
-			categories = []*model.Category{
-				{
-					CategoryName: "Fruit But With Long Category Name",
-					TenantId:     1,
-				},
-			}
-			createdCategories, err = categoryService.Create(tenantId, categories)
 			assert.Error(t, err)
 			assert.Nil(t, createdCategories)
 		})
 
 		t.Run("DuplicateCategoryName", func(t *testing.T) {
 			// Duplicate category name handled by postgreSQL constraints
-			categories := []*model.Category{
+			categories := []string{"Fruits", "Fruits"}
+			expectedCategories := []*model.Category{
 				{
 					CategoryName: "Fruits",
+					TenantId:     tenantId,
 				},
 				{
 					CategoryName: "Fruits",
+					TenantId:     tenantId,
 				},
 			}
 
 			categoryRepository.Mock = &mock.Mock{}
-			categoryRepository.Mock.On("Create", tenantId, categories).Return(nil, errors.New("(23505)"))
+			categoryRepository.Mock.On("Create", tenantId, expectedCategories).Return(nil, errors.New("(23505)"))
 			createdCategories, err := categoryService.Create(tenantId, categories)
 			assert.Error(t, err)
 			assert.Nil(t, createdCategories)
@@ -262,28 +244,6 @@ func TestCategoryServiceImpl(t *testing.T) {
 				{
 					CategoryId: 1,
 					// ItemId:     1,
-				},
-			}
-			err = categoryService.Register(tobeRegisters)
-			assert.Error(t, err)
-
-			// id specified
-			tobeRegisters = []*model.CategoryMtmWarehouse{
-				{
-					Id:         1, // not allowed
-					CategoryId: 1,
-					ItemId:     1,
-				},
-			}
-			err = categoryService.Register(tobeRegisters)
-			assert.Error(t, err)
-
-			// createdAt specified
-			tobeRegisters = []*model.CategoryMtmWarehouse{
-				{
-					CategoryId: 1,
-					ItemId:     1,
-					CreatedAt:  &now, // Not allowed
 				},
 			}
 			err = categoryService.Register(tobeRegisters)
@@ -410,7 +370,6 @@ func TestCategoryServiceImpl(t *testing.T) {
 
 	t.Run("GetCategoryWithItems", func(t *testing.T) {
 		tenantId := 1
-		doCount := true
 		limit, page := 5, 1
 
 		t.Run("NormalGetCategoryWithItems", func(t *testing.T) {
@@ -431,8 +390,8 @@ func TestCategoryServiceImpl(t *testing.T) {
 				},
 			}
 
-			categoryRepository.Mock.On("GetCategoryWithItems", tenantId, page, limit, doCount).Return(expectedCategoryWithItems, len(expectedCategoryWithItems), nil)
-			categoryWithItems, count, err := categoryService.GetCategoryWithItems(tenantId, page, limit, doCount)
+			categoryRepository.Mock.On("GetCategoryWithItems", tenantId, page-1, limit).Return(expectedCategoryWithItems, len(expectedCategoryWithItems), nil)
+			categoryWithItems, count, err := categoryService.GetCategoryWithItems(tenantId, page, limit)
 			assert.NoError(t, err)
 			assert.Equal(t, count, len(categoryWithItems))
 			assert.NotNil(t, categoryWithItems)
@@ -448,8 +407,8 @@ func TestCategoryServiceImpl(t *testing.T) {
 		t.Run("ReturnNothing", func(t *testing.T) {
 			notExistPage := 999
 			categoryRepository.Mock = &mock.Mock{}
-			categoryRepository.Mock.On("GetCategoryWithItems", tenantId, notExistPage, limit, doCount).Return(nil, 0, errors.New("(PGRST103)"))
-			categoryWithItems, count, err := categoryService.GetCategoryWithItems(tenantId, notExistPage, limit, doCount)
+			categoryRepository.Mock.On("GetCategoryWithItems", tenantId, notExistPage-1, limit).Return(nil, 0, errors.New("(PGRST103)"))
+			categoryWithItems, count, err := categoryService.GetCategoryWithItems(tenantId, notExistPage, limit)
 			assert.Error(t, err)
 			assert.Equal(t, 0, count)
 			assert.Nil(t, categoryWithItems)
@@ -457,19 +416,19 @@ func TestCategoryServiceImpl(t *testing.T) {
 
 		t.Run("InvalidParameter", func(t *testing.T) {
 			// tenant id
-			categoryWithItems, count, err := categoryService.GetCategoryWithItems(0, page, limit, doCount)
+			categoryWithItems, count, err := categoryService.GetCategoryWithItems(0, page, limit)
 			assert.Error(t, err)
 			assert.Equal(t, 0, count)
 			assert.Nil(t, categoryWithItems)
 
 			// limit
-			categoryWithItems, count, err = categoryService.GetCategoryWithItems(tenantId, page, 0, doCount)
+			categoryWithItems, count, err = categoryService.GetCategoryWithItems(tenantId, page, 0)
 			assert.Error(t, err)
 			assert.Equal(t, 0, count)
 			assert.Nil(t, categoryWithItems)
 
 			// page
-			categoryWithItems, count, err = categoryService.GetCategoryWithItems(tenantId, 0, limit, doCount)
+			categoryWithItems, count, err = categoryService.GetCategoryWithItems(tenantId, 0, limit)
 			assert.Error(t, err)
 			assert.Equal(t, 0, count)
 			assert.Nil(t, categoryWithItems)
@@ -500,9 +459,10 @@ func TestCategoryServiceImpl(t *testing.T) {
 				},
 			}
 
-			categoryRepository.Mock.On("GetItemsByCategoryId", tenantId, categoryId, page, limit).Return(expectedCategoryWithItems, nil)
-			categoryWithItems, err := categoryService.GetItemsByCategoryId(tenantId, categoryId, page, limit)
+			categoryRepository.Mock.On("GetItemsByCategoryId", tenantId, categoryId, limit, page-1).Return(expectedCategoryWithItems, len(expectedCategoryWithItems), nil)
+			categoryWithItems, count, err := categoryService.GetItemsByCategoryId(tenantId, categoryId, limit, page)
 			assert.NoError(t, err)
+			assert.Greater(t, count, 0)
 			assert.Equal(t, len(expectedCategoryWithItems), len(categoryWithItems))
 			assert.NotNil(t, categoryWithItems)
 			for i, categoryWithItem := range categoryWithItems {
@@ -517,27 +477,31 @@ func TestCategoryServiceImpl(t *testing.T) {
 		t.Run("InvalidParameter", func(t *testing.T) {
 			// tenantId
 			invalidTenantId := 0
-			categoryWithItems, err := categoryService.GetItemsByCategoryId(invalidTenantId, categoryId, limit, page)
+			categoryWithItems, count, err := categoryService.GetItemsByCategoryId(invalidTenantId, categoryId, limit, page)
 			assert.Error(t, err)
 			assert.Nil(t, categoryWithItems)
+			assert.Equal(t, 0, count)
 
 			// categoryId
 			invalidCategoryId := 0
-			categoryWithItems, err = categoryService.GetItemsByCategoryId(tenantId, invalidCategoryId, limit, page)
+			categoryWithItems, count, err = categoryService.GetItemsByCategoryId(tenantId, invalidCategoryId, limit, page)
 			assert.Error(t, err)
 			assert.Nil(t, categoryWithItems)
+			assert.Equal(t, 0, count)
 
 			// limit
 			invalidLimit := 0
-			categoryWithItems, err = categoryService.GetItemsByCategoryId(tenantId, categoryId, invalidLimit, page)
+			categoryWithItems, count, err = categoryService.GetItemsByCategoryId(tenantId, categoryId, invalidLimit, page)
 			assert.Error(t, err)
 			assert.Nil(t, categoryWithItems)
+			assert.Equal(t, 0, count)
 
 			// page
 			invalidPage := 0
-			categoryWithItems, err = categoryService.GetItemsByCategoryId(tenantId, categoryId, limit, invalidPage)
+			categoryWithItems, count, err = categoryService.GetItemsByCategoryId(tenantId, categoryId, limit, invalidPage)
 			assert.Error(t, err)
 			assert.Nil(t, categoryWithItems)
+			assert.Equal(t, 0, count)
 		})
 	})
 

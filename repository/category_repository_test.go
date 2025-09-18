@@ -40,32 +40,36 @@ func TestCategoryRepository(t *testing.T) {
 			*/
 			page := 1
 			pagePerContent := 2
-			categoryWithItemFromDB, err := categoryRepositoryImpl.GetItemsByCategoryId(1, TenantId, pagePerContent, page-1)
+			categoryWithItemFromDB, count, err := categoryRepositoryImpl.GetItemsByCategoryId(1, TenantId, pagePerContent, page-1)
 
 			assert.Nil(t, err)
 			assert.NotNil(t, categoryWithItemFromDB)
 			assert.Equal(t, pagePerContent, len(categoryWithItemFromDB))
+			assert.NotEqual(t, 0, count)
 		})
 		t.Run("NotExistCategoryId", func(t *testing.T) {
 			page := 1
 			pagePerContent := 2
-			categoryWithItemsFromDB, err := categoryRepositoryImpl.GetItemsByCategoryId(0, TenantId, pagePerContent, page-1)
-			assert.Nil(t, err)
+			categoryWithItemsFromDB, count, err := categoryRepositoryImpl.GetItemsByCategoryId(0, TenantId, pagePerContent, page-1)
+			assert.NoError(t, err)
 			assert.Equal(t, 0, len(categoryWithItemsFromDB))
+			assert.Equal(t, 0, count)
 		})
 		t.Run("NotExistIdAndOverflow", func(t *testing.T) {
 			page := 100 // overflow
 			pagePerContent := 2
-			categoryWithItemsFromDB, err := categoryRepositoryImpl.GetItemsByCategoryId(0, TenantId, pagePerContent, page-1)
+			categoryWithItemsFromDB, count, err := categoryRepositoryImpl.GetItemsByCategoryId(0, TenantId, pagePerContent, page-1)
 			assert.Nil(t, err)
 			assert.Equal(t, 0, len(categoryWithItemsFromDB))
+			assert.Equal(t, 0, count)
 		})
 		t.Run("NotExistTenantId", func(t *testing.T) {
 			page := 1
 			pagePerContent := 2
-			categoryWithItemsFromDB, err := categoryRepositoryImpl.GetItemsByCategoryId(0, TenantId, pagePerContent, page-1)
+			categoryWithItemsFromDB, count, err := categoryRepositoryImpl.GetItemsByCategoryId(0, TenantId, pagePerContent, page-1)
 			assert.Nil(t, err)
 			assert.Equal(t, 0, len(categoryWithItemsFromDB))
+			assert.Equal(t, 0, count)
 		})
 	})
 
@@ -75,28 +79,16 @@ func TestCategoryRepository(t *testing.T) {
 		t.Run("NormalGet", func(t *testing.T) {
 			page := 1
 			pagePerContent := 3
-			categoryWithItemFromDB, count, err := categoryRepositoryImpl.GetCategoryWithItems(TenantId, page-1, pagePerContent, true)
+			categoryWithItemFromDB, count, err := categoryRepositoryImpl.GetCategoryWithItems(TenantId, page-1, pagePerContent)
 			assert.Nil(t, err)
 			assert.NotEqual(t, 0, count)
-			assert.NotNil(t, categoryWithItemFromDB)
-
-			// Ignoring count
-			categoryWithItemFromDB, count, err = categoryRepositoryImpl.GetCategoryWithItems(TenantId, page-1, pagePerContent, false)
-			assert.Nil(t, err)
-			assert.Equal(t, 0, count)
 			assert.NotNil(t, categoryWithItemFromDB)
 		})
 
 		t.Run("Overflow", func(t *testing.T) {
 			page := 2 // overflow
 			pagePerContent := 100
-			categoryWithItemFromDB, count, err := categoryRepositoryImpl.GetCategoryWithItems(TenantId, page-1, pagePerContent, true)
-			assert.Nil(t, err)
-			assert.NotEqual(t, 0, count)
-			assert.NotNil(t, categoryWithItemFromDB)
-
-			// Ignoring count
-			categoryWithItemFromDB, count, err = categoryRepositoryImpl.GetCategoryWithItems(TenantId, page-1, pagePerContent, false)
+			categoryWithItemFromDB, count, err := categoryRepositoryImpl.GetCategoryWithItems(TenantId, page-1, pagePerContent)
 			assert.Nil(t, err)
 			assert.Equal(t, 0, count)
 			assert.NotNil(t, categoryWithItemFromDB)

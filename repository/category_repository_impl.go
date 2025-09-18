@@ -25,7 +25,7 @@ func NewCategoryRepositoryImpl(client *supabase.Client) CategoryRepository {
 
 const CategoryMtmWarehouseTable string = "category_mtm_warehouse"
 
-func (repository *CategoryRepositoryImpl) GetItemsByCategoryId(tenantId int, categoryId int, limit int, page int) ([]*model.CategoryWithItem, error) {
+func (repository *CategoryRepositoryImpl) GetItemsByCategoryId(tenantId int, categoryId int, limit int, page int) ([]*model.CategoryWithItem, int, error) {
 	start := page * limit
 	// end := start + limit - 1
 
@@ -42,7 +42,7 @@ func (repository *CategoryRepositoryImpl) GetItemsByCategoryId(tenantId int, cat
 			WHERE warehouse.tenant_id=p_tenant_id AND category.id=p_category_id;
 	*/
 
-	data := repository.Client.Rpc("get_items_base_on_category", "", map[string]interface{}{
+	data := repository.Client.Rpc("get_items_by_category", "", map[string]interface{}{
 		"p_tenant_id":   tenantId,
 		"p_category_id": categoryId,
 		"p_limit":       limit,
@@ -61,13 +61,18 @@ func (repository *CategoryRepositoryImpl) GetItemsByCategoryId(tenantId int, cat
 	err := json.Unmarshal([]byte(data), &results)
 	if err != nil {
 		log.Errorf("ERROR ! While unmarshaling data at CategoryRepositoryImpl.GetItemsByCategory. tenantId: %d, categoryId: %d", tenantId, categoryId)
-		return nil, err
+		return nil, 0, err
 	}
 
-	return results, nil
+	countResult := 0
+	if len(results) > 0 {
+		countResult = results[0].TotalCount // same value for all rows
+	}
+
+	return results, countResult, nil
 }
 
-func (repository *CategoryRepositoryImpl) GetCategoryWithItems(tenantId, page, limit int, doCount bool) ([]*model.CategoryWithItem, int, error) {
+func (repository *CategoryRepositoryImpl) GetCategoryWithItems(tenantId, page, limit int) ([]*model.CategoryWithItem, int, error) {
 	start := page * limit
 	// end := start + limit - 1
 
@@ -83,6 +88,15 @@ func (repository *CategoryRepositoryImpl) GetCategoryWithItems(tenantId, page, l
 
 		Instead will be using Rpc with the same query as above
 	*/
+
+	/*
+		Return
+		- category_id
+		- category_name
+		- warehouse.item_id
+		- warehouse.item_name
+		- warehouse.stocks
+	*/
 	data := repository.Client.Rpc("get_category_with_items", "", map[string]interface{}{
 		"p_tenant_id": tenantId,
 		"p_limit":     limit,
@@ -91,16 +105,20 @@ func (repository *CategoryRepositoryImpl) GetCategoryWithItems(tenantId, page, l
 	var results []*model.CategoryWithItem
 	err := json.Unmarshal([]byte(data), &results)
 	if err != nil {
+		// If the query fails, most likely return string
+		var errorMessage string
+		err = json.Unmarshal([]byte(data), &errorMessage)
+		if err != nil {
+			return nil, 0, errors.New("Fatal Error, something gone wrong with the server")
+		}
+
+		// Return error message from rpc
 		return nil, 0, err
 	}
 
 	countResult := 0
-	if doCount {
-		_, count, err := repository.Client.From("warehouse").Select("item_id", "exact", false).Execute()
-		if err != nil {
-			return nil, 0, err
-		}
-		countResult = int(count)
+	if len(results) > 0 {
+		countResult = results[0].TotalCount // same value for all rows
 	}
 
 	return results, countResult, nil
@@ -111,10 +129,11 @@ func (repository *CategoryRepositoryImpl) Get(tenantId, page, limit int) ([]*mod
 	end := start + limit - 1
 
 	var results []*model.Category
-	count, err := repository.Client.From("category").
+	count, err := repository.Client.From(CategoryTable).
 		Select("*", "exact", false).
 		Eq("tenant_id", strconv.Itoa(tenantId)).
 		Range(start, end, "").
+		Limit(limit, "").
 		ExecuteTo(&results)
 	if err != nil {
 		return nil, 0, err
