@@ -47,8 +47,9 @@ func (controller *CategoryControllerImpl) Create(ctx *fiber.Ctx) error {
 
 // Get implements CategoryController.
 func (controller *CategoryControllerImpl) Get(ctx *fiber.Ctx) error {
-	paramLimit := ctx.Query("limit", "5") // default 5
-	paramPage := ctx.Query("page", "1")   // default 1
+	paramLimit := ctx.Query("limit", "5")   // default 5
+	paramPage := ctx.Query("page", "1")     // default 1
+	nameQuery := ctx.Query("nameQuery", "") // default 1
 
 	// It's guaranteed to be not "", because restrict by tenant already did check first
 	tenantId, _ := strconv.Atoi(ctx.Params("tenantId"))
@@ -65,8 +66,8 @@ func (controller *CategoryControllerImpl) Get(ctx *fiber.Ctx) error {
 		return ctx.Status(fiber.StatusBadRequest).JSON(response)
 	}
 
-	// Only return category name
-	categories, count, err := controller.Service.Get(tenantId, page, limit, "")
+	// Return []Category models
+	categories, count, err := controller.Service.Get(tenantId, page, limit, nameQuery)
 	if err != nil {
 		if strings.Contains(err.Error(), "(PGRST103)") {
 			return ctx.Status(fiber.StatusBadRequest).
