@@ -10,11 +10,15 @@ import (
 )
 
 type WarehouseServiceImpl struct {
-	Repository repository.WarehouseRepository
+	Repository        repository.WarehouseRepository
+	ItemNameRegexRule *regexp.Regexp
 }
 
 func NewWarehouseServiceImpl(repository repository.WarehouseRepository) WarehouseService {
-	return &WarehouseServiceImpl{Repository: repository}
+	return &WarehouseServiceImpl{
+		Repository:        repository,
+		ItemNameRegexRule: regexp.MustCompile(`^[\p{Han}\p{Hiragana}\p{Katakana}a-zA-Z][\p{Han}\p{Hiragana}\p{Katakana}a-zA-Z0-9' ]*$`),
+	}
 }
 
 func (service *WarehouseServiceImpl) GetWarehouseItems(tenantId, limit, page int, nameQuery string) ([]*model.Item, int, error) {
@@ -58,9 +62,8 @@ func (service *WarehouseServiceImpl) CreateItem(items []*model.Item) ([]*model.I
 		A B C
 		neal
 	*/
-	itemRegex := regexp.MustCompile(`^[\p{Han}\p{Hiragana}\p{Katakana}a-zA-Z][\p{Han}\p{Hiragana}\p{Katakana}a-zA-Z0-9' ]*$`)
 	for _, item := range items {
-		if !itemRegex.MatchString(item.ItemName) {
+		if !service.ItemNameRegexRule.MatchString(item.ItemName) {
 			isError = true
 			errorString += fmt.Sprintf("Could not use this item name: %s\n", item.ItemName)
 		}
@@ -119,11 +122,9 @@ func (service *WarehouseServiceImpl) Edit(quantity int, item *model.Item) error 
 	if item.TenantId < 1 {
 		return errors.New("Required tenant id is empty or filled with 0 quantity / -quantity is not allowed")
 	}
-	itemRegex := regexp.MustCompile(`^[\p{Han}\p{Hiragana}\p{Katakana}a-zA-Z][\p{Han}\p{Hiragana}\p{Katakana}a-zA-Z0-9' ]*$`)
-	if !itemRegex.MatchString(item.ItemName) {
+	if !service.ItemNameRegexRule.MatchString(item.ItemName) {
 		return fmt.Errorf("Could not use this item name: %s\n", item.ItemName)
 	}
-
 	if quantity > 999 || quantity < -999 {
 		return errors.New("You can only increase an item's quantity up to 999 or decrease by -999")
 	}

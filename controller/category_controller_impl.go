@@ -112,6 +112,12 @@ func (controller *CategoryControllerImpl) Register(ctx *fiber.Ctx) error {
 
 	err = controller.Service.Register(categoriesMtmWarehouse)
 	if err != nil {
+		// Duplicate error but treat it like success request
+		if err.Error() == "Error, Current items with category already added" {
+			return ctx.Status(fiber.StatusOK).
+				JSON(common.NewWebResponse(200, common.StatusSuccess, nil))
+		}
+
 		return ctx.Status(fiber.StatusBadRequest).
 			JSON(common.NewWebResponseError(400, common.StatusError, err.Error()))
 	}
