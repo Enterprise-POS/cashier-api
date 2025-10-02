@@ -59,7 +59,7 @@ func (service *CategoryServiceImpl) Create(tenantId int, categoryNames []string)
 }
 
 // Get implements CategoryService.
-func (service *CategoryServiceImpl) Get(tenantId int, page int, limit int) ([]*model.Category, int, error) {
+func (service *CategoryServiceImpl) Get(tenantId int, page int, limit int, nameQuery string) ([]*model.Category, int, error) {
 	// 0 means, usually null but GO does not allow null so instead null will get 0
 	if tenantId < 1 {
 		return nil, 0, errors.New("Invalid tenant id")
@@ -73,7 +73,7 @@ func (service *CategoryServiceImpl) Get(tenantId int, page int, limit int) ([]*m
 	}
 
 	// By default SQL will be start from 0 index, if page 1 then page have to subtracted by 1 (page = 0)
-	categories, count, err := service.Repository.Get(tenantId, page-1, limit, "")
+	categories, count, err := service.Repository.Get(tenantId, page-1, limit, nameQuery)
 	if err != nil {
 		return nil, 0, err
 	}

@@ -66,7 +66,7 @@ func (controller *CategoryControllerImpl) Get(ctx *fiber.Ctx) error {
 	}
 
 	// Only return category name
-	categories, count, err := controller.Service.Get(tenantId, page, limit)
+	categories, count, err := controller.Service.Get(tenantId, page, limit, "")
 	if err != nil {
 		if strings.Contains(err.Error(), "(PGRST103)") {
 			return ctx.Status(fiber.StatusBadRequest).

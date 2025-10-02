@@ -18,7 +18,7 @@ type CategoryService interface {
 	/*
 		Get the category name only
 	*/
-	Get(tenantId, page, limit int) ([]*model.Category, int, error)
+	Get(tenantId, page, limit int, nameQuery string) ([]*model.Category, int, error)
 
 	/*
 		Create new category
