@@ -241,3 +241,28 @@ func (controller *WarehouseControllerImpl) SetActivate(ctx *fiber.Ctx) error {
 
 	return ctx.SendStatus(fiber.StatusAccepted)
 }
+
+// FindCompleteById implements WarehouseController.
+func (controller *WarehouseControllerImpl) FindCompleteById(ctx *fiber.Ctx) error {
+	var body struct {
+		ItemId int `json:"item_id"`
+	}
+	err := ctx.BodyParser(&body)
+	if err != nil {
+		return ctx.Status(fiber.StatusBadRequest).
+			JSON(common.NewWebResponseError(400, common.StatusError, "Something gone wrong ! The request body is malformed"))
+	}
+
+	tenantId, _ := strconv.Atoi(ctx.Params("tenantId"))
+	item, err := controller.Service.FindCompleteById(body.ItemId, tenantId)
+	if err != nil {
+		return ctx.Status(fiber.StatusBadRequest).
+			JSON(common.NewWebResponseError(400, common.StatusError, err.Error()))
+	}
+
+	return ctx.Status(fiber.StatusOK).
+		JSON(common.NewWebResponse(200, common.StatusSuccess, fiber.Map{
+			"requested_tenant": tenantId,
+			"item":             item,
+		}))
+}

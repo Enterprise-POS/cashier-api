@@ -509,4 +509,55 @@ func TestWarehouseServiceImpl(t *testing.T) {
 			assert.Error(t, err)
 		})
 	})
+
+	t.Run("FindCompleteById", func(t *testing.T) {
+		tenantId := 1
+		itemId := 1
+		t.Run("NormalFindCompleteById", func(t *testing.T) {
+
+			expectedItem := &model.CategoryWithItem{
+				CategoryId:   0,
+				ItemId:       itemId,
+				CategoryName: "",
+				TotalCount:   0,
+				Stocks:       10,
+				ItemName:     "Test item 1 edited",
+			}
+			warehouseRepo.Mock.On("FindCompleteById", itemId, tenantId).Return(expectedItem, nil)
+			item, err := warehouseService.FindCompleteById(itemId, tenantId)
+			assert.NoError(t, err)
+			assert.Equal(t, expectedItem.ItemId, item.ItemId)
+			assert.Equal(t, expectedItem.ItemName, item.ItemName)
+		})
+
+		t.Run("NoDataFound", func(t *testing.T) {
+			warehouseRepo.Mock = mock.Mock{}
+			warehouseRepo.Mock.On("FindCompleteById", itemId, tenantId).Return(nil, errors.New("NO_DATA_FOUND"))
+			item, err := warehouseService.FindCompleteById(itemId, tenantId)
+			assert.Error(t, err)
+			assert.Nil(t, item)
+			assert.Equal(t, "No data return or non exist data", err.Error())
+		})
+
+		t.Run("CardinalityViolation", func(t *testing.T) {
+			warehouseRepo.Mock = mock.Mock{}
+			warehouseRepo.Mock.On("FindCompleteById", itemId, tenantId).Return(nil, errors.New("CARDINALITY_VIOLATION"))
+			item, err := warehouseService.FindCompleteById(itemId, tenantId)
+			assert.Error(t, err)
+			assert.Nil(t, item)
+			assert.Equal(t, "Fatal error ! Current item is not valid, duplicate assigning this item category values may cause this error", err.Error())
+		})
+
+		t.Run("InvalidParameter", func(t *testing.T) {
+			item, err := warehouseService.FindCompleteById(0, tenantId)
+			assert.Error(t, err)
+			assert.Nil(t, item)
+			assert.Equal(t, "Item ID could not be empty or fill <= 0", err.Error())
+
+			item, err = warehouseService.FindCompleteById(itemId, 0)
+			assert.Error(t, err)
+			assert.Nil(t, item)
+			assert.Equal(t, "Required tenant id is empty or fill <= 0", err.Error())
+		})
+	})
 }

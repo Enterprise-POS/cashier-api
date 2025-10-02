@@ -3,6 +3,7 @@ package repository
 import (
 	"cashier-api/helper/client"
 	"cashier-api/model"
+	"fmt"
 	"strconv"
 	"testing"
 
@@ -101,7 +102,7 @@ func TestCategoryRepository(t *testing.T) {
 		t.Run("NormalGetAll", func(t *testing.T) {
 			page := 1
 			pagePerContent := 2
-			categories, count, err := categoryRepositoryImpl.Get(TenantId, page-1, pagePerContent)
+			categories, count, err := categoryRepositoryImpl.Get(TenantId, page-1, pagePerContent, "")
 			assert.Nil(t, err)
 			assert.NotEqual(t, 0, count)
 			assert.NotNil(t, categories)
@@ -112,7 +113,7 @@ func TestCategoryRepository(t *testing.T) {
 			// No error because correct page
 			page := 1
 			pagePerContent := 999
-			categories, count, err := categoryRepositoryImpl.Get(TenantId, page-1, pagePerContent)
+			categories, count, err := categoryRepositoryImpl.Get(TenantId, page-1, pagePerContent, "")
 			assert.Greater(t, count, 0)
 			assert.Nil(t, err)
 			assert.NotNil(t, categories)
@@ -120,12 +121,58 @@ func TestCategoryRepository(t *testing.T) {
 			// Error because page 2 doesn't even exist
 			page = 2
 			pagePerContent = 999
-			categories, count, err = categoryRepositoryImpl.Get(TenantId, page-1, pagePerContent)
+			categories, count, err = categoryRepositoryImpl.Get(TenantId, page-1, pagePerContent, "")
 
 			assert.Equal(t, 0, count)
 			assert.NotNil(t, err)
 			assert.Equal(t, "(PGRST103) Requested range not satisfiable", err.Error())
 			assert.Nil(t, categories)
+		})
+
+		t.Run("GetByNameQuery", func(t *testing.T) {
+			uniqueString := uuid.NewString()
+			dummyCategories := []*model.Category{
+				{
+					// Id: ,
+					CategoryName: "Test_GetByNameQuery_1_" + uniqueString,
+					TenantId:     TenantId,
+				},
+				{
+					// Id: ,
+					CategoryName: "Test_GetByNameQuery_2_" + uniqueString,
+					TenantId:     TenantId,
+				},
+			}
+
+			// Manually insert without using another repository method
+			var expectedDummyData []*model.Category
+			_, err := supabaseClient.From(CategoryTable).
+				Insert(dummyCategories, false, "", "representation", "").
+				ExecuteTo(&expectedDummyData)
+			require.NoError(t, err)
+			require.NotNil(t, expectedDummyData)
+
+			page := 1
+			categories, count, err := categoryRepositoryImpl.Get(TenantId, 1, page-1, uniqueString)
+			assert.NoError(t, err)
+			assert.NotNil(t, categories)
+			assert.Equal(t, len(dummyCategories), count)
+			for i, category := range categories {
+				assert.Equal(t, expectedDummyData[i].CategoryName, category.CategoryName)
+				assert.Equal(t, expectedDummyData[i].TenantId, category.TenantId)
+				assert.NotEqual(t, 0, category.Id)
+				assert.NotNil(t, category.CreatedAt)
+			}
+
+			t.Cleanup(func() {
+				_, _, err := supabaseClient.From(CategoryTable).
+					Delete("", "").
+					Eq("tenant_id", fmt.Sprint(TenantId)).
+					In("id", []string{fmt.Sprint(expectedDummyData[0].Id), fmt.Sprint(expectedDummyData[1].Id)}).
+					Execute()
+				errorName := "TestCategoryRepository/Get/GetByNameQuery"
+				require.NoErrorf(t, err, "If this fail then delete immediately, %s", errorName)
+			})
 		})
 	})
 

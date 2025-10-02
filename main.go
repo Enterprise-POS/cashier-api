@@ -57,13 +57,10 @@ func main() {
 	apiV1 := app.Group("/api/v1")
 
 	apiV1.Get("/", func(ctx *fiber.Ctx) error {
-		return ctx.Status(200).JSON(common.WebResponse{
-			Code:   200,
-			Status: "OK",
-			Data: fiber.Map{
+		return ctx.Status(fiber.StatusOK).
+			JSON(common.NewWebResponse(200, common.StatusSuccess, fiber.Map{
 				"message": "Welcome to API Gateway",
-			},
-		})
+			}))
 	})
 
 	// public
@@ -88,7 +85,7 @@ func main() {
 	apiV1.Post("/tenants/add_user", tenantController.AddUserToTenant)
 	apiV1.Delete("/tenants/remove_user", tenantController.RemoveUserFromTenant)
 
-	// protected and restrict by tenantId
+	// restrict by tenantId
 	tenantRestriction := middleware.RestrictByTenant(supabaseClient)
 
 	warehouseRepository := repository.NewWarehouseRepositoryImpl(supabaseClient)
@@ -100,18 +97,28 @@ func main() {
 	apiV1.Get("/warehouses/active/:tenantId", tenantRestriction, warehouseController.GetActiveItem)
 	apiV1.Post("/warehouses/create_item/:tenantId", tenantRestriction, warehouseController.CreateItem)
 	apiV1.Post("/warehouses/find/:tenantId", tenantRestriction, warehouseController.FindById)
+	apiV1.Post("/warehouses/find_complete_by_id/:tenantId", tenantRestriction, warehouseController.FindCompleteById)
 	apiV1.Put("/warehouses/edit/:tenantId", tenantRestriction, warehouseController.Edit)
 	apiV1.Put("/warehouses/activate/:tenantId", tenantRestriction, warehouseController.SetActivate)
 
+	categoryRepository := repository.NewCategoryRepositoryImpl(supabaseClient)
+	categoryService := service.NewCategoryServiceImpl(categoryRepository)
+	categoryController := controller.NewCategoryControllerImpl(categoryService)
+
+	// GET /categories/:tenantId?limit=10&page=1
+	apiV1.Get("/categories/:tenantId", tenantRestriction, categoryController.Get)
+	apiV1.Post("/categories/items_by_category_id/:tenantId", tenantRestriction, categoryController.GetItemsByCategoryId)
+	apiV1.Post("/categories/category_with_items/:tenantId", tenantRestriction, categoryController.GetCategoryWithItems)
+	apiV1.Post("/categories/create/:tenantId", tenantRestriction, categoryController.Create)
+	apiV1.Post("/categories/register/:tenantId", tenantRestriction, categoryController.Register)
+	apiV1.Put("/categories/update/:tenantId", tenantRestriction, categoryController.Update)
+	apiV1.Delete("/categories/unregister/:tenantId", tenantRestriction, categoryController.Unregister)
+	apiV1.Delete("/categories/:tenantId", tenantRestriction, categoryController.Delete)
+
 	// Handle route not found (404)
 	app.All("*", func(ctx *fiber.Ctx) error {
-		return ctx.Status(fiber.StatusNotFound).JSON(common.WebResponse{
-			Code:   404,
-			Status: "Not Found",
-			Data: fiber.Map{
-				"message": "Route for " + string(ctx.Request().RequestURI()) + " not found",
-			},
-		})
+		return ctx.Status(fiber.StatusNotFound).
+			JSON(common.NewWebResponseError(fiber.StatusNotFound, common.StatusError, "Route for "+string(ctx.Request().RequestURI())+" not found"))
 	})
 
 	// 04 Application started listening here

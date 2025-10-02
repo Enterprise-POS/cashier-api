@@ -119,6 +119,50 @@ func TestCategoryControllerImpl(t *testing.T) {
 			assert.Contains(t, string(body), dummyCategories[0].CategoryName)
 		})
 
+		t.Run("UsingNameQuery", func(t *testing.T) {
+			// Create dummy category only for this scope
+			dummyCategories := []*model.Category{
+				{
+					CategoryName: "CategoryGet ZZZ", // Only 15 characters
+					TenantId:     createdTenant.Id,
+				},
+			}
+
+			var expectedDummyCategories []*model.Category
+			_, err = supabase.From(repository.CategoryTable).
+				Insert(dummyCategories, false, "", "representation", "").
+				ExecuteTo(&expectedDummyCategories)
+			require.NoError(t, err)
+
+			baseURL := fmt.Sprintf("/categories/%d", createdTenant.Id)
+			parsedURL, err := url.Parse(baseURL)
+			params := url.Values{}
+			params.Add("limit", "1") // Make sure only 1 applied
+			params.Add("nameQuery", dummyCategories[0].CategoryName)
+
+			parsedURL.RawQuery = params.Encode()
+
+			request := httptest.NewRequest("GET", parsedURL.String(), nil)
+			request.Header.Set("Content-Type", "application/json")
+			request.AddCookie(enterprisePOSCookie)
+			response, err := app.Test(request, testTimeout)
+			assert.Nil(t, err)
+			assert.NotNil(t, response)
+			assert.Equal(t, http.StatusOK, response.StatusCode)
+
+			body, err := io.ReadAll(response.Body)
+			assert.NoError(t, err)
+			assert.Contains(t, string(body), dummyCategories[0].CategoryName)
+
+			t.Cleanup(func() {
+				_, _, err := supabase.From(repository.CategoryTable).
+					Delete("", "").
+					Eq("id", fmt.Sprint(expectedDummyCategories[0].Id)).
+					Execute()
+				require.NoError(t, err)
+			})
+		})
+
 		t.Run("OverlapRange", func(t *testing.T) {
 			page, limit := "2", "5"
 			url, err := url.Parse(fmt.Sprintf("/categories/%d", createdTenant.Id))

@@ -43,8 +43,8 @@ func TestCategoryServiceImpl(t *testing.T) {
 			}
 
 			limit, page := 5, 1
-			categoryRepository.Mock.On("Get", tenantId, page-1, limit).Return(expectedCategory, len(expectedCategory), nil)
-			categories, count, err := categoryService.Get(tenantId, page, limit)
+			categoryRepository.Mock.On("Get", tenantId, page-1, limit, "").Return(expectedCategory, len(expectedCategory), nil)
+			categories, count, err := categoryService.Get(tenantId, page, limit, "")
 			assert.NoError(t, err)
 			assert.Equal(t, len(expectedCategory), count)
 			assert.NotNil(t, categories)
@@ -58,7 +58,7 @@ func TestCategoryServiceImpl(t *testing.T) {
 		t.Run("InvalidParameter", func(t *testing.T) {
 			// tenant id
 			limit, page := 5, 1
-			categories, count, err := categoryService.Get(0, page, limit)
+			categories, count, err := categoryService.Get(0, page, limit, "")
 			assert.Error(t, err)
 			assert.Equal(t, "Invalid tenant id", err.Error())
 			assert.Nil(t, categories)
@@ -66,7 +66,7 @@ func TestCategoryServiceImpl(t *testing.T) {
 
 			// limit
 			limit, page = 0, 1
-			categories, count, err = categoryService.Get(tenantId, page, limit)
+			categories, count, err = categoryService.Get(tenantId, page, limit, "")
 			assert.Error(t, err)
 			assert.Equal(t, 0, count)
 			assert.Nil(t, categories)
@@ -74,7 +74,7 @@ func TestCategoryServiceImpl(t *testing.T) {
 
 			// page
 			limit, page = 5, 0
-			categories, count, err = categoryService.Get(tenantId, page, limit)
+			categories, count, err = categoryService.Get(tenantId, page, limit, "")
 			assert.Error(t, err)
 			assert.Equal(t, 0, count)
 			assert.Nil(t, categories)

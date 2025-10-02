@@ -80,3 +80,12 @@ func (repository *WarehouseRepositoryMock) SetActivate(tenantId int, itemId int,
 
 	return args.Error(0)
 }
+
+func (repository *WarehouseRepositoryMock) FindCompleteById(itemId int, tenantId int) (*model.CategoryWithItem, error) {
+	args := repository.Mock.Called(itemId, tenantId)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+
+	return args.Get(0).(*model.CategoryWithItem), nil
+}
