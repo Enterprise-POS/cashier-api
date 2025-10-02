@@ -73,7 +73,7 @@ func (service *CategoryServiceImpl) Get(tenantId int, page int, limit int) ([]*m
 	}
 
 	// By default SQL will be start from 0 index, if page 1 then page have to subtracted by 1 (page = 0)
-	categories, count, err := service.Repository.Get(tenantId, page-1, limit)
+	categories, count, err := service.Repository.Get(tenantId, page-1, limit, "")
 	if err != nil {
 		return nil, 0, err
 	}
@@ -141,6 +141,12 @@ func (service *CategoryServiceImpl) Update(tenantId int, categoryId int, tobeCha
 
 	updatedCategory, err := service.Repository.Update(tenantId, categoryId, tobeChangeCategoryName)
 	if err != nil {
+		// 23505: unique_violation
+		// https://www.postgresql.org/docs/current/errcodes-appendix.html
+		if strings.Contains(err.Error(), "(23505)") {
+			return nil, fmt.Errorf("Update failed: category name %q already exists", tobeChangeCategoryName)
+		}
+
 		if strings.Contains(err.Error(), "(PGRST116)") {
 			return nil, fmt.Errorf("Nothing is updated from category_id: %d, tenant_id: %d", categoryId, tenantId)
 		}

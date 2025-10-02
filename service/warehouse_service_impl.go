@@ -158,3 +158,28 @@ func (service *WarehouseServiceImpl) SetActivate(tenantId int, itemId int, setIn
 
 	return nil
 }
+
+// FindCompleteById implements WarehouseService.
+func (service *WarehouseServiceImpl) FindCompleteById(itemId int, tenantId int) (*model.CategoryWithItem, error) {
+	if itemId == 0 {
+		return nil, errors.New("Item ID could not be empty or fill <= 0")
+	}
+	if tenantId == 0 {
+		return nil, errors.New("Required tenant id is empty or fill <= 0")
+	}
+
+	item, err := service.Repository.FindCompleteById(itemId, tenantId)
+	if err != nil {
+		if err.Error() == "NO_DATA_FOUND" {
+			return nil, errors.New("No data return or non exist data")
+		}
+
+		if err.Error() == "CARDINALITY_VIOLATION" {
+			return nil, errors.New("Fatal error ! Current item is not valid, duplicate assigning this item category values may cause this error")
+		}
+
+		return nil, err
+	}
+
+	return item, nil
+}

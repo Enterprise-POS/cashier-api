@@ -147,3 +147,27 @@ func (warehouse *WarehouseRepositoryImpl) SetActivate(tenantId, itemId int, setI
 
 	return nil
 }
+
+// FindCompleteById implements WarehouseRepository.
+func (warehouse *WarehouseRepositoryImpl) FindCompleteById(itemId int, tenantId int) (*model.CategoryWithItem, error) {
+	result := warehouse.Client.Rpc("find_complete_by_id", "", map[string]interface{}{
+		"p_item_id":   itemId,   // int
+		"p_tenant_id": tenantId, // int
+	})
+
+	var items []*model.CategoryWithItem
+	err := json.Unmarshal([]byte(result), &items)
+	if err != nil {
+		if strings.Contains(result, "NO_DATA_FOUND") {
+			return nil, errors.New("NO_DATA_FOUND")
+		}
+
+		if strings.Contains(result, "CARDINALITY_VIOLATION") {
+			return nil, errors.New("CARDINALITY_VIOLATION")
+		}
+
+		return nil, err
+	}
+
+	return items[0], err
+}

@@ -3,7 +3,6 @@ package repository
 import (
 	"cashier-api/helper/client"
 	"cashier-api/model"
-	"fmt"
 	"reflect"
 	"strconv"
 	"testing"
@@ -43,7 +42,7 @@ func TestWarehouseRepository(t *testing.T) {
 		// may cause error because the day not sync
 		now := time.Now()
 		assert.Equal(t, now.UTC().Day(), item.CreatedAt.UTC().Day())
-		fmt.Println(now)
+		// fmt.Println(now)
 
 		// TEST: id not found
 		itemNotFound, err := warehouseRepo.FindById(0, 1)
@@ -232,6 +231,50 @@ func TestWarehouseRepository(t *testing.T) {
 			assert.Equal(t, 0, len(items))
 			assert.Nil(t, items)
 			assert.Equal(t, 0, count)
+		})
+	})
+
+	t.Run("FindCompleteById", func(t *testing.T) {
+		warehouseRepo := NewWarehouseRepositoryImpl(supabaseClient)
+		t.Run("NormalFindCompleteById", func(t *testing.T) {
+
+			var dummyItem = &model.Item{
+				ItemName: "Test TestWarehouseRepository_FindCompleteById 1",
+				Stocks:   40,
+				TenantId: 1,
+			}
+			_dummiesFromDB, err := warehouseRepo.CreateItem([]*model.Item{dummyItem})
+			require.Nil(t, err)
+			require.Greater(t, len(_dummiesFromDB), 0)
+
+			dummyItemFromDB := _dummiesFromDB[0]
+
+			item, err := warehouseRepo.FindCompleteById(dummyItemFromDB.ItemId, 1)
+			assert.Nil(t, err)
+			assert.NotNil(t, item)
+			assert.Equal(t, dummyItemFromDB.ItemId, item.ItemId)
+			assert.Equal(t, dummyItemFromDB.ItemName, item.ItemName)
+			assert.Equal(t, dummyItemFromDB.Stocks, item.Stocks)
+
+			t.Cleanup(func() {
+				// Clean up
+				// Delete the dummy data
+				_, _, err := supabaseClient.From("warehouse").
+					Delete("", "").
+					Eq("tenant_id", strconv.Itoa(dummyItemFromDB.TenantId)).
+					Eq("item_name", dummyItemFromDB.ItemName).Execute()
+				if err != nil {
+					t.Fatal("unexpected error while testing to delete dummy data _CreateItem")
+				}
+			})
+		})
+
+		t.Run("NoDataFoundError", func(t *testing.T) {
+			// TEST: id not found
+			itemNotFound, err := warehouseRepo.FindCompleteById(0, 1)
+			assert.Nil(t, itemNotFound)
+			assert.NotNil(t, err)
+			assert.Equal(t, "NO_DATA_FOUND", err.Error())
 		})
 	})
 

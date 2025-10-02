@@ -39,8 +39,8 @@ func (repository *CategoryRepositoryMock) Delete(category *model.Category) error
 }
 
 // Get implements CategoryRepository.
-func (repository *CategoryRepositoryMock) Get(tenantId int, page int, limit int) ([]*model.Category, int, error) {
-	args := repository.Mock.Called(tenantId, page, limit)
+func (repository *CategoryRepositoryMock) Get(tenantId int, page int, limit int, nameQuery string) ([]*model.Category, int, error) {
+	args := repository.Mock.Called(tenantId, page, limit, nameQuery)
 
 	if args.Get(0) == nil {
 		return nil, 0, args.Error(2)

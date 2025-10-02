@@ -124,17 +124,22 @@ func (repository *CategoryRepositoryImpl) GetCategoryWithItems(tenantId, page, l
 	return results, countResult, nil
 }
 
-func (repository *CategoryRepositoryImpl) Get(tenantId, page, limit int) ([]*model.Category, int, error) {
+func (repository *CategoryRepositoryImpl) Get(tenantId, page, limit int, nameQuery string) ([]*model.Category, int, error) {
 	start := page * limit
 	end := start + limit - 1
 
 	var results []*model.Category
-	count, err := repository.Client.From(CategoryTable).
+	query := repository.Client.From(CategoryTable).
 		Select("*", "exact", false).
 		Eq("tenant_id", strconv.Itoa(tenantId)).
 		Range(start, end, "").
-		Limit(limit, "").
-		ExecuteTo(&results)
+		Limit(limit, "")
+
+	if nameQuery != "" {
+		query = query.Like("category_name", "%"+nameQuery+"%")
+	}
+
+	count, err := query.ExecuteTo(&results)
 	if err != nil {
 		return nil, 0, err
 	}

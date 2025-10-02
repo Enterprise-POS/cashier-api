@@ -48,4 +48,9 @@ type WarehouseController interface {
 		Deactivate/Activate item, not delete it from DB
 	*/
 	SetActivate(*fiber.Ctx) error
+
+	/*
+		Get Complete detail of 1 items
+	*/
+	FindCompleteById(*fiber.Ctx) error
 }
