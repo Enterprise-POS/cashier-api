@@ -92,7 +92,7 @@ func main() {
 	warehouseService := service.NewWarehouseServiceImpl(warehouseRepository)
 	warehouseController := controller.NewWarehouseControllerImpl(warehouseService)
 
-	// GET /warehouses/:tenantId?limit=10&page=1
+	// GET /warehouses/:tenantId?limit=10&page=1&name_query=any
 	apiV1.Get("/warehouses/:tenantId", tenantRestriction, warehouseController.Get)
 	apiV1.Get("/warehouses/active/:tenantId", tenantRestriction, warehouseController.GetActiveItem)
 	apiV1.Post("/warehouses/create_item/:tenantId", tenantRestriction, warehouseController.CreateItem)
@@ -105,7 +105,7 @@ func main() {
 	categoryService := service.NewCategoryServiceImpl(categoryRepository)
 	categoryController := controller.NewCategoryControllerImpl(categoryService)
 
-	// GET /categories/:tenantId?limit=10&page=1
+	// GET /categories/:tenantId?limit=10&page=1&name_query=any
 	apiV1.Get("/categories/:tenantId", tenantRestriction, categoryController.Get)
 	apiV1.Post("/categories/items_by_category_id/:tenantId", tenantRestriction, categoryController.GetItemsByCategoryId)
 	apiV1.Post("/categories/category_with_items/:tenantId", tenantRestriction, categoryController.GetCategoryWithItems)

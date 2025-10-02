@@ -124,7 +124,7 @@ func TestWarehouseControllerImpl(t *testing.T) {
 
 			// Add query parameters
 			query := parsedUrl.Query()
-			query.Set("nameQuery", "NormalGetActiveItem") // or any value
+			query.Set("name_query", "NormalGetActiveItem") // or any value
 			parsedUrl.RawQuery = query.Encode()
 
 			// Create the request

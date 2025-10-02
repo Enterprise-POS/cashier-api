@@ -138,7 +138,7 @@ func TestCategoryControllerImpl(t *testing.T) {
 			parsedURL, err := url.Parse(baseURL)
 			params := url.Values{}
 			params.Add("limit", "1") // Make sure only 1 applied
-			params.Add("nameQuery", dummyCategories[0].CategoryName)
+			params.Add("name_query", dummyCategories[0].CategoryName)
 
 			parsedURL.RawQuery = params.Encode()
 

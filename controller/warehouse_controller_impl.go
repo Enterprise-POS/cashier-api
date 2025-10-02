@@ -19,9 +19,9 @@ func NewWarehouseControllerImpl(service service.WarehouseService) WarehouseContr
 
 func (controller *WarehouseControllerImpl) Get(ctx *fiber.Ctx) error {
 	paramTenantId := ctx.Params("tenantId")
-	paramLimit := ctx.Query("limit", "5")        // default 5
-	paramPage := ctx.Query("page", "1")          // default 1
-	paramNameQuery := ctx.Query("nameQuery", "") // default empty
+	paramLimit := ctx.Query("limit", "5")         // default 5
+	paramPage := ctx.Query("page", "1")           // default 1
+	paramNameQuery := ctx.Query("name_query", "") // default empty
 
 	tenantId, err := strconv.Atoi(paramTenantId)
 	if err != nil {
@@ -68,9 +68,9 @@ func (controller *WarehouseControllerImpl) Get(ctx *fiber.Ctx) error {
 // GetActiveItem implements WarehouseController.
 func (controller *WarehouseControllerImpl) GetActiveItem(ctx *fiber.Ctx) error {
 	paramTenantId := ctx.Params("tenantId")
-	paramLimit := ctx.Query("limit", "5")        // default 5
-	paramPage := ctx.Query("page", "1")          // default 1
-	paramNameQuery := ctx.Query("nameQuery", "") // default empty
+	paramLimit := ctx.Query("limit", "5")         // default 5
+	paramPage := ctx.Query("page", "1")           // default 1
+	paramNameQuery := ctx.Query("name_query", "") // default empty
 
 	tenantId, err := strconv.Atoi(paramTenantId)
 	if err != nil {
