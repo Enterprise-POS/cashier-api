@@ -309,6 +309,37 @@ func TestCategoryServiceImpl(t *testing.T) {
 		})
 	})
 
+	t.Run("EditItemCategory", func(t *testing.T) {
+		tenantId := 1 // Non existence tenant id but valid
+		t.Run("NormalEditItemCategory", func(t *testing.T) {
+			tobeEditItemCategory := &model.CategoryMtmWarehouse{
+				CategoryId: 2,
+				ItemId:     1,
+			}
+
+			categoryRepository.Mock.On("EditItemCategory", tenantId, tobeEditItemCategory).Return(nil)
+			err := categoryService.EditItemCategory(tenantId, tobeEditItemCategory)
+			assert.NoError(t, err)
+		})
+
+		t.Run("InvalidParameter", func(t *testing.T) {
+			tobeEditItemCategory := &model.CategoryMtmWarehouse{
+				CategoryId: 1,
+				ItemId:     0,
+			}
+
+			err := categoryService.EditItemCategory(tenantId, tobeEditItemCategory)
+			assert.Error(t, err)
+
+			tobeEditItemCategory = &model.CategoryMtmWarehouse{
+				CategoryId: 0,
+				ItemId:     1,
+			}
+			err = categoryService.EditItemCategory(tenantId, tobeEditItemCategory)
+			assert.Error(t, err)
+		})
+	})
+
 	t.Run("Update", func(t *testing.T) {
 		tenantId := 1
 		categoryId := 1

@@ -95,7 +95,7 @@ func (repository *CategoryRepositoryMock) Unregister(toUnregister *model.Categor
 
 // EditItemCategory implements CategoryRepository.
 func (repository *CategoryRepositoryMock) EditItemCategory(tenantId int, editedItemCategory *model.CategoryMtmWarehouse) error {
-	args := repository.Mock.Called(editedItemCategory)
+	args := repository.Mock.Called(tenantId, editedItemCategory)
 
 	if args.Get(0) != nil {
 		return args.Error(0)
