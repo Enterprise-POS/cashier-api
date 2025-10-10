@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"strings"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/supabase-community/supabase-go"
@@ -16,14 +17,13 @@ type CategoryRepositoryImpl struct {
 }
 
 const CategoryTable string = "category"
+const CategoryMtmWarehouseTable string = "category_mtm_warehouse"
 
 func NewCategoryRepositoryImpl(client *supabase.Client) CategoryRepository {
 	return &CategoryRepositoryImpl{
 		Client: client,
 	}
 }
-
-const CategoryMtmWarehouseTable string = "category_mtm_warehouse"
 
 func (repository *CategoryRepositoryImpl) GetItemsByCategoryId(tenantId int, categoryId int, limit int, page int) ([]*model.CategoryWithItem, int, error) {
 	start := page * limit
@@ -168,7 +168,6 @@ func (repository *CategoryRepositoryImpl) Create(tenantId int, categories []*mod
 func (repository *CategoryRepositoryImpl) Register(tobeRegisters []*model.CategoryMtmWarehouse) error {
 	var results []*model.CategoryMtmWarehouse
 
-	// WARN: inconsistent constant naming
 	_, err := repository.Client.From(CategoryMtmWarehouseTable).Insert(tobeRegisters, false, "", "", "").ExecuteTo(&results)
 	if err != nil {
 		return err
@@ -194,6 +193,20 @@ func (repository *CategoryRepositoryImpl) Unregister(toUnregister *model.Categor
 	if count == 0 {
 		log.Warnf("Warning ! Handled error, no data deleted from categoryId: %d, itemId: %d", toUnregister.CategoryId, toUnregister.ItemId)
 		return errors.New("[WARN] No data deleted")
+	}
+
+	return nil
+}
+
+func (repository *CategoryRepositoryImpl) EditItemCategory(tenantId int, editedItemCategory *model.CategoryMtmWarehouse) error {
+	data := repository.Client.Rpc("edit_warehouse_item_category", "", map[string]interface{}{
+		"p_category_id": editedItemCategory.CategoryId,
+		"p_item_id":     editedItemCategory.ItemId,
+		"p_tenant_id":   tenantId,
+	})
+
+	if strings.Contains(data, "[ERROR]") {
+		return errors.New(data)
 	}
 
 	return nil

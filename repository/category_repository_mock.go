@@ -93,6 +93,17 @@ func (repository *CategoryRepositoryMock) Unregister(toUnregister *model.Categor
 	}
 }
 
+// EditItemCategory implements CategoryRepository.
+func (repository *CategoryRepositoryMock) EditItemCategory(tenantId int, editedItemCategory *model.CategoryMtmWarehouse) error {
+	args := repository.Mock.Called(editedItemCategory)
+
+	if args.Get(0) != nil {
+		return args.Error(0)
+	} else {
+		return nil
+	}
+}
+
 // Update implements CategoryRepository.
 func (repository *CategoryRepositoryMock) Update(tenantId int, categoryId int, tobeChangeCategoryName string) (*model.Category, error) {
 	args := repository.Mock.Called(tenantId, categoryId, tobeChangeCategoryName)
