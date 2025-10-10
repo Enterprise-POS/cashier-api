@@ -114,7 +114,6 @@ func (service *CategoryServiceImpl) Register(tobeRegisters []*model.CategoryMtmW
 // Unregister implements CategoryService.
 func (service *CategoryServiceImpl) Unregister(toUnregister *model.CategoryMtmWarehouse) error {
 	// controller will guaranteed parameter not nil
-
 	if toUnregister.CategoryId < 1 || toUnregister.ItemId < 1 {
 		return fmt.Errorf("Invalid category id or item id: category id: %d item id: %d", toUnregister.CategoryId, toUnregister.ItemId)
 	}
@@ -126,6 +125,20 @@ func (service *CategoryServiceImpl) Unregister(toUnregister *model.CategoryMtmWa
 	}
 
 	return nil
+}
+
+// EditItemCategory implements CategoryService.
+func (service *CategoryServiceImpl) EditItemCategory(tenantId int, editedItemCategory *model.CategoryMtmWarehouse) error {
+	if editedItemCategory.CategoryId < 1 || editedItemCategory.ItemId < 1 {
+		return fmt.Errorf("Invalid category id or item id: category id: %d item id: %d", editedItemCategory.CategoryId, editedItemCategory.ItemId)
+	}
+
+	err := service.Repository.EditItemCategory(tenantId, editedItemCategory)
+	if err != nil {
+		return err
+	} else {
+		return nil
+	}
 }
 
 // Update implements CategoryService.
