@@ -112,6 +112,7 @@ func main() {
 	apiV1.Post("/categories/create/:tenantId", tenantRestriction, categoryController.Create)
 	apiV1.Post("/categories/register/:tenantId", tenantRestriction, categoryController.Register)
 	apiV1.Put("/categories/update/:tenantId", tenantRestriction, categoryController.Update)
+	apiV1.Put("/categories/edit_item_category/:tenantId", tenantRestriction, categoryController.EditItemCategory)
 	apiV1.Delete("/categories/unregister/:tenantId", tenantRestriction, categoryController.Unregister)
 	apiV1.Delete("/categories/:tenantId", tenantRestriction, categoryController.Delete)
 

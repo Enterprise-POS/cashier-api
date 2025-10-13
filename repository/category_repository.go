@@ -33,9 +33,15 @@ type CategoryRepository interface {
 
 	/*
 		Unregister, deleting category_mtm_warehouse
-		- Only 1 operation allowed for now
+		- Only 1 item allowed for now
 	*/
 	Unregister(toUnregister *model.CategoryMtmWarehouse) error
+
+	/*
+		Edit item category
+		- Only 1 item allowed for now
+	*/
+	EditItemCategory(tenantId int, editedItemCategory *model.CategoryMtmWarehouse) error
 
 	/*
 		Update existing category (Not updating category_mtm_warehouse table)

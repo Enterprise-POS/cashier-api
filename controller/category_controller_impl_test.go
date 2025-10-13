@@ -45,12 +45,13 @@ func TestCategoryControllerImpl(t *testing.T) {
 	categoryController := NewCategoryControllerImpl(categoryService)
 
 	tenantRestriction := middleware.RestrictByTenant(supabase) // User only allowed to access associated tenant
+	app.Get("/categories/:tenantId", tenantRestriction, categoryController.Get)
 	app.Post("/categories/items_by_category_id/:tenantId", tenantRestriction, categoryController.GetItemsByCategoryId)
 	app.Post("/categories/category_with_items/:tenantId", tenantRestriction, categoryController.GetCategoryWithItems)
 	app.Post("/categories/create/:tenantId", tenantRestriction, categoryController.Create)
 	app.Post("/categories/register/:tenantId", tenantRestriction, categoryController.Register)
-	app.Get("/categories/:tenantId", tenantRestriction, categoryController.Get)
 	app.Put("/categories/update/:tenantId", tenantRestriction, categoryController.Update)
+	app.Put("/categories/edit_item_category/:tenantId", tenantRestriction, categoryController.EditItemCategory)
 	app.Delete("/categories/unregister/:tenantId", tenantRestriction, categoryController.Unregister)
 	app.Delete("/categories/:tenantId", tenantRestriction, categoryController.Delete)
 
@@ -773,7 +774,7 @@ func TestCategoryControllerImpl(t *testing.T) {
 			{
 				ItemName: "Test Category Register 1",
 				Stocks:   10,
-				TenantId: createdTenant.Id,
+				TenantId: createdTenant.Id, // Global createdTenant
 				IsActive: true,
 			},
 		}
@@ -868,6 +869,197 @@ func TestCategoryControllerImpl(t *testing.T) {
 				Eq("item_id", fmt.Sprint(items[0].ItemId)).
 				Execute()
 			require.NoError(t, err)
+		})
+	})
+
+	t.Run("EditItemCategory", func(t *testing.T) {
+		// Create category for current Register scope only
+		dummyCategories := []string{"Test Edit Cate1", "Test Edit Cate2"}
+
+		// Create new category for register
+		requestBody := fiber.Map{
+			"categories": dummyCategories,
+		}
+		byteBody, err = json.Marshal(&requestBody)
+		body = strings.NewReader(string(byteBody))
+		request = httptest.NewRequest("POST", fmt.Sprintf("/categories/create/%d", createdTenant.Id), body)
+		request.Header.Set("Content-Type", "application/json")
+		request.AddCookie(enterprisePOSCookie)
+		response, err = app.Test(request, testTimeout)
+		require.Nil(t, err)
+		require.NotNil(t, response)
+		require.Equal(t, http.StatusOK, response.StatusCode)
+
+		// Get the id
+		var getItemBody common.WebResponse
+		responseBody, err := common.ReadBody(response.Body)
+		require.NoError(t, err)
+		err = json.Unmarshal([]byte(responseBody), &getItemBody)
+		require.NoError(t, err)
+
+		dataMap, ok := getItemBody.Data.(map[string]interface{})
+		require.True(t, ok)
+
+		rawCategories, ok := dataMap["categories"].([]interface{})
+		require.True(t, ok)
+		require.NotEmpty(t, rawCategories)
+
+		// Marshal/unmarshal to proper type
+		var categories []*model.Category
+		rawBytes, err := json.Marshal(&rawCategories)
+		require.NoError(t, err)
+
+		err = json.Unmarshal(rawBytes, &categories)
+		require.NoError(t, err)
+		require.Len(t, categories, len(dummyCategories))
+
+		dummyItems := []*model.Item{
+			{
+				ItemName: "Test EditItemCategory 1",
+				Stocks:   10,
+				TenantId: createdTenant.Id,
+				IsActive: true,
+			},
+			{
+				ItemName: "Test EditItemCategory 2",
+				Stocks:   10,
+				TenantId: createdTenant.Id,
+				IsActive: true,
+			},
+		}
+
+		items, err := createItems(supabase, dummyItems)
+		require.NoError(t, err)
+		require.Len(t, items, len(dummyItems))
+
+		t.Run("NormalEditItemCategory", func(t *testing.T) {
+			// Use register path to register item first
+			requestBody = fiber.Map{
+				"tobe_registers": []fiber.Map{
+					{
+						"category_id": categories[0].Id,
+						"item_id":     items[0].ItemId,
+					},
+				},
+			}
+			byteBody, err = json.Marshal(&requestBody)
+			require.NoError(t, err)
+
+			body = strings.NewReader(string(byteBody))
+			request = httptest.NewRequest("POST", fmt.Sprintf("/categories/register/%d", createdTenant.Id), body)
+			request.Header.Set("Content-Type", "application/json")
+			request.AddCookie(enterprisePOSCookie)
+			response, err = app.Test(request, testTimeout)
+			require.Nil(t, err)
+			require.NotNil(t, response)
+			require.Equal(t, http.StatusCreated, response.StatusCode)
+
+			byteBody, err = io.ReadAll(response.Body)
+			require.Equal(t, "Created", string(byteBody))
+
+			// The test itself
+			requestBody = fiber.Map{
+				"category_id": categories[1].Id,
+				"item_id":     items[0].ItemId,
+			}
+			byteBody, err = json.Marshal(&requestBody)
+			require.NoError(t, err)
+
+			body = strings.NewReader(string(byteBody))
+			request = httptest.NewRequest("PUT", fmt.Sprintf("/categories/edit_item_category/%d", createdTenant.Id), body)
+			request.Header.Set("Content-Type", "application/json")
+			request.AddCookie(enterprisePOSCookie)
+			response, err = app.Test(request, testTimeout)
+			assert.Nil(t, err)
+			assert.NotNil(t, response)
+			assert.Equal(t, http.StatusAccepted, response.StatusCode)
+
+			byteBody, err = io.ReadAll(response.Body)
+			assert.Equal(t, "Accepted", string(byteBody))
+		})
+
+		t.Run("NonCategorizedItem", func(t *testing.T) {
+			// This route will not handle  non categorized item into categorized item
+			requestBody = fiber.Map{
+				"category_id": categories[0].Id, // In this test, this is wrong input, should be use register route not edit_item_category route
+				"item_id":     items[1].ItemId,
+			}
+			byteBody, err = json.Marshal(&requestBody)
+			require.NoError(t, err)
+
+			body = strings.NewReader(string(byteBody))
+			request = httptest.NewRequest("PUT", fmt.Sprintf("/categories/edit_item_category/%d", createdTenant.Id), body)
+			request.Header.Set("Content-Type", "application/json")
+			request.AddCookie(enterprisePOSCookie)
+			response, err = app.Test(request, testTimeout)
+			assert.Nil(t, err)
+			assert.NotNil(t, response)
+			assert.Equal(t, http.StatusBadRequest, response.StatusCode)
+
+			byteBody, err = io.ReadAll(response.Body)
+			assert.Contains(t, string(byteBody), "[ERROR] Item has multiple categories either not registered by any category")
+		})
+
+		t.Run("CategoryDoesNotExist", func(t *testing.T) {
+			// This scope depends on NormalEditItemCategory
+			requestBody = fiber.Map{
+				"category_id": 99999, // Does not exist category
+				"item_id":     items[0].ItemId,
+			}
+			byteBody, err = json.Marshal(&requestBody)
+			require.NoError(t, err)
+
+			body = strings.NewReader(string(byteBody))
+			request = httptest.NewRequest("PUT", fmt.Sprintf("/categories/edit_item_category/%d", createdTenant.Id), body)
+			request.Header.Set("Content-Type", "application/json")
+			request.AddCookie(enterprisePOSCookie)
+			response, err = app.Test(request, testTimeout)
+			assert.Nil(t, err)
+			assert.NotNil(t, response)
+			assert.Equal(t, http.StatusBadRequest, response.StatusCode)
+
+			byteBody, err = io.ReadAll(response.Body)
+			assert.Contains(t, string(byteBody), "[ERROR] Update failed: category (id) does not exist")
+		})
+
+		t.Run("WrongRoutePurpose", func(t *testing.T) {
+			requestBody = fiber.Map{
+				"category_id": 0, // Should use unregister
+				"item_id":     items[0].ItemId,
+			}
+			byteBody, err = json.Marshal(&requestBody)
+			require.NoError(t, err)
+
+			body = strings.NewReader(string(byteBody))
+			request = httptest.NewRequest("PUT", fmt.Sprintf("/categories/edit_item_category/%d", createdTenant.Id), body)
+			request.Header.Set("Content-Type", "application/json")
+			request.AddCookie(enterprisePOSCookie)
+			response, err = app.Test(request, testTimeout)
+			assert.Nil(t, err)
+			assert.NotNil(t, response)
+			assert.Equal(t, http.StatusBadRequest, response.StatusCode)
+
+			byteBody, err = io.ReadAll(response.Body)
+			assert.Contains(t, string(byteBody), fmt.Sprintf("Invalid category id or item id: category id: %d item id: %d", 0, items[0].ItemId))
+		})
+
+		// EditItemCategory scope
+		t.Cleanup(func() {
+			// Delete categories
+			_, count, err := supabase.From(repository.CategoryTable).
+				Delete("", "exact").
+				In("id", []string{fmt.Sprint(categories[0].Id), fmt.Sprint(categories[1].Id)}). // We test edit item category so it should be deleted 2 category
+				Execute()
+			require.NoError(t, err)
+			require.Equal(t, 2, int(count))
+
+			// Warehouse item
+			_, count2, err := supabase.From(repository.WarehouseTable).
+				Delete("", "exact").
+				In("item_id", []string{fmt.Sprint(items[0].ItemId), fmt.Sprint(items[1].ItemId)}).
+				Execute()
+			require.NoError(t, err)
+			require.Equal(t, 2, int(count2))
 		})
 	})
 
