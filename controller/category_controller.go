@@ -40,6 +40,12 @@ type CategoryController interface {
 	Unregister(*fiber.Ctx) error
 
 	/*
+		Edit item category
+		- Only 1 item allowed for now
+	*/
+	EditItemCategory(*fiber.Ctx) error
+
+	/*
 		Update existing category (Not updating category_mtm_warehouse table)
 		- only category name allowed to edit
 		- only update 1 category
