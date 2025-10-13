@@ -523,6 +523,7 @@ func TestCategoryRepository(t *testing.T) {
 
 			// category
 			createdDummyCategoryFromDB1 := _createdDummyCategoryFromDB[0]
+			createdDummyCategoryFromDB2 := _createdDummyCategoryFromDB[1]
 
 			dummyCategoryMtmWarehouse := []*model.CategoryMtmWarehouse{
 				{
@@ -536,7 +537,7 @@ func TestCategoryRepository(t *testing.T) {
 
 			// The test itself
 			tobeUpdateItemCategory := &model.CategoryMtmWarehouse{
-				CategoryId: _createdDummyCategoryFromDB[1].Id, // Edited
+				CategoryId: createdDummyCategoryFromDB2.Id, // Edited
 				ItemId:     dummyItemFromDB.ItemId,
 			}
 			err = categoryRepositoryImpl.EditItemCategory(TenantId, tobeUpdateItemCategory)
@@ -546,9 +547,17 @@ func TestCategoryRepository(t *testing.T) {
 			// No need to unregister because when category deleted then all the data will be deleted
 
 			// Clean up
-			_, _, err = supabaseClient.From(CategoryTable).Delete("", "").Eq("category_name", createdDummyCategoryFromDB1.CategoryName).Eq("id", fmt.Sprint(createdDummyCategoryFromDB1.Id)).Execute()
+			_, count, err := supabaseClient.From(CategoryTable).
+				Delete("", "exact").
+				In("id", []string{fmt.Sprint(createdDummyCategoryFromDB1.Id), fmt.Sprint(createdDummyCategoryFromDB2.Id)}).
+				Execute()
 			require.Nil(t, err, "If this fail, immediately delete the test data; EditItemCategory/NormalEditItemCategory 1")
-			_, _, err = supabaseClient.From(WarehouseTable).Delete("", "").Eq("item_name", dummyItemFromDB.ItemName).Eq("item_id", fmt.Sprint(dummyItemFromDB.ItemId)).Execute()
+			require.Equal(t, 2, int(count))
+			_, _, err = supabaseClient.From(WarehouseTable).
+				Delete("", "").
+				Eq("item_name", dummyItemFromDB.ItemName).
+				Eq("item_id", fmt.Sprint(dummyItemFromDB.ItemId)).
+				Execute()
 			require.Nil(t, err, "If this fail, immediately delete the test data; EditItemCategory/NormalEditItemCategory 2")
 		})
 
