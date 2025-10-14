@@ -45,6 +45,12 @@ type CategoryService interface {
 	Update(tenantId int, categoryId int, tobeChangeCategoryName string) (*model.Category, error)
 
 	/*
+		Edit item category
+		- Only 1 item allowed for now
+	*/
+	EditItemCategory(tenantId int, editedItemCategory *model.CategoryMtmWarehouse) error
+
+	/*
 		Deleting category; NOT category_mtm_warehouse
 		If 1 category deleted, the other warehouse item that
 		associate with that category also deleted at category_mtn_warehouse
