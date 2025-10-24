@@ -44,21 +44,21 @@ func (service *StoreServiceImpl) Create(tenantId int, name string) (*model.Store
 }
 
 // GetAll implements StoreService.
-func (service *StoreServiceImpl) GetAll(tenantId int, page int, limit int, includeActiveStore bool) ([]*model.Store, int, error) {
+func (service *StoreServiceImpl) GetAll(tenantId int, page int, limit int, includeNonActive bool) ([]*model.Store, int, error) {
 	// 0 means, usually null but GO does not allow null so instead null will get 0
 	if tenantId < 1 {
 		return nil, 0, errors.New("Invalid tenant id")
 	}
 
 	if limit < 1 {
-		return nil, 0, fmt.Errorf("limit could not less then 1 (limit >= 1). Given limit %d", limit)
+		return nil, 0, fmt.Errorf("limit could not less than 1 (limit >= 1). Given limit %d", limit)
 	}
 	if page < 1 {
-		return nil, 0, fmt.Errorf("page could not less then 1 (page >= 1). Given page %d", page)
+		return nil, 0, fmt.Errorf("page could not less than 1 (page >= 1). Given page %d", page)
 	}
 
 	// By default SQL will be start from 0 index, if page 1 then page have to subtracted by 1 (page = 0)
-	stores, count, err := service.Repository.GetAll(tenantId, page-1, limit, includeActiveStore)
+	stores, count, err := service.Repository.GetAll(tenantId, page-1, limit, includeNonActive)
 	if err != nil {
 		if strings.Contains(err.Error(), "(PGRST103)") {
 			return nil, 0, errors.New("Requested range not satisfiable")

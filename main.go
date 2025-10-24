@@ -116,6 +116,13 @@ func main() {
 	apiV1.Delete("/categories/unregister/:tenantId", tenantRestriction, categoryController.Unregister)
 	apiV1.Delete("/categories/:tenantId", tenantRestriction, categoryController.Delete)
 
+	storeRepository := repository.NewStoreRepositoryImpl(supabaseClient)
+	storeService := service.NewStoreServiceImpl(storeRepository)
+	storeController := controller.NewStoreControllerImpl(storeService)
+	apiV1.Post("/stores/:tenantId", tenantRestriction, storeController.Create)
+	apiV1.Get("/stores/:tenantId", tenantRestriction, storeController.GetAll)
+	apiV1.Put("/stores/set_activate/:tenantId", tenantRestriction, storeController.SetActivate)
+
 	// Handle route not found (404)
 	app.All("*", func(ctx *fiber.Ctx) error {
 		return ctx.Status(fiber.StatusNotFound).

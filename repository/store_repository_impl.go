@@ -19,7 +19,7 @@ func NewStoreRepositoryImpl(client *supabase.Client) StoreRepository {
 const StoreTable = "store"
 
 // GetAll implements StoreRepository.
-func (repository *StoreRepositoryImpl) GetAll(tenantId, page, limit int, includeActiveStore bool) ([]*model.Store, int, error) {
+func (repository *StoreRepositoryImpl) GetAll(tenantId, page, limit int, includeNonActive bool) ([]*model.Store, int, error) {
 	start := page * limit
 	end := start + limit - 1
 	query := repository.Client.From(StoreTable).
@@ -29,7 +29,7 @@ func (repository *StoreRepositoryImpl) GetAll(tenantId, page, limit int, include
 		Limit(limit, "")
 
 	// Will not include non-active store / Only active store will be return
-	if !includeActiveStore {
+	if !includeNonActive {
 		query = query.Eq("is_active", "TRUE")
 	}
 
@@ -46,7 +46,7 @@ func (repository *StoreRepositoryImpl) GetAll(tenantId, page, limit int, include
 func (repository *StoreRepositoryImpl) Create(tenantId int, name string) (*model.Store, error) {
 	var createdStore *model.Store
 	_, err := repository.Client.From(StoreTable).
-		Insert(&model.Store{TenantId: tenantId, Name: name}, false, "", "representation", "").
+		Insert(&model.Store{TenantId: tenantId, Name: name, IsActive: true}, false, "", "representation", "").
 		Single().
 		ExecuteTo(&createdStore)
 	if err != nil {

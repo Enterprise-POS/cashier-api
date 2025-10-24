@@ -11,7 +11,7 @@ type StoreRepository interface {
 	/*
 		Get All store, and filter available either active / non active only
 	*/
-	GetAll(tenantId, page, limit int, includeActiveStore bool) ([]*model.Store, int, error)
+	GetAll(tenantId, page, limit int, includeNonActive bool) ([]*model.Store, int, error)
 
 	/*
 		Create new store

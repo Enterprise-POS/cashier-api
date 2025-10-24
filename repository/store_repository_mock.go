@@ -26,8 +26,8 @@ func (repository *StoreRepositoryMock) Create(tenantId int, name string) (*model
 }
 
 // GetAll implements StoreRepository.
-func (repository *StoreRepositoryMock) GetAll(tenantId int, page int, limit int, includeActiveStore bool) ([]*model.Store, int, error) {
-	args := repository.Mock.Called(tenantId, page, limit, includeActiveStore)
+func (repository *StoreRepositoryMock) GetAll(tenantId int, page int, limit int, includeNonActive bool) ([]*model.Store, int, error) {
+	args := repository.Mock.Called(tenantId, page, limit, includeNonActive)
 
 	if args.Get(0) == nil {
 		return nil, 0, args.Error(2)

@@ -83,13 +83,7 @@ func TestCategoryControllerImpl(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, response)
 	require.Equal(t, http.StatusOK, response.StatusCode)
-	var enterprisePOSCookie *http.Cookie
-	for _, c := range response.Cookies() {
-		if c.Name == constant.EnterprisePOS {
-			enterprisePOSCookie = c
-			break
-		}
-	}
+	var enterprisePOSCookie *http.Cookie = extractEnterprisePOSCookie(response.Cookies())
 	require.NotNil(t, enterprisePOSCookie)
 
 	t.Run("Get", func(t *testing.T) {
@@ -1365,4 +1359,13 @@ func createItems(supabase *supabase.Client, items []*model.Item) ([]*model.Item,
 	} else {
 		return results, nil
 	}
+}
+
+func extractEnterprisePOSCookie(cookies []*http.Cookie) *http.Cookie {
+	for _, c := range cookies {
+		if c.Name == constant.EnterprisePOS {
+			return c
+		}
+	}
+	return nil
 }
