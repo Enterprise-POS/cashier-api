@@ -2,10 +2,6 @@ package model
 
 import "time"
 
-/*
-	Don't be confuse, this is warehouse 'item'
-*/
-
 type StoreStock struct {
 	Id        int        `json:"id,omitempty"`
 	Stocks    int        `json:"stocks"`

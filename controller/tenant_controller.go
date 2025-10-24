@@ -1,8 +1,6 @@
 package controller
 
-import (
-	"github.com/gofiber/fiber/v2"
-)
+import "github.com/gofiber/fiber/v2"
 
 /*
 Every route here required authentication

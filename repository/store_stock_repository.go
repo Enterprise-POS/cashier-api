@@ -11,4 +11,9 @@ type StoreStockRepository interface {
 	// FindById(itemId int, tenantId int) *model.StoreStock
 	// CreateItem(item []*model.Item) error
 	// Edit(quantity int, item *model.Item) error
+
+	/*
+		Create new store, will
+	*/
+	Create() error
 }

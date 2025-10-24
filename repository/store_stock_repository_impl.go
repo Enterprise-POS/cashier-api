@@ -106,3 +106,8 @@ func (storeStock *StoreStockRepositoryImpl) TransferStockToStoreStock(quantity i
 
 	return nil
 }
+
+// Create implements StoreStockRepository.
+func (storeStock *StoreStockRepositoryImpl) Create() error {
+	panic("unimplemented")
+}
