@@ -65,9 +65,9 @@ func (service *UserServiceImpl) SignInWithEmailAndPassword(email string, passwor
 	var emailRegex = regexp.MustCompile(`^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$`)
 
 	if !emailRegex.MatchString(email) {
-		return nil, "", errors.New("Could not create user account. Check input email")
+		return nil, "", errors.New("Could not signing in user account. Check input email")
 	} else if len(password) < 8 {
-		return nil, "", errors.New("Could not create user account. Check input password")
+		return nil, "", errors.New("Could not signing in user account. Check input password")
 	}
 
 	candidateUser, err := service.Repository.GetByEmail(email)

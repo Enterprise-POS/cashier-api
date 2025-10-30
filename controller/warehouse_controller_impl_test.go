@@ -608,7 +608,7 @@ func createUser(client *supabase.Client, user *model.UserRegisterForm) *model.Us
 	var result *model.User
 	_, err := client.From(repository.UserTable).Insert(user, false, "", "", "").Single().ExecuteTo(&result)
 	if err != nil {
-		panic("[DEV] Could not create user, check input")
+		panic(fmt.Sprintf("[DEV] Could not create user, check input. Reason %s", err.Error()))
 	}
 
 	return result
@@ -621,7 +621,7 @@ func createTenant(client *supabase.Client, tenant *model.Tenant) *model.Tenant {
 		Single().
 		ExecuteTo(&result)
 	if err != nil {
-		panic("[DEV] Could not create tenant, check input (1)")
+		panic(fmt.Sprintf("[DEV] Could not create tenant, check input (1). Reason: %s", err.Error()))
 	}
 	_, _, err = client.From("user_mtm_tenant").
 		Insert(&model.UserMtmTenant{UserId: tenant.OwnerUserId, TenantId: result.Id}, false, "", "", "").

@@ -54,7 +54,7 @@ func TestStoreControllerImpl(t *testing.T) {
 	// User
 	uniqueIdentity := strings.ReplaceAll(uuid.NewString(), "-", "")
 	testUser := &model.UserRegisterForm{
-		Name:     "Test_StoreController" + strings.ReplaceAll(uuid.NewString(), "-", ""),
+		Name:     "Test_StoreController" + uniqueIdentity,
 		Email:    uniqueIdentity + "@gmail.com",
 		Password: "$2a$10$V6ZP0rm./adZ9kryl3mYf.MB9IY80Y8ZCjtKslUEPWoH.9PCsX7vK",
 	}

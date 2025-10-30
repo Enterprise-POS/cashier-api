@@ -1,0 +1,113 @@
+package controller
+
+import (
+	common "cashier-api/helper"
+	"cashier-api/service"
+	"strconv"
+
+	"github.com/gofiber/fiber/v2"
+)
+
+type StoreStockControllerImpl struct {
+	Service service.StoreStockService
+}
+
+func NewStoreStockControllerImpl(service service.StoreStockService) StoreStockController {
+	return &StoreStockControllerImpl{Service: service}
+}
+
+// Get implements StoreStockController.
+func (controller *StoreStockControllerImpl) Get(ctx *fiber.Ctx) error {
+	paramLimit := ctx.Query("limit", "5") // default 5
+	paramPage := ctx.Query("page", "1")   // default 1
+	paramStoreId := ctx.Query("store_id", "must specify")
+	// nameQuery := ctx.Query("name_query", "")
+
+	tenantId, _ := strconv.Atoi(ctx.Params("tenantId"))
+
+	limit, err := strconv.Atoi(paramLimit)
+	if err != nil {
+		response := common.NewWebResponseError(fiber.StatusBadRequest, common.StatusError, err.Error())
+		return ctx.Status(fiber.StatusBadRequest).JSON(response)
+	}
+
+	page, err := strconv.Atoi(paramPage)
+	if err != nil {
+		response := common.NewWebResponseError(fiber.StatusBadRequest, common.StatusError, err.Error())
+		return ctx.Status(fiber.StatusBadRequest).JSON(response)
+	}
+
+	storeId, err := strconv.Atoi(paramStoreId)
+	if err != nil {
+		response := common.NewWebResponseError(fiber.StatusBadRequest, common.StatusError, err.Error())
+		return ctx.Status(fiber.StatusBadRequest).JSON(response)
+	}
+
+	storeStocks, count, err := controller.Service.Get(tenantId, storeId, limit, page)
+	if err != nil {
+		response := common.NewWebResponseError(fiber.StatusBadRequest, common.StatusError, err.Error())
+		return ctx.Status(fiber.StatusBadRequest).JSON(response)
+	}
+
+	return ctx.Status(fiber.StatusOK).
+		JSON(common.NewWebResponse(200, common.StatusSuccess, fiber.Map{
+			"count":        count,
+			"store_stocks": storeStocks,
+		}))
+}
+
+// TransferStockToStoreStock implements StoreStockController.
+func (controller *StoreStockControllerImpl) TransferStockToStoreStock(ctx *fiber.Ctx) error {
+	// It's guaranteed to be not "", because restrict by tenant
+	// already did check first
+	tenantId, _ := strconv.Atoi(ctx.Params("tenantId"))
+
+	type StoreStockTransferStockToStoreStockRequestBody struct {
+		Quantity int `json:"quantity"`
+		ItemId   int `json:"item_id"`
+		StoreId  int `json:"store_id"`
+		// TenantId int `json:"tenantId"` // Handled at url
+	}
+	var body StoreStockTransferStockToStoreStockRequestBody
+	err := ctx.BodyParser(&body)
+	if err != nil {
+		return ctx.Status(fiber.StatusBadRequest).
+			JSON(common.NewWebResponseError(400, common.StatusError, "Something gone wrong ! The request body is malformed"))
+	}
+
+	err = controller.Service.TransferStockToStoreStock(body.Quantity, body.ItemId, body.StoreId, tenantId)
+	if err != nil {
+		return ctx.Status(fiber.StatusBadRequest).
+			JSON(common.NewWebResponseError(400, common.StatusError, err.Error()))
+	}
+
+	return ctx.SendStatus(fiber.StatusAccepted)
+}
+
+// TransferStockToWarehouse implements StoreStockController.
+func (controller *StoreStockControllerImpl) TransferStockToWarehouse(ctx *fiber.Ctx) error {
+	// It's guaranteed to be not "", because restrict by tenant
+	// already did check first
+	tenantId, _ := strconv.Atoi(ctx.Params("tenantId"))
+
+	type StoreStockTransferStockToWarehouseRequestBody struct {
+		Quantity int `json:"quantity"`
+		ItemId   int `json:"item_id"`
+		StoreId  int `json:"store_id"`
+		// TenantId int `json:"tenantId"` // Handled at url
+	}
+	var body StoreStockTransferStockToWarehouseRequestBody
+	err := ctx.BodyParser(&body)
+	if err != nil {
+		return ctx.Status(fiber.StatusBadRequest).
+			JSON(common.NewWebResponseError(400, common.StatusError, "Something gone wrong ! The request body is malformed"))
+	}
+
+	err = controller.Service.TransferStockToWarehouse(body.Quantity, body.ItemId, body.StoreId, tenantId)
+	if err != nil {
+		return ctx.Status(fiber.StatusBadRequest).
+			JSON(common.NewWebResponseError(400, common.StatusError, err.Error()))
+	}
+
+	return ctx.SendStatus(fiber.StatusAccepted)
+}

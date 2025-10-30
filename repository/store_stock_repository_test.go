@@ -35,6 +35,10 @@ func TestStoreStockRepository(t *testing.T) {
 		assert.Nil(t, storeStocks)
 	})
 
+	t.Run("NormalGet", func(t *testing.T) {
+		// storeStockRepo := NewStoreStockRepositoryImpl(supabaseClient)
+	})
+
 	t.Run("_TransferStockToWarehouse", func(t *testing.T) {
 		storeStockRepo := NewStoreStockRepositoryImpl(supabaseClient)
 		warehouseRepo := NewWarehouseRepositoryImpl(supabaseClient)
