@@ -56,19 +56,6 @@ func (repository *StoreStockRepositoryImpl) GetV2(tenantId int, storeId int, lim
 	start := page * limit
 	// end := start + limit - 1
 
-	/*
-		Original query:
-
-		-- Get items base on category (id)
-			SELECT
-				category.id AS category_id, category.category_name,
-				warehouse.item_id, warehouse.item_name, warehouse.stocks
-			FROM warehouse
-			INNER JOIN category_mtm_warehouse ON category_mtm_warehouse.item_id=warehouse.item_id
-			INNER JOIN category ON category.id=category_mtm_warehouse.category_id
-			WHERE warehouse.tenant_id=p_tenant_id AND category.id=p_category_id;
-	*/
-
 	data := repository.Client.Rpc("get_store_stocks", "", map[string]interface{}{
 		"p_tenant_id":  tenantId,
 		"p_store_id":   storeId,

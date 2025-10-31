@@ -5,14 +5,21 @@ import (
 	"cashier-api/repository"
 	"errors"
 	"fmt"
+	"regexp"
 )
 
 type StoreStockServiceImpl struct {
-	Repository repository.StoreStockRepository
+	Repository        repository.StoreStockRepository
+	ItemNameRegexRule *regexp.Regexp
 }
 
 func NewStoreStockServiceImpl(repository repository.StoreStockRepository) StoreStockService {
-	return &StoreStockServiceImpl{Repository: repository}
+	return &StoreStockServiceImpl{
+		Repository: repository,
+
+		// The regex rule is the same with warehouse_service
+		ItemNameRegexRule: regexp.MustCompile(`^[\p{Han}\p{Hiragana}\p{Katakana}a-zA-Z][\p{Han}\p{Hiragana}\p{Katakana}a-zA-Z0-9' ]*$`),
+	}
 }
 
 // Get implements StoreStockService.
@@ -36,6 +43,35 @@ func (service *StoreStockServiceImpl) Get(tenantId int, storeId int, limit int, 
 	}
 
 	return storeStocks, count, nil
+}
+
+// GetV2 implements StoreStockService.
+func (service *StoreStockServiceImpl) GetV2(tenantId int, storeId int, limit int, page int, nameQuery string) ([]*model.StoreStockV2, int, error) {
+	if limit < 1 {
+		return nil, 0, fmt.Errorf("Limit could not less then 1 (limit >= 1). Given limit %d", limit)
+	}
+	if page < 1 {
+		return nil, 0, fmt.Errorf("page could not less then 1 (page >= 1). Given page %d", page)
+	}
+	if storeId < 1 {
+		return nil, 0, errors.New("Store id could not be empty or fill with 0")
+	}
+	if tenantId < 1 {
+		return nil, 0, errors.New("Tenant id could not be empty or fill with 0")
+	}
+
+	if nameQuery != "" {
+		if !service.ItemNameRegexRule.MatchString(nameQuery) {
+			return nil, 0, fmt.Errorf("Invalid searching by name: %s", nameQuery)
+		}
+	}
+
+	storeStocksV2, count, err := service.Repository.GetV2(tenantId, storeId, limit, page-1, nameQuery)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return storeStocksV2, count, nil
 }
 
 // TransferStockToStoreStock implements StoreStockService.
