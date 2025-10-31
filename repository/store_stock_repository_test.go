@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"cashier-api/exception"
 	"cashier-api/helper/client"
 	"cashier-api/model"
 	"encoding/json"
@@ -35,8 +36,26 @@ func TestStoreStockRepository(t *testing.T) {
 		assert.Nil(t, storeStocks)
 	})
 
-	t.Run("NormalGet", func(t *testing.T) {
-		// storeStockRepo := NewStoreStockRepositoryImpl(supabaseClient)
+	t.Run("GetV2", func(t *testing.T) {
+		t.Run("NormalGetV2", func(t *testing.T) {
+			storeStockRepo := NewStoreStockRepositoryImpl(supabaseClient)
+			storeStocks, count, err := storeStockRepo.GetV2(TenantId, StoreId, 1, 1, "")
+			assert.NoError(t, err)
+			assert.NotNil(t, storeStocks)
+			assert.Greater(t, count, 0)
+			assert.Len(t, storeStocks, 1)
+		})
+
+		t.Run("NotExistItemAtStoreStock", func(t *testing.T) {
+			storeStockRepo := NewStoreStockRepositoryImpl(supabaseClient)
+			storeStocks, count, err := storeStockRepo.GetV2(TenantId, 99, 1, 1, "")
+			assert.Error(t, err)
+			assert.Equal(t, 0, count)
+			assert.Nil(t, storeStocks)
+
+			_, ok := err.(*exception.PostgreSQLException)
+			assert.True(t, ok)
+		})
 	})
 
 	t.Run("_TransferStockToWarehouse", func(t *testing.T) {

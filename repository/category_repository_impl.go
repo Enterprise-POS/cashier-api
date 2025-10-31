@@ -66,7 +66,7 @@ func (repository *CategoryRepositoryImpl) GetItemsByCategoryId(tenantId int, cat
 
 	countResult := 0
 	if len(results) > 0 {
-		countResult = results[0].TotalCount // same value for all rows
+		countResult = results[0].TotalCount // Same value for all rows
 	}
 
 	return results, countResult, nil

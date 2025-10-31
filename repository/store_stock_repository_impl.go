@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"cashier-api/exception"
 	"cashier-api/model"
 	"encoding/json"
 	"errors"
@@ -53,38 +54,61 @@ func (repository *StoreStockRepositoryImpl) Get(tenantId int, storeId int, limit
 // GetV2 implements StoreStockRepository.
 func (repository *StoreStockRepositoryImpl) GetV2(tenantId int, storeId int, limit int, page int, nameQuery string) ([]*model.StoreStockV2, int, error) {
 	start := page * limit
-	end := start + limit - 1
+	// end := start + limit - 1
 
 	/*
-		Example join using bare bone supabase method.
+		Original query:
 
-		results, _, err := repository.Client.From("category").
-			Select("id, category_name, category_mtm_warehouse(warehouse(item_id))", "", false).
-			Limit(limit, "category_mtm_warehouse(warehouse(item_id))").
-			Range(start, end, "category_mtm_warehouse(warehouse(item_id))").
-			Eq("tenant_id", strconv.Itoa(tenantId)).
-			Execute()
-
-		Instead will be using Rpc with the same query as above
+		-- Get items base on category (id)
+			SELECT
+				category.id AS category_id, category.category_name,
+				warehouse.item_id, warehouse.item_name, warehouse.stocks
+			FROM warehouse
+			INNER JOIN category_mtm_warehouse ON category_mtm_warehouse.item_id=warehouse.item_id
+			INNER JOIN category ON category.id=category_mtm_warehouse.category_id
+			WHERE warehouse.tenant_id=p_tenant_id AND category.id=p_category_id;
 	*/
-	query := repository.Client.
-		From(StoreStockTable).
-		Select("id, stocks, price, item_id, warehouse(item_name)", "exact", false).
-		Eq("tenant_id", strconv.Itoa(tenantId)).
-		Limit(limit, "").
-		Range(start, end, "")
 
-	if nameQuery != "" {
-		query = query.Like("item_name", "%"+nameQuery+"%")
+	data := repository.Client.Rpc("get_store_stocks", "", map[string]interface{}{
+		"p_tenant_id":  tenantId,
+		"p_store_id":   storeId,
+		"p_limit":      limit,
+		"p_offset":     start,
+		"p_name_query": nameQuery,
+	})
+
+	/*
+		Example return, either error string contains error message or json string
+		- [ERROR]
+		- [
+				{"category_id":1,"category_name":"Fruits","item_id":1,"item_name":"Apple","stocks":358},
+				{"category_id":1,"category_name":"Fruits","item_id":267,"item_name":"Durian","stocks":10}
+			]
+	*/
+	if strings.Contains(data, "[ERROR]") {
+		// Extract the message
+		var postgreSQLException *exception.PostgreSQLException
+		err := json.Unmarshal([]byte(data), &postgreSQLException)
+		if err != nil {
+			return nil, 0, err
+		}
+
+		return nil, 0, postgreSQLException
 	}
 
-	var result []*model.StoreStockV2
-	count, err := query.ExecuteTo(&result)
+	var results []*model.StoreStockV2
+	err := json.Unmarshal([]byte(data), &results)
 	if err != nil {
+		log.Errorf("ERROR ! While unmarshaling data at CategoryRepositoryImpl.GetItemsByCategory. tenantId: %d, storeId: %d", tenantId, storeId)
 		return nil, 0, err
 	}
 
-	return result, int(count), nil
+	countResult := 0
+	if len(results) > 0 {
+		countResult = results[0].TotalCount // Same value for all rows
+	}
+
+	return results, countResult, nil
 }
 
 /*
