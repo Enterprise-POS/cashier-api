@@ -8,6 +8,8 @@ type StoreStockController interface {
 	*/
 	Get(ctx *fiber.Ctx) error
 
+	GetV2(ctx *fiber.Ctx) error
+
 	/*
 		There is no create method for store_stock, so from warehouse transfer stock into store_stock
 		warehouse quantity is always mandatory, could not transfer stock to store_stock if quantity insufficient

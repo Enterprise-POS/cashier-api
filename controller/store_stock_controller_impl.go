@@ -56,6 +56,46 @@ func (controller *StoreStockControllerImpl) Get(ctx *fiber.Ctx) error {
 		}))
 }
 
+// GetV2 implements StoreStockController.
+func (controller *StoreStockControllerImpl) GetV2(ctx *fiber.Ctx) error {
+	paramLimit := ctx.Query("limit", "5") // default 5
+	paramPage := ctx.Query("page", "1")   // default 1
+	paramStoreId := ctx.Query("store_id", "must specify")
+	nameQuery := ctx.Query("name_query", "")
+
+	tenantId, _ := strconv.Atoi(ctx.Params("tenantId"))
+
+	limit, err := strconv.Atoi(paramLimit)
+	if err != nil {
+		response := common.NewWebResponseError(fiber.StatusBadRequest, common.StatusError, err.Error())
+		return ctx.Status(fiber.StatusBadRequest).JSON(response)
+	}
+
+	page, err := strconv.Atoi(paramPage)
+	if err != nil {
+		response := common.NewWebResponseError(fiber.StatusBadRequest, common.StatusError, err.Error())
+		return ctx.Status(fiber.StatusBadRequest).JSON(response)
+	}
+
+	storeId, err := strconv.Atoi(paramStoreId)
+	if err != nil {
+		response := common.NewWebResponseError(fiber.StatusBadRequest, common.StatusError, "Please check store id. Store id is required")
+		return ctx.Status(fiber.StatusBadRequest).JSON(response)
+	}
+
+	storeStocks, count, err := controller.Service.GetV2(tenantId, storeId, limit, page, nameQuery)
+	if err != nil {
+		response := common.NewWebResponseError(fiber.StatusBadRequest, common.StatusError, err.Error())
+		return ctx.Status(fiber.StatusBadRequest).JSON(response)
+	}
+
+	return ctx.Status(fiber.StatusOK).
+		JSON(common.NewWebResponse(200, common.StatusSuccess, fiber.Map{
+			"count":        count,
+			"store_stocks": storeStocks,
+		}))
+}
+
 // TransferStockToStoreStock implements StoreStockController.
 func (controller *StoreStockControllerImpl) TransferStockToStoreStock(ctx *fiber.Ctx) error {
 	// It's guaranteed to be not "", because restrict by tenant

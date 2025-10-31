@@ -123,6 +123,15 @@ func main() {
 	apiV1.Get("/stores/:tenantId", tenantRestriction, storeController.GetAll)
 	apiV1.Put("/stores/set_activate/:tenantId", tenantRestriction, storeController.SetActivate)
 
+	storeStockRepository := repository.NewStoreStockRepositoryImpl(supabaseClient)
+	storeStockService := service.NewStoreStockServiceImpl(storeStockRepository)
+	storeStockController := controller.NewStoreStockControllerImpl(storeStockService)
+
+	apiV1.Get("/store_stocks/:tenantId", tenantRestriction, storeStockController.Get)
+	apiV1.Get("/store_stocks/v2/:tenantId", tenantRestriction, storeStockController.GetV2)
+	apiV1.Put("/store_stocks/transfer_to_store_stock/:tenantId", tenantRestriction, storeStockController.TransferStockToStoreStock)
+	apiV1.Put("/store_stocks/transfer_to_warehouse/:tenantId", tenantRestriction, storeStockController.TransferStockToWarehouse)
+
 	// Handle route not found (404)
 	app.All("*", func(ctx *fiber.Ctx) error {
 		return ctx.Status(fiber.StatusNotFound).
