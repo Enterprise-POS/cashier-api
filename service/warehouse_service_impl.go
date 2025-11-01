@@ -16,7 +16,10 @@ type WarehouseServiceImpl struct {
 
 func NewWarehouseServiceImpl(repository repository.WarehouseRepository) WarehouseService {
 	return &WarehouseServiceImpl{
-		Repository:        repository,
+		Repository: repository,
+
+		// Other struct also apply the same regex rule
+		// - store_stock_service
 		ItemNameRegexRule: regexp.MustCompile(`^[\p{Han}\p{Hiragana}\p{Katakana}a-zA-Z][\p{Han}\p{Hiragana}\p{Katakana}a-zA-Z0-9' ]*$`),
 	}
 }

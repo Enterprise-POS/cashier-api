@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"cashier-api/exception"
 	"cashier-api/model"
 	"encoding/json"
 	"errors"
@@ -21,12 +22,12 @@ func NewStoreStockRepositoryImpl(client *supabase.Client) StoreStockRepository {
 	return &StoreStockRepositoryImpl{Client: client}
 }
 
-func (storeStock *StoreStockRepositoryImpl) Get(tenantId int, storeId int, limit int, page int) ([]*model.StoreStock, int, error) {
+func (repository *StoreStockRepositoryImpl) Get(tenantId int, storeId int, limit int, page int) ([]*model.StoreStock, int, error) {
 	// Even user see first page written in 1, we must subtract by 1 otherwise range error
 	start := page * limit
 	end := start + limit - 1
 
-	data, count, err := storeStock.Client.From(StoreStockTable).
+	data, count, err := repository.Client.From(StoreStockTable).
 		// exact: Will return the total items are there
 		Select("*", "exact", false).
 
@@ -50,6 +51,53 @@ func (storeStock *StoreStockRepositoryImpl) Get(tenantId int, storeId int, limit
 	return result, int(count), nil
 }
 
+// GetV2 implements StoreStockRepository.
+func (repository *StoreStockRepositoryImpl) GetV2(tenantId int, storeId int, limit int, page int, nameQuery string) ([]*model.StoreStockV2, int, error) {
+	start := page * limit
+	// end := start + limit - 1
+
+	data := repository.Client.Rpc("get_store_stocks", "", map[string]interface{}{
+		"p_tenant_id":  tenantId,
+		"p_store_id":   storeId,
+		"p_limit":      limit,
+		"p_offset":     start,
+		"p_name_query": nameQuery,
+	})
+
+	/*
+		Example return, either error string contains error message or json string
+		- [ERROR]
+		- [
+				{"category_id":1,"category_name":"Fruits","item_id":1,"item_name":"Apple","stocks":358},
+				{"category_id":1,"category_name":"Fruits","item_id":267,"item_name":"Durian","stocks":10}
+			]
+	*/
+	if strings.Contains(data, "[ERROR]") {
+		// Extract the message
+		var postgreSQLException *exception.PostgreSQLException
+		err := json.Unmarshal([]byte(data), &postgreSQLException)
+		if err != nil {
+			return nil, 0, err
+		}
+
+		return nil, 0, postgreSQLException
+	}
+
+	var results []*model.StoreStockV2
+	err := json.Unmarshal([]byte(data), &results)
+	if err != nil {
+		log.Errorf("ERROR ! While unmarshaling data at CategoryRepositoryImpl.GetItemsByCategory. tenantId: %d, storeId: %d", tenantId, storeId)
+		return nil, 0, err
+	}
+
+	countResult := 0
+	if len(results) > 0 {
+		countResult = results[0].TotalCount // Same value for all rows
+	}
+
+	return results, countResult, nil
+}
+
 /*
 TransferStockToWarehouse:
 
@@ -64,8 +112,8 @@ TransferStockToWarehouse:
 
 	TODO: resolve security alert from supabase, 'search_path'
 */
-func (storeStock *StoreStockRepositoryImpl) TransferStockToWarehouse(quantity int, itemId int, storeId int, tenantId int) error {
-	var message string = storeStock.Client.Rpc("transfer_stock_to_warehouse", "", map[string]interface{}{
+func (repository *StoreStockRepositoryImpl) TransferStockToWarehouse(quantity int, itemId int, storeId int, tenantId int) error {
+	var message string = repository.Client.Rpc("transfer_stock_to_warehouse", "", map[string]interface{}{
 		"p_quantity":  quantity,
 		"p_item_id":   itemId,
 		"p_store_id":  storeId,
@@ -93,8 +141,8 @@ TransferStockToStoreStock:
 
 	TODO: resolve security alert from supabase, 'search_path'
 */
-func (storeStock *StoreStockRepositoryImpl) TransferStockToStoreStock(quantity int, itemId int, storeId int, tenantId int) error {
-	var message string = storeStock.Client.Rpc("transfer_stocks_to_store_stock", "", map[string]interface{}{
+func (repository *StoreStockRepositoryImpl) TransferStockToStoreStock(quantity int, itemId int, storeId int, tenantId int) error {
+	var message string = repository.Client.Rpc("transfer_stocks_to_store_stock", "", map[string]interface{}{
 		"p_quantity":  quantity,
 		"p_item_id":   itemId,
 		"p_store_id":  storeId,
@@ -105,9 +153,4 @@ func (storeStock *StoreStockRepositoryImpl) TransferStockToStoreStock(quantity i
 	}
 
 	return nil
-}
-
-// Create implements StoreStockRepository.
-func (storeStock *StoreStockRepositoryImpl) Create() error {
-	panic("unimplemented")
 }
