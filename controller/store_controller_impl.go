@@ -47,23 +47,29 @@ func (controller *StoreControllerImpl) Create(ctx *fiber.Ctx) error {
 func (controller *StoreControllerImpl) GetAll(ctx *fiber.Ctx) error {
 	tenantId, _ := strconv.Atoi(ctx.Params("tenantId"))
 
-	// paramLimit := ctx.Query("limit", "5")         // default 5
-	// paramPage := ctx.Query("page", "1")           // default 1
-	// paramNameQuery := ctx.Query("name_query", "") // default empty
+	paramLimit := ctx.Query("limit", "5") // default 5
+	paramPage := ctx.Query("page", "1")   // default 1
+	paramIncludeNonActive := ctx.Query("include_non_active", "false")
 
-	type StoreGetAllRequestBody struct {
-		Page             int  `json:"page"`
-		Limit            int  `json:"limit"`
-		IncludeNonActive bool `json:"include_non_active"`
-	}
-	var body StoreGetAllRequestBody
-	err := ctx.BodyParser(&body)
+	limit, err := strconv.Atoi(paramLimit)
 	if err != nil {
-		return ctx.Status(fiber.StatusBadRequest).
-			JSON(common.NewWebResponseError(400, common.StatusError, "Something gone wrong ! The request body is malformed"))
+		response := common.NewWebResponseError(fiber.StatusBadRequest, common.StatusError, "Please check limit URL parameter")
+		return ctx.Status(fiber.StatusBadRequest).JSON(response)
 	}
 
-	stores, count, err := controller.Service.GetAll(tenantId, body.Page, body.Limit, body.IncludeNonActive)
+	page, err := strconv.Atoi(paramPage)
+	if err != nil {
+		response := common.NewWebResponseError(fiber.StatusBadRequest, common.StatusError, "Please check page URL parameter")
+		return ctx.Status(fiber.StatusBadRequest).JSON(response)
+	}
+
+	includeNonActive, err := strconv.ParseBool(paramIncludeNonActive)
+	if err != nil {
+		response := common.NewWebResponseError(fiber.StatusBadRequest, common.StatusError, "Please check include_non_active parameter")
+		return ctx.Status(fiber.StatusBadRequest).JSON(response)
+	}
+
+	stores, count, err := controller.Service.GetAll(tenantId, page, limit, includeNonActive)
 	if err != nil {
 		return ctx.Status(fiber.StatusBadRequest).
 			JSON(common.NewWebResponseError(400, common.StatusError, err.Error()))
@@ -71,8 +77,8 @@ func (controller *StoreControllerImpl) GetAll(ctx *fiber.Ctx) error {
 
 	return ctx.Status(fiber.StatusOK).
 		JSON(common.NewWebResponse(200, common.StatusSuccess, fiber.Map{
-			"page":                   body.Page,
-			"limit":                  body.Limit,
+			"page":                   page,
+			"limit":                  limit,
 			"count":                  count,
 			"stores":                 stores,
 			"requested_by_tenant_id": tenantId,

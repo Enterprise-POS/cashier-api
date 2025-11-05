@@ -13,6 +13,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -177,7 +178,7 @@ func TestStoreControllerImpl(t *testing.T) {
 
 			byteResponseBody, err := io.ReadAll(response.Body)
 			assert.NoError(t, err)
-			fmt.Println(string(byteResponseBody))
+			// fmt.Println(string(byteResponseBody))
 
 			var responseBody struct {
 				Code   int    `json:"code"`
@@ -193,15 +194,17 @@ func TestStoreControllerImpl(t *testing.T) {
 		t.Run("NormalGetAll", func(t *testing.T) {
 			page := 1
 			limit := 2
-			includeNonActive := true
-			byteBody, err := json.Marshal(fiber.Map{
-				"page":               page,
-				"limit":              limit,
-				"include_non_active": includeNonActive,
-			})
+			includeNonActive := "true"
 			require.NoError(t, err)
-			requestBody := strings.NewReader(string(byteBody))
-			request := httptest.NewRequest("GET", fmt.Sprint("/stores/", createdTestTenant.Id), requestBody)
+			baseURL := fmt.Sprintf("/stores/%d", createdTestTenant.Id)
+			parsedURL, err := url.Parse(baseURL)
+			params := url.Values{}
+			params.Add("limit", strconv.Itoa(limit))
+			params.Add("page", strconv.Itoa(page))
+			params.Add("include_non_active", includeNonActive)
+
+			parsedURL.RawQuery = params.Encode()
+			request := httptest.NewRequest("GET", parsedURL.String(), nil)
 			request.Header.Set("Content-Type", "application/json")
 			request.AddCookie(enterprisePOSCookie)
 			response, err := app.Test(request, testTimeout)
@@ -211,7 +214,7 @@ func TestStoreControllerImpl(t *testing.T) {
 
 			byteResponseBody, err := io.ReadAll(response.Body)
 			assert.NoError(t, err)
-			fmt.Println(string(byteResponseBody))
+			// fmt.Println(string(byteResponseBody))
 
 			var responseBody struct {
 				Code   int    `json:"code"`
@@ -231,16 +234,18 @@ func TestStoreControllerImpl(t *testing.T) {
 
 		t.Run("WrongRequestDataType", func(t *testing.T) {
 			page := 1
-			limit := "2"
-			includeNonActive := true
-			byteBody, err := json.Marshal(fiber.Map{
-				"page":               page,
-				"limit":              limit,
-				"include_non_active": includeNonActive,
-			})
-			require.NoError(t, err)
-			requestBody := strings.NewReader(string(byteBody))
-			request := httptest.NewRequest("GET", fmt.Sprint("/stores/", createdTestTenant.Id), requestBody)
+			limit := "impossible number"
+			includeNonActive := "true"
+
+			baseURL := fmt.Sprintf("/stores/%d", createdTestTenant.Id)
+			parsedURL, err := url.Parse(baseURL)
+			params := url.Values{}
+			params.Add("limit", limit)
+			params.Add("page", strconv.Itoa(page))
+			params.Add("include_non_active", includeNonActive)
+
+			parsedURL.RawQuery = params.Encode()
+			request := httptest.NewRequest("GET", parsedURL.String(), nil)
 			request.Header.Set("Content-Type", "application/json")
 			request.AddCookie(enterprisePOSCookie)
 			response, err := app.Test(request, testTimeout)
@@ -251,15 +256,18 @@ func TestStoreControllerImpl(t *testing.T) {
 
 		t.Run("RequestDataIncomplete", func(t *testing.T) {
 			page := 1
-			includeNonActive := true
-			byteBody, err := json.Marshal(fiber.Map{
-				"page": page,
-				// "limit":              limit,
-				"include_non_active": includeNonActive,
-			})
-			require.NoError(t, err)
-			requestBody := strings.NewReader(string(byteBody))
-			request := httptest.NewRequest("GET", fmt.Sprint("/stores/", createdTestTenant.Id), requestBody)
+			limit := 0
+			includeNonActive := "true"
+
+			baseURL := fmt.Sprintf("/stores/%d", createdTestTenant.Id)
+			parsedURL, err := url.Parse(baseURL)
+			params := url.Values{}
+			params.Add("limit", strconv.Itoa(limit))
+			params.Add("page", strconv.Itoa(page))
+			params.Add("include_non_active", includeNonActive)
+
+			parsedURL.RawQuery = params.Encode()
+			request := httptest.NewRequest("GET", parsedURL.String(), nil)
 			request.Header.Set("Content-Type", "application/json")
 			request.AddCookie(enterprisePOSCookie)
 			response, err := app.Test(request, testTimeout)
