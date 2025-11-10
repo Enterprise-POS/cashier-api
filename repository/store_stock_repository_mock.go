@@ -57,3 +57,14 @@ func (repository *StoreStockRepositoryMock) TransferStockToWarehouse(quantity in
 		return args.Error(0)
 	}
 }
+
+// Edit implements StoreStockRepository.
+func (repository *StoreStockRepositoryMock) Edit(item *model.StoreStock) error {
+	args := repository.Mock.Called(item)
+
+	if args.Get(0) == nil {
+		return nil
+	} else {
+		return args.Error(0)
+	}
+}

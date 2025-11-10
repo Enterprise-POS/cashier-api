@@ -5,6 +5,7 @@ import (
 	"cashier-api/model"
 	"encoding/json"
 	"errors"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -150,6 +151,28 @@ func (repository *StoreStockRepositoryImpl) TransferStockToStoreStock(quantity i
 
 	if strings.Contains(message, "[ERROR]") {
 		return errors.New(message)
+	}
+
+	return nil
+}
+
+// Edit implements StoreStockRepository.
+func (repository *StoreStockRepositoryImpl) Edit(item *model.StoreStock) error {
+	var message string = repository.Client.Rpc("edit_store_stock_item", "", map[string]interface{}{
+		"p_store_stock_id": item.Id,
+		"p_price":          item.Price, // Tobe updated price
+		"p_store_id":       item.StoreId,
+		"p_tenant_id":      item.StoreId,
+		"p_item_id":        item.ItemId,
+	})
+
+	// [ERROR] || [FATAL ERROR]
+	if strings.Contains(message, "ERROR") {
+		// From first character [ take all the word until ], change to empty ("")
+		// The blank at the end is required
+		re := regexp.MustCompile(`\[[^\]]*\] `)
+		cleanMsg := re.ReplaceAllString(message, "")
+		return errors.New(cleanMsg)
 	}
 
 	return nil

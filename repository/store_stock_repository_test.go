@@ -58,6 +58,101 @@ func TestStoreStockRepository(t *testing.T) {
 		})
 	})
 
+	t.Run("Edit", func(t *testing.T) {
+		storeStockRepo := NewStoreStockRepositoryImpl(supabaseClient)
+		warehouseRepo := NewWarehouseRepositoryImpl(supabaseClient)
+
+		// Flow: warehouse -transfer-> store_stock
+		dummyItem := &model.Item{
+			ItemName: "Test StoreStockRepository_Edit 1",
+			Stocks:   100,
+			TenantId: TenantId,
+			// IsActive: , -> by default is active when inserting into DB
+		}
+		_dummyItemsFromDB, err := warehouseRepo.CreateItem([]*model.Item{dummyItem})
+		require.Nil(t, err, "Failed not allowed !")
+
+		dummyItemFromDB := _dummyItemsFromDB[0]
+		require.Equal(t, 100, dummyItemFromDB.Stocks)
+
+		// stocks = 100 - 5
+		err = storeStockRepo.TransferStockToStoreStock(5, dummyItemFromDB.ItemId, StoreId, TenantId)
+		require.Nil(t, err)
+
+		// Get the transferred item
+		rData, _, _ := supabaseClient.From(StoreStockTable).
+			Select("*", "", false).
+			Eq("item_id", strconv.Itoa(dummyItemFromDB.ItemId)).
+			Eq("tenant_id", strconv.Itoa(dummyItem.TenantId)).
+			Eq("store_id", strconv.Itoa(StoreId)).
+			Single().Execute()
+		var storeStockDummyFromDB = new(model.StoreStock)
+		err = json.Unmarshal(rData, storeStockDummyFromDB)
+		require.Nil(t, err)
+
+		require.Equal(t, 0, storeStockDummyFromDB.Price) // Current item never exist before, so the price will be 0
+		require.Equal(t, 5, storeStockDummyFromDB.Stocks)
+		require.Equal(t, StoreId, storeStockDummyFromDB.StoreId)
+		require.Equal(t, dummyItemFromDB.ItemId, storeStockDummyFromDB.ItemId)
+		require.Equal(t, dummyItemFromDB.TenantId, storeStockDummyFromDB.TenantId)
+
+		t.Run("NormalEdit", func(t *testing.T) {
+			// Update the value
+			expectedPrice := 10000
+			err = storeStockRepo.Edit(&model.StoreStock{
+				Id:       storeStockDummyFromDB.Id,
+				ItemId:   storeStockDummyFromDB.ItemId,
+				TenantId: storeStockDummyFromDB.TenantId,
+				StoreId:  storeStockDummyFromDB.StoreId,
+				Price:    expectedPrice,
+			})
+			assert.NoError(t, err)
+
+			var testStoreStock *model.StoreStock
+			_, err = supabaseClient.From(StoreStockTable).
+				Select("*", "", false).
+				Eq("id", strconv.Itoa(storeStockDummyFromDB.Id)).
+				Single().
+				ExecuteTo(&testStoreStock)
+
+			assert.NoError(t, err)
+			assert.Equal(t, expectedPrice, testStoreStock.Price)
+		})
+
+		t.Run("InvalidPriceValue", func(t *testing.T) {
+			// We make sure the user don't crash the server by sending invalid value (INT)
+			// From value < 0 OR value > 100.000.000
+			invalidPriceValue := 100_000_001
+			err = storeStockRepo.Edit(&model.StoreStock{
+				Id:       storeStockDummyFromDB.Id,
+				ItemId:   storeStockDummyFromDB.ItemId,
+				TenantId: storeStockDummyFromDB.TenantId,
+				StoreId:  storeStockDummyFromDB.StoreId,
+				Price:    invalidPriceValue,
+			})
+			assert.Error(t, err)
+		})
+
+		t.Cleanup(func() {
+			// Delete the data
+			// store_stock
+			_, _, err = supabaseClient.From(StoreStockTable).
+				Delete("", "").
+				Eq("id", fmt.Sprint(storeStockDummyFromDB.Id)).
+				Eq("item_id", fmt.Sprint(storeStockDummyFromDB.ItemId)).
+				Eq("store_id", fmt.Sprint(storeStockDummyFromDB.StoreId)).
+				Execute()
+			require.Nil(t, err, "Failed not allowed ! Because test data will persist !")
+
+			// warehouse
+			_, _, err = supabaseClient.From(WarehouseTable).
+				Delete("", "").
+				Eq("item_id", fmt.Sprint(dummyItemFromDB.ItemId)).
+				Execute()
+			require.Nil(t, err, "Failed not allowed ! Because test data will persist !")
+		})
+	})
+
 	t.Run("_TransferStockToWarehouse", func(t *testing.T) {
 		storeStockRepo := NewStoreStockRepositoryImpl(supabaseClient)
 		warehouseRepo := NewWarehouseRepositoryImpl(supabaseClient)

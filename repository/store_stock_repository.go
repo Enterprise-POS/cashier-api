@@ -12,7 +12,12 @@ type StoreStockRepository interface {
 
 	// FindById(itemId int, tenantId int) *model.StoreStock
 	// CreateItem(item []*model.Item) error
-	// Edit(quantity int, item *model.Item) error
+
+	/*
+		Even it's said to edit, the method not allowed for editing stock data,
+		Other metadata such as 'price' is allowed
+	*/
+	Edit(item *model.StoreStock) error
 
 	/*
 		Yet there is no delete method for stock that quantity less than 0

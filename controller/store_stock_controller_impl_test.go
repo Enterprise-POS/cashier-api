@@ -288,6 +288,62 @@ func TestStoreStockControllerImpl(t *testing.T) {
 		})
 	})
 
+	t.Run("Edit", func(t *testing.T) {
+		// Create the warehouse item first
+		expectedItems := []*model.Item{
+			{
+				ItemName: "Test StoreStock Edit 1",
+				Stocks:   10,
+				TenantId: createdTestTenant.Id,
+				IsActive: true,
+			},
+		}
+		createdTestItems, err := warehouseRepository.CreateItem(expectedItems)
+		require.NoError(t, err)
+		require.Equal(t, expectedItems[0].ItemName, createdTestItems[0].ItemName)
+		itemToTransfer := createdTestItems[0]
+
+		byteBody, err := json.Marshal(fiber.Map{
+			"quantity": 5,
+			"item_id":  itemToTransfer.ItemId,
+			"store_id": createdTestStore.Id,
+		})
+		requestBody := strings.NewReader(string(byteBody))
+		request := httptest.NewRequest("PUT", fmt.Sprintf("/store_stocks/transfer_to_store_stock/%d", createdTestTenant.Id), requestBody)
+		request.Header.Set("Content-Type", "application/json")
+		request.AddCookie(enterprisePOSCookie)
+		response, err := app.Test(request, testTimeout)
+		assert.NoError(t, err)
+		assert.NotNil(t, response)
+		assert.Equal(t, http.StatusAccepted, response.StatusCode)
+
+		page := 1
+		limit := 5
+		t.Run("NormalEdit", func(t *testing.T) {
+			baseURL := fmt.Sprintf("/store_stocks/v2/%d", createdTestTenant.Id)
+			u, err := url.Parse(baseURL)
+			require.NoError(t, err)
+
+			// Add query
+			query := u.Query()
+			query.Set("page", strconv.Itoa(page))
+			query.Set("store_id", strconv.Itoa(createdTestStore.Id))
+			query.Set("limit", strconv.Itoa(limit))
+			u.RawQuery = query.Encode()
+
+			request := httptest.NewRequest("GET", u.String(), nil)
+			request.Header.Set("Content-Type", "application/json")
+			request.AddCookie(enterprisePOSCookie)
+			response, err := app.Test(request, testTimeout)
+			assert.NoError(t, err)
+			assert.NotNil(t, response)
+			assert.Equal(t, http.StatusOK, response.StatusCode)
+
+			byteResponseBody, err := io.ReadAll(response.Body)
+			assert.Contains(t, string(byteResponseBody), createdTestItems[0].ItemName)
+		})
+	})
+
 	t.Run("TransferStockToStoreStock", func(t *testing.T) {
 		// Create the warehouse item first
 		expectedItems := []*model.Item{
