@@ -2,6 +2,7 @@ package controller
 
 import (
 	common "cashier-api/helper"
+	"cashier-api/model"
 	"cashier-api/service"
 	"strconv"
 
@@ -94,6 +95,41 @@ func (controller *StoreStockControllerImpl) GetV2(ctx *fiber.Ctx) error {
 			"count":        count,
 			"store_stocks": storeStocks,
 		}))
+}
+
+// Edit implements StoreStockController.
+func (controller *StoreStockControllerImpl) Edit(ctx *fiber.Ctx) error {
+	// It's guaranteed to be not "", because restrict by tenant
+	// already did check first
+	tenantId, _ := strconv.Atoi(ctx.Params("tenantId"))
+	type StoreStockEditRequestBody struct {
+		Id     int `json:"id,omitempty"`
+		Price  int `json:"price"`
+		ItemId int `json:"item_id"`
+		// TenantId int `json:"tenant_id"`
+		StoreId int `json:"store_id"`
+	}
+	var body StoreStockEditRequestBody
+	err := ctx.BodyParser(&body)
+	if err != nil {
+		return ctx.Status(fiber.StatusBadRequest).
+			JSON(common.NewWebResponseError(400, common.StatusError, "Something gone wrong ! The request body is malformed"))
+	}
+
+	editedItem := &model.StoreStock{
+		Id:       body.Id,
+		Price:    body.Price,
+		ItemId:   body.ItemId,
+		TenantId: tenantId,
+		StoreId:  body.StoreId,
+	}
+	err = controller.Service.Edit(editedItem)
+	if err != nil {
+		return ctx.Status(fiber.StatusBadRequest).
+			JSON(common.NewWebResponseError(400, common.StatusError, err.Error()))
+	}
+
+	return ctx.SendStatus(fiber.StatusAccepted)
 }
 
 // TransferStockToStoreStock implements StoreStockController.

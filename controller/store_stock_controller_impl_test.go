@@ -117,6 +117,7 @@ func TestStoreStockControllerImpl(t *testing.T) {
 	//ROUTE// Put it here just to make it easier to check the route
 	app.Get("/store_stocks/:tenantId", tenantRestriction, storeStockController.Get)
 	app.Get("/store_stocks/v2/:tenantId", tenantRestriction, storeStockController.GetV2)
+	app.Put("/store_stocks/edit/:tenantId", tenantRestriction, storeStockController.Edit)
 	app.Put("/store_stocks/transfer_to_store_stock/:tenantId", tenantRestriction, storeStockController.TransferStockToStoreStock)
 	app.Put("/store_stocks/transfer_to_warehouse/:tenantId", tenantRestriction, storeStockController.TransferStockToWarehouse)
 
@@ -317,30 +318,83 @@ func TestStoreStockControllerImpl(t *testing.T) {
 		assert.NotNil(t, response)
 		assert.Equal(t, http.StatusAccepted, response.StatusCode)
 
-		page := 1
-		limit := 5
+		var transferredItems *model.StoreStock
+		_, err = supabaseClient.From(repository.StoreStockTable).
+			Select("*", "", false).
+			Eq("item_id", strconv.Itoa(itemToTransfer.ItemId)).
+			Eq("store_id", strconv.Itoa(createdTestStore.Id)).
+			Eq("tenant_id", strconv.Itoa(createdTestTenant.Id)).
+			Single().ExecuteTo(&transferredItems)
+		require.NoError(t, err)
+		require.NotNil(t, transferredItems)
+
 		t.Run("NormalEdit", func(t *testing.T) {
-			baseURL := fmt.Sprintf("/store_stocks/edit/%d", createdTestTenant.Id)
-			u, err := url.Parse(baseURL)
-			require.NoError(t, err)
+			// Because we when transferring for the first time, We don't know the id so
+			// get manually the transferred item
 
-			// Add query
-			query := u.Query()
-			query.Set("page", strconv.Itoa(page))
-			query.Set("store_id", strconv.Itoa(createdTestStore.Id))
-			query.Set("limit", strconv.Itoa(limit))
-			u.RawQuery = query.Encode()
+			// Here we edit the createdItems
+			// Id will be already defined here
+			var transferredItemsCopy model.StoreStock = *transferredItems
+			transferredItemsCopy.Price = 9999
 
-			request := httptest.NewRequest("PUT", u.String(), nil)
+			byteBody, _ = json.Marshal(&transferredItemsCopy)
+			requestBody := strings.NewReader(string(byteBody))
+			request := httptest.NewRequest("PUT", fmt.Sprintf("/store_stocks/edit/%d", createdTestTenant.Id), requestBody)
 			request.Header.Set("Content-Type", "application/json")
 			request.AddCookie(enterprisePOSCookie)
 			response, err := app.Test(request, testTimeout)
 			assert.NoError(t, err)
 			assert.NotNil(t, response)
-			assert.Equal(t, http.StatusOK, response.StatusCode)
+			assert.Equal(t, http.StatusAccepted, response.StatusCode)
 
-			byteResponseBody, err := io.ReadAll(response.Body)
-			assert.Contains(t, string(byteResponseBody), createdTestItems[0].ItemName)
+			// Check manually
+			var testEditedItems *model.StoreStock
+			_, err = supabaseClient.From(repository.StoreStockTable).
+				Select("*", "", false).
+				Eq("id", strconv.Itoa(transferredItemsCopy.Id)).
+				Single().ExecuteTo(&testEditedItems)
+			assert.NoError(t, err)
+			assert.NotNil(t, testEditedItems)
+			assert.Equal(t, transferredItemsCopy.Price, testEditedItems.Price)
+		})
+
+		t.Run("WrongStructure", func(t *testing.T) {
+			wrongStructure := map[string]interface{}{
+				"id": "nothing",
+			}
+			byteBody, _ = json.Marshal(&wrongStructure)
+			requestBody := strings.NewReader(string(byteBody))
+			request := httptest.NewRequest("PUT", fmt.Sprintf("/store_stocks/edit/%d", createdTestTenant.Id), requestBody)
+			request.Header.Set("Content-Type", "application/json")
+			request.AddCookie(enterprisePOSCookie)
+			response, err := app.Test(request, testTimeout)
+			assert.NoError(t, err)
+			assert.NotNil(t, response)
+			assert.Equal(t, http.StatusBadRequest, response.StatusCode)
+		})
+
+		t.Run("NonExistData", func(t *testing.T) {
+			var transferredItemsCopy model.StoreStock = *transferredItems
+			transferredItemsCopy.Id = 9999 // Non exist for this test user
+			byteBody, _ = json.Marshal(&transferredItemsCopy)
+			requestBody := strings.NewReader(string(byteBody))
+			request := httptest.NewRequest("PUT", fmt.Sprintf("/store_stocks/edit/%d", createdTestTenant.Id), requestBody)
+			request.Header.Set("Content-Type", "application/json")
+			request.AddCookie(enterprisePOSCookie)
+			response, err := app.Test(request, testTimeout)
+			assert.NoError(t, err)
+			assert.NotNil(t, response)
+			assert.Equal(t, http.StatusBadRequest, response.StatusCode)
+		})
+
+		t.Cleanup(func() {
+			// store_stock
+			_, _, err = supabaseClient.From(repository.StoreStockTable).
+				Delete("", "").
+				Eq("item_id", strconv.Itoa(itemToTransfer.ItemId)).
+				Eq("tenant_id", strconv.Itoa(createdTestTenant.Id)).
+				Execute()
+			require.NoError(t, err, "If this fail, then immediately delete the data from TestStoreControllerImpl/NormalTransferStockToStoreStock")
 		})
 	})
 
