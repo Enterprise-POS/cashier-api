@@ -162,7 +162,7 @@ func (repository *StoreStockRepositoryImpl) Edit(item *model.StoreStock) error {
 		"p_store_stock_id": item.Id,
 		"p_price":          item.Price, // Tobe updated price
 		"p_store_id":       item.StoreId,
-		"p_tenant_id":      item.StoreId,
+		"p_tenant_id":      item.TenantId,
 		"p_item_id":        item.ItemId,
 	})
 

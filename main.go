@@ -129,6 +129,7 @@ func main() {
 
 	apiV1.Get("/store_stocks/:tenantId", tenantRestriction, storeStockController.Get)
 	apiV1.Get("/store_stocks/v2/:tenantId", tenantRestriction, storeStockController.GetV2)
+	apiV1.Put("/store_stocks/edit/:tenantId", tenantRestriction, storeStockController.Edit)
 	apiV1.Put("/store_stocks/transfer_to_store_stock/:tenantId", tenantRestriction, storeStockController.TransferStockToStoreStock)
 	apiV1.Put("/store_stocks/transfer_to_warehouse/:tenantId", tenantRestriction, storeStockController.TransferStockToWarehouse)
 
