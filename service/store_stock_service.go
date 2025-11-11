@@ -10,6 +10,8 @@ type StoreStockService interface {
 
 	GetV2(tenantId int, storeId int, limit int, page int, nameQuery string) ([]*model.StoreStockV2, int, error)
 
+	Edit(tobeEditStoreStock *model.StoreStock) error
+
 	/*
 		There is no create method for store_stock, so from warehouse transfer stock into store_stock
 		warehouse quantity is always mandatory, could not transfer stock to store_stock if quantity insufficient

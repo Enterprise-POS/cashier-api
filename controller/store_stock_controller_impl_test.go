@@ -320,7 +320,7 @@ func TestStoreStockControllerImpl(t *testing.T) {
 		page := 1
 		limit := 5
 		t.Run("NormalEdit", func(t *testing.T) {
-			baseURL := fmt.Sprintf("/store_stocks/v2/%d", createdTestTenant.Id)
+			baseURL := fmt.Sprintf("/store_stocks/edit/%d", createdTestTenant.Id)
 			u, err := url.Parse(baseURL)
 			require.NoError(t, err)
 
@@ -331,7 +331,7 @@ func TestStoreStockControllerImpl(t *testing.T) {
 			query.Set("limit", strconv.Itoa(limit))
 			u.RawQuery = query.Encode()
 
-			request := httptest.NewRequest("GET", u.String(), nil)
+			request := httptest.NewRequest("PUT", u.String(), nil)
 			request.Header.Set("Content-Type", "application/json")
 			request.AddCookie(enterprisePOSCookie)
 			response, err := app.Test(request, testTimeout)

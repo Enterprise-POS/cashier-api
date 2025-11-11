@@ -207,6 +207,69 @@ func TestStoreStockServiceImpl(t *testing.T) {
 		})
 	})
 
+	t.Run("Edit", func(t *testing.T) {
+		t.Run("NormalEdit", func(t *testing.T) {
+			storeStockRepository.Mock = &mock.Mock{}
+
+			// Non exist data at DB, this is what user expected to send
+			mockedStoreStock := model.StoreStock{
+				Id:       1,
+				Price:    10000,
+				ItemId:   1,
+				StoreId:  1,
+				TenantId: 1,
+			}
+			storeStockRepository.Mock.On("Edit", &mockedStoreStock).Return(nil)
+			err := storeStockService.Edit(&mockedStoreStock)
+			assert.NoError(t, err)
+		})
+
+		t.Run("InvalidParams", func(t *testing.T) {
+			// Invalid Price
+			mockedStoreStock := &model.StoreStock{
+				Id:       1,
+				Price:    100_000_001,
+				ItemId:   1,
+				StoreId:  1,
+				TenantId: 1,
+			}
+			err := storeStockService.Edit(mockedStoreStock)
+			assert.Error(t, err)
+
+			mockedStoreStock = &model.StoreStock{
+				Id:       1,
+				Price:    -1,
+				ItemId:   1,
+				StoreId:  1,
+				TenantId: 1,
+			}
+			err = storeStockService.Edit(mockedStoreStock)
+			assert.Error(t, err)
+
+			// Invalid store id
+			mockedStoreStock = &model.StoreStock{
+				Id:       1,
+				Price:    10_000,
+				ItemId:   1,
+				StoreId:  -1,
+				TenantId: 1,
+			}
+			err = storeStockService.Edit(mockedStoreStock)
+			assert.Error(t, err)
+
+			// Invalid tenant id
+			mockedStoreStock = &model.StoreStock{
+				Id:       1,
+				Price:    10_000,
+				ItemId:   1,
+				StoreId:  1,
+				TenantId: -1,
+			}
+			err = storeStockService.Edit(mockedStoreStock)
+			assert.Error(t, err)
+		})
+	})
+
 	t.Run("TransferStockToStoreStock", func(t *testing.T) {
 		quantity := 10
 		testItemId := 1
