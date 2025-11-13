@@ -53,6 +53,8 @@ func main() {
 	// }))
 	app.Use(recover.New(recover.Config{EnableStackTrace: true}))
 
+	app.Use(middleware.RateLimiter())
+
 	// 03 Router (grouping by /api/v1)
 	apiV1 := app.Group("/api/v1")
 
