@@ -17,4 +17,9 @@ type StoreController interface {
 		Either set to active / non-active
 	*/
 	SetActivate(ctx *fiber.Ctx) error
+
+	/*
+		Edit store properties, example name
+	*/
+	Edit(ctx *fiber.Ctx) error
 }
