@@ -11,13 +11,13 @@ import (
 func RateLimiter() fiber.Handler {
 	return limiter.New(limiter.Config{
 		// Next defines a function to skip this middleware when returned true.
-		Next: func(c *fiber.Ctx) bool {
-			return c.IP() == "127.0.0.1"
+		Next: func(ctx *fiber.Ctx) bool {
+			return ctx.IP() == "127.0.0.1"
 		},
 		Max:        20,
 		Expiration: 30 * time.Second,
-		KeyGenerator: func(c *fiber.Ctx) string {
-			return c.Get("x-forwarded-for")
+		KeyGenerator: func(ctx *fiber.Ctx) string {
+			return ctx.Get("x-forwarded-for")
 		},
 		LimitReached: func(ctx *fiber.Ctx) error {
 			return ctx.Status(fiber.StatusNotFound).
