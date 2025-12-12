@@ -206,22 +206,25 @@ func TestCategoryControllerImpl(t *testing.T) {
 
 		testItems := []*model.Item{
 			{
-				ItemName: "Test 1 Get Category With Items",
-				Stocks:   10,
-				IsActive: true,
-				TenantId: createdTenant.Id,
+				ItemName:  "Test 1 Get Category With Items",
+				Stocks:    10,
+				IsActive:  true,
+				TenantId:  createdTenant.Id,
+				StockType: model.StockTypeTracked,
 			},
 			{
-				ItemName: "Test 2 Get Category With Items",
-				Stocks:   10,
-				IsActive: true,
-				TenantId: createdTenant.Id,
+				ItemName:  "Test 2 Get Category With Items",
+				Stocks:    10,
+				IsActive:  true,
+				TenantId:  createdTenant.Id,
+				StockType: model.StockTypeTracked,
 			},
 			{
-				ItemName: "Test 3 Get Category With Items",
-				Stocks:   10,
-				IsActive: true,
-				TenantId: createdTenant.Id,
+				ItemName:  "Test 3 Get Category With Items",
+				Stocks:    10,
+				IsActive:  true,
+				TenantId:  createdTenant.Id,
+				StockType: model.StockTypeTracked,
 			},
 		}
 
@@ -334,22 +337,25 @@ func TestCategoryControllerImpl(t *testing.T) {
 
 		testItems := []*model.Item{
 			{
-				ItemName: "Test 1 Get Items By Category",
-				Stocks:   10,
-				IsActive: true,
-				TenantId: createdTenant.Id,
+				ItemName:  "Test 1 Get Items By Category",
+				Stocks:    10,
+				IsActive:  true,
+				TenantId:  createdTenant.Id,
+				StockType: model.StockTypeTracked,
 			},
 			{
-				ItemName: "Test 2 Get Items By Category",
-				Stocks:   10,
-				IsActive: true,
-				TenantId: createdTenant.Id,
+				ItemName:  "Test 2 Get Items By Category",
+				Stocks:    10,
+				IsActive:  true,
+				TenantId:  createdTenant.Id,
+				StockType: model.StockTypeTracked,
 			},
 			{
-				ItemName: "Test 3 Get Items By Category",
-				Stocks:   10,
-				IsActive: true,
-				TenantId: createdTenant.Id,
+				ItemName:  "Test 3 Get Items By Category",
+				Stocks:    10,
+				IsActive:  true,
+				TenantId:  createdTenant.Id,
+				StockType: model.StockTypeTracked,
 			},
 		}
 
@@ -571,10 +577,11 @@ func TestCategoryControllerImpl(t *testing.T) {
 
 		dummyItems := []*model.Item{
 			{
-				ItemName: "Test Category Register 1",
-				Stocks:   10,
-				TenantId: createdTenant.Id,
-				IsActive: true,
+				ItemName:  "Test Category Register 1",
+				Stocks:    10,
+				TenantId:  createdTenant.Id,
+				IsActive:  true,
+				StockType: model.StockTypeTracked,
 			},
 		}
 
@@ -766,10 +773,11 @@ func TestCategoryControllerImpl(t *testing.T) {
 
 		dummyItems := []*model.Item{
 			{
-				ItemName: "Test Category Register 1",
-				Stocks:   10,
-				TenantId: createdTenant.Id, // Global createdTenant
-				IsActive: true,
+				ItemName:  "Test Category Register 1",
+				Stocks:    10,
+				TenantId:  createdTenant.Id, // Global createdTenant
+				IsActive:  true,
+				StockType: model.StockTypeTracked,
 			},
 		}
 
@@ -909,16 +917,18 @@ func TestCategoryControllerImpl(t *testing.T) {
 
 		dummyItems := []*model.Item{
 			{
-				ItemName: "Test EditItemCategory 1",
-				Stocks:   10,
-				TenantId: createdTenant.Id,
-				IsActive: true,
+				ItemName:  "Test EditItemCategory 1",
+				Stocks:    10,
+				TenantId:  createdTenant.Id,
+				IsActive:  true,
+				StockType: model.StockTypeTracked,
 			},
 			{
-				ItemName: "Test EditItemCategory 2",
-				Stocks:   10,
-				TenantId: createdTenant.Id,
-				IsActive: true,
+				ItemName:  "Test EditItemCategory 2",
+				Stocks:    10,
+				TenantId:  createdTenant.Id,
+				IsActive:  true,
+				StockType: model.StockTypeTracked,
 			},
 		}
 
@@ -1234,16 +1244,18 @@ func TestCategoryControllerImpl(t *testing.T) {
 		// Add warehouse items to current category
 		dummyItems := []*model.Item{
 			{
-				ItemName: "Test Category Delete 1",
-				Stocks:   10,
-				TenantId: createdTenant.Id,
-				IsActive: true,
+				ItemName:  "Test Category Delete 1",
+				Stocks:    10,
+				TenantId:  createdTenant.Id,
+				IsActive:  true,
+				StockType: model.StockTypeTracked,
 			},
 			{
-				ItemName: "Test Category Delete 2",
-				Stocks:   10,
-				TenantId: createdTenant.Id,
-				IsActive: true,
+				ItemName:  "Test Category Delete 2",
+				Stocks:    10,
+				TenantId:  createdTenant.Id,
+				IsActive:  true,
+				StockType: model.StockTypeTracked,
 			},
 		}
 

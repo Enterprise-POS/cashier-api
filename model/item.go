@@ -12,10 +12,18 @@ Item (Warehouse Row)
 
 	CreatedAt: *time.Time, pointer data type is a must, otherwise it will insert as 0 UTC
 */
+type StockType string
+
+const (
+	StockTypeUnlimited StockType = "UNLIMITED"
+	StockTypeTracked   StockType = "TRACKED"
+)
+
 type Item struct {
 	ItemId    int        `json:"item_id,omitempty"`
 	ItemName  string     `json:"item_name"`
 	Stocks    int        `json:"stocks"`
+	StockType StockType  `json:"stock_type"`
 	TenantId  int        `json:"tenant_id"`
 	IsActive  bool       `json:"is_active"`
 	CreatedAt *time.Time `json:"created_at,omitempty"`

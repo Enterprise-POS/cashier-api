@@ -130,10 +130,11 @@ func (controller *WarehouseControllerImpl) CreateItem(ctx *fiber.Ctx) error {
 	tobeCreatedItems := make([]*model.Item, 0, len(body.Items))
 	for _, item := range body.Items {
 		tobeCreatedItems = append(tobeCreatedItems, &model.Item{
-			ItemName: item.ItemName,
-			Stocks:   item.Stocks,
-			TenantId: tenantId,
-			IsActive: true, // Always true because this is creating new item
+			ItemName:  item.ItemName,
+			Stocks:    item.Stocks,
+			TenantId:  tenantId,
+			IsActive:  true, // Always true because this is creating new item
+			StockType: model.StockTypeTracked,
 		})
 	}
 

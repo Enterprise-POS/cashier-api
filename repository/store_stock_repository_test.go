@@ -64,9 +64,10 @@ func TestStoreStockRepository(t *testing.T) {
 
 		// Flow: warehouse -transfer-> store_stock
 		dummyItem := &model.Item{
-			ItemName: "Test StoreStockRepository_Edit 1",
-			Stocks:   100,
-			TenantId: TenantId,
+			ItemName:  "Test StoreStockRepository_Edit 1",
+			Stocks:    100,
+			TenantId:  TenantId,
+			StockType: model.StockTypeTracked,
 			// IsActive: , -> by default is active when inserting into DB
 		}
 		_dummyItemsFromDB, err := warehouseRepo.CreateItem([]*model.Item{dummyItem})
@@ -159,9 +160,10 @@ func TestStoreStockRepository(t *testing.T) {
 
 		// Flow: warehouse -> store_stock -> warehouse
 		dummyItem := &model.Item{
-			ItemName: "Test _TransferStockWarehouse 1",
-			Stocks:   100,
-			TenantId: 1,
+			ItemName:  "Test _TransferStockWarehouse 1",
+			Stocks:    100,
+			TenantId:  1,
+			StockType: model.StockTypeTracked,
 			// IsActive: , -> by default is active when inserting into DB
 		}
 		_dummyItemsFromDB, err := warehouseRepo.CreateItem([]*model.Item{dummyItem})
@@ -217,9 +219,10 @@ func TestStoreStockRepository(t *testing.T) {
 
 		// Flow: warehouse -transfer-> store_stock
 		dummyItem := &model.Item{
-			ItemName: "Test _TransferStockToStoreStock 1",
-			Stocks:   100,
-			TenantId: TenantId,
+			ItemName:  "Test _TransferStockToStoreStock 1",
+			Stocks:    100,
+			TenantId:  TenantId,
+			StockType: model.StockTypeTracked,
 			// IsActive: , -> by default is active when inserting into DB
 		}
 		_dummyItemsFromDB, err := warehouseRepo.CreateItem([]*model.Item{dummyItem})

@@ -110,6 +110,7 @@ func (warehouse *WarehouseRepositoryImpl) CreateItem(items []*model.Item) ([]*mo
 	return itemsList, nil
 }
 
+// TODO: Refactor, need for StockType
 func (warehouse *WarehouseRepositoryImpl) Edit(quantity int, item *model.Item) error {
 	message := warehouse.Client.Rpc("edit_warehouse_item", "", map[string]interface{}{
 		"p_quantity":  quantity,      // int

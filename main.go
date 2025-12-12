@@ -123,6 +123,7 @@ func main() {
 	storeController := controller.NewStoreControllerImpl(storeService)
 	apiV1.Post("/stores/:tenantId", tenantRestriction, storeController.Create)
 	apiV1.Get("/stores/:tenantId", tenantRestriction, storeController.GetAll)
+	apiV1.Put("/stores/:tenantId", tenantRestriction, storeController.Edit)
 	apiV1.Put("/stores/set_activate/:tenantId", tenantRestriction, storeController.SetActivate)
 
 	storeStockRepository := repository.NewStoreStockRepositoryImpl(supabaseClient)

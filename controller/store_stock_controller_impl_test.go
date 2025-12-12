@@ -125,10 +125,11 @@ func TestStoreStockControllerImpl(t *testing.T) {
 		// Create the warehouse item first
 		expectedItems := []*model.Item{
 			{
-				ItemName: "Test StoreStock TransferStockToStoreStock 1 Get",
-				Stocks:   10,
-				TenantId: createdTestTenant.Id,
-				IsActive: true,
+				ItemName:  "Test StoreStock TransferStockToStoreStock 1 Get",
+				Stocks:    10,
+				TenantId:  createdTestTenant.Id,
+				IsActive:  true,
+				StockType: model.StockTypeTracked,
 			},
 		}
 		createdTestItems, err := warehouseRepository.CreateItem(expectedItems)
@@ -216,10 +217,11 @@ func TestStoreStockControllerImpl(t *testing.T) {
 		// Create the warehouse item first
 		expectedItems := []*model.Item{
 			{
-				ItemName: "Test StoreStock TransferStockToStoreStock 1 Get",
-				Stocks:   10,
-				TenantId: createdTestTenant.Id,
-				IsActive: true,
+				ItemName:  "Test StoreStock TransferStockToStoreStock 1 Get",
+				Stocks:    10,
+				TenantId:  createdTestTenant.Id,
+				IsActive:  true,
+				StockType: model.StockTypeTracked,
 			},
 		}
 		createdTestItems, err := warehouseRepository.CreateItem(expectedItems)
@@ -293,10 +295,11 @@ func TestStoreStockControllerImpl(t *testing.T) {
 		// Create the warehouse item first
 		expectedItems := []*model.Item{
 			{
-				ItemName: "Test StoreStock Edit 1",
-				Stocks:   10,
-				TenantId: createdTestTenant.Id,
-				IsActive: true,
+				ItemName:  "Test StoreStock Edit 1",
+				Stocks:    10,
+				TenantId:  createdTestTenant.Id,
+				IsActive:  true,
+				StockType: model.StockTypeTracked,
 			},
 		}
 		createdTestItems, err := warehouseRepository.CreateItem(expectedItems)
@@ -402,10 +405,11 @@ func TestStoreStockControllerImpl(t *testing.T) {
 		// Create the warehouse item first
 		expectedItems := []*model.Item{
 			{
-				ItemName: "Test StoreStock TransferStockToStoreStock 1 TFToStoreStock",
-				Stocks:   10,
-				TenantId: createdTestTenant.Id,
-				IsActive: true,
+				ItemName:  "Test StoreStock TransferStockToStoreStock 1 TFToStoreStock",
+				Stocks:    10,
+				TenantId:  createdTestTenant.Id,
+				IsActive:  true,
+				StockType: model.StockTypeTracked,
 			},
 		}
 		createdTestItems, err := warehouseRepository.CreateItem(expectedItems)

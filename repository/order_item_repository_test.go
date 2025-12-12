@@ -26,9 +26,10 @@ func TestOrderItemRepository(t *testing.T) {
 		storeStockRepo := StoreStockRepositoryImpl{Client: supabaseClient}
 
 		dummyItem := &model.Item{
-			ItemName: "Test TestOrderItemRepository_PlaceOrderItem 1",
-			Stocks:   100,
-			TenantId: TENANT_ID,
+			ItemName:  "Test TestOrderItemRepository_PlaceOrderItem 1",
+			Stocks:    100,
+			StockType: model.StockTypeTracked,
+			TenantId:  TENANT_ID,
 		}
 
 		_dummyItemFromDB, err := warehouseRepo.CreateItem([]*model.Item{dummyItem})
