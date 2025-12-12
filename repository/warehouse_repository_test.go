@@ -22,9 +22,10 @@ func TestWarehouseRepository(t *testing.T) {
 		// TEST: normal search
 		// Create item first
 		var dummyItem = &model.Item{
-			ItemName: "Test TestWarehouseRepository_FindById 1",
-			Stocks:   40,
-			TenantId: 1,
+			ItemName:  "Test TestWarehouseRepository_FindById 1",
+			Stocks:    40,
+			TenantId:  1,
+			StockType: model.StockTypeTracked,
 		}
 		_dummiesFromDB, err := warehouseRepo.CreateItem([]*model.Item{dummyItem})
 		require.Nil(t, err)
@@ -63,9 +64,10 @@ func TestWarehouseRepository(t *testing.T) {
 
 	t.Run("TestWarehouseRepository_CreateItem", func(t *testing.T) {
 		var dummyItem = &model.Item{
-			ItemName: "Test Name",
-			Stocks:   20,
-			TenantId: 1,
+			ItemName:  "Test Name",
+			Stocks:    20,
+			TenantId:  1,
+			StockType: model.StockTypeTracked,
 		}
 
 		// Create new data
@@ -104,10 +106,11 @@ func TestWarehouseRepository(t *testing.T) {
 
 		// Create dummy data first
 		var dummyItem = &model.Item{
-			ItemName: "Test Name2",
-			Stocks:   20,
-			TenantId: 1,
-			IsActive: true,
+			ItemName:  "Test Name2",
+			Stocks:    20,
+			TenantId:  1,
+			IsActive:  true,
+			StockType: model.StockTypeTracked,
 		}
 
 		_dummyItemFromDB, err := warehouseRepo.CreateItem([]*model.Item{dummyItem})
@@ -168,24 +171,28 @@ func TestWarehouseRepository(t *testing.T) {
 
 	t.Run("TestWarehouseRepository_Get", func(t *testing.T) {
 		dummy1 := &model.Item{
-			ItemName: "Test WarehouseRepository_Get 1",
-			Stocks:   20,
-			TenantId: 1,
+			ItemName:  "Test WarehouseRepository_Get 1",
+			Stocks:    20,
+			TenantId:  1,
+			StockType: model.StockTypeTracked,
 		}
 		dummy2 := &model.Item{
-			ItemName: "Test WarehouseRepository_Get 2",
-			Stocks:   99,
-			TenantId: 1,
+			ItemName:  "Test WarehouseRepository_Get 2",
+			Stocks:    99,
+			TenantId:  1,
+			StockType: model.StockTypeTracked,
 		}
 		dummy3 := &model.Item{
-			ItemName: "Test WarehouseRepository_Get 3",
-			Stocks:   99,
-			TenantId: 1,
+			ItemName:  "Test WarehouseRepository_Get 3",
+			Stocks:    99,
+			TenantId:  1,
+			StockType: model.StockTypeTracked,
 		}
 		dummy4 := &model.Item{
-			ItemName: "Test WarehouseRepository_Get 4",
-			Stocks:   0,
-			TenantId: 1,
+			ItemName:  "Test WarehouseRepository_Get 4",
+			Stocks:    0,
+			TenantId:  1,
+			StockType: model.StockTypeTracked,
 		}
 
 		dummies := []*model.Item{dummy1, dummy2, dummy3, dummy4}
@@ -239,9 +246,10 @@ func TestWarehouseRepository(t *testing.T) {
 		t.Run("NormalFindCompleteById", func(t *testing.T) {
 
 			var dummyItem = &model.Item{
-				ItemName: "Test TestWarehouseRepository_FindCompleteById 1",
-				Stocks:   40,
-				TenantId: 1,
+				ItemName:  "Test TestWarehouseRepository_FindCompleteById 1",
+				Stocks:    40,
+				TenantId:  1,
+				StockType: model.StockTypeTracked,
 			}
 			_dummiesFromDB, err := warehouseRepo.CreateItem([]*model.Item{dummyItem})
 			require.Nil(t, err)
@@ -283,10 +291,11 @@ func TestWarehouseRepository(t *testing.T) {
 
 		t.Run("NormalDeactivate", func(t *testing.T) {
 			dummyItem := &model.Item{
-				ItemName: "Test_TestWarehouseRepository_SetActivate_NormalActivate 1",
-				TenantId: 1,
-				IsActive: true,
-				Stocks:   10,
+				ItemName:  "Test_TestWarehouseRepository_SetActivate_NormalActivate 1",
+				TenantId:  1,
+				IsActive:  true,
+				Stocks:    10,
+				StockType: model.StockTypeTracked,
 			}
 			_createdItemsFromDB, err := warehouseRepo.CreateItem([]*model.Item{dummyItem})
 			require.Nil(t, err)
@@ -318,10 +327,11 @@ func TestWarehouseRepository(t *testing.T) {
 
 		t.Run("NormalActivate", func(t *testing.T) {
 			dummyItem := &model.Item{
-				ItemName: "Test_TestWarehouseRepository_SetActivate_NormalActivate 1",
-				TenantId: 1,
-				IsActive: true,
-				Stocks:   10,
+				ItemName:  "Test_TestWarehouseRepository_SetActivate_NormalActivate 1",
+				TenantId:  1,
+				IsActive:  true,
+				Stocks:    10,
+				StockType: model.StockTypeTracked,
 			}
 			_createdItemsFromDB, err := warehouseRepo.CreateItem([]*model.Item{dummyItem})
 			require.Nil(t, err)
@@ -365,28 +375,32 @@ func TestWarehouseRepository(t *testing.T) {
 
 	t.Run("GetActiveItem", func(t *testing.T) {
 		dummy1 := &model.Item{
-			ItemName: "Test WarehouseRepository_GetActiveItem 1",
-			Stocks:   20,
-			TenantId: 1,
-			IsActive: true,
+			ItemName:  "Test WarehouseRepository_GetActiveItem 1",
+			Stocks:    20,
+			TenantId:  1,
+			IsActive:  true,
+			StockType: model.StockTypeTracked,
 		}
 		dummy2 := &model.Item{
-			ItemName: "Test WarehouseRepository_GetActiveItem 2",
-			Stocks:   99,
-			TenantId: 1,
-			IsActive: true,
+			ItemName:  "Test WarehouseRepository_GetActiveItem 2",
+			Stocks:    99,
+			TenantId:  1,
+			IsActive:  true,
+			StockType: model.StockTypeTracked,
 		}
 		dummy3 := &model.Item{
-			ItemName: "Test WarehouseRepository_GetActiveItem 3",
-			Stocks:   99,
-			TenantId: 1,
-			IsActive: true,
+			ItemName:  "Test WarehouseRepository_GetActiveItem 3",
+			Stocks:    99,
+			TenantId:  1,
+			IsActive:  true,
+			StockType: model.StockTypeTracked,
 		}
 		dummy4 := &model.Item{
-			ItemName: "Test WarehouseRepository_GetActiveItem 4",
-			Stocks:   0,
-			TenantId: 1,
-			IsActive: true,
+			ItemName:  "Test WarehouseRepository_GetActiveItem 4",
+			Stocks:    0,
+			TenantId:  1,
+			IsActive:  true,
+			StockType: model.StockTypeTracked,
 		}
 
 		dummies := []*model.Item{dummy1, dummy2, dummy3, dummy4}

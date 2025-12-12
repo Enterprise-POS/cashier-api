@@ -53,6 +53,8 @@ func main() {
 	// }))
 	app.Use(recover.New(recover.Config{EnableStackTrace: true}))
 
+	app.Use(middleware.RateLimiter())
+
 	// 03 Router (grouping by /api/v1)
 	apiV1 := app.Group("/api/v1")
 
@@ -121,6 +123,7 @@ func main() {
 	storeController := controller.NewStoreControllerImpl(storeService)
 	apiV1.Post("/stores/:tenantId", tenantRestriction, storeController.Create)
 	apiV1.Get("/stores/:tenantId", tenantRestriction, storeController.GetAll)
+	apiV1.Put("/stores/:tenantId", tenantRestriction, storeController.Edit)
 	apiV1.Put("/stores/set_activate/:tenantId", tenantRestriction, storeController.SetActivate)
 
 	storeStockRepository := repository.NewStoreStockRepositoryImpl(supabaseClient)

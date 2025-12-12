@@ -152,4 +152,57 @@ func TestStoreServiceImpl(t *testing.T) {
 		// Handled by store_repository_test
 		// t.Run("NoStoreFound", func(t *testing.T) {})
 	})
+
+	t.Run("Edit", func(t *testing.T) {
+		now := time.Now()
+		t.Run("NormalEdit", func(t *testing.T) {
+			editedStore := &model.Store{
+				Id:       1,
+				Name:     "Edited Store",
+				TenantId: 1,
+			}
+			expectedEditedStoreReturn := &model.Store{
+				Id:        1,
+				Name:      "Edited Store",
+				TenantId:  1,
+				CreatedAt: &now,
+				IsActive:  true,
+			}
+			storeRepository.Mock.On("Edit", editedStore).Return(expectedEditedStoreReturn, nil)
+			editedTestStore, err := storeService.Edit(editedStore)
+			assert.NoError(t, err)
+			assert.NotNil(t, editedTestStore)
+			assert.Equal(t, expectedEditedStoreReturn.Id, editedTestStore.Id)
+			assert.Equal(t, expectedEditedStoreReturn.Name, editedTestStore.Name)
+		})
+
+		t.Run("WrongInput", func(t *testing.T) {
+			editedStore := &model.Store{
+				// Id:       1,
+				Name:     "Edited Store",
+				TenantId: 1,
+			}
+			editedTestStore, err := storeService.Edit(editedStore)
+			assert.Error(t, err)
+			assert.Nil(t, editedTestStore)
+
+			editedStore = &model.Store{
+				Id:       1,
+				Name:     "@WeirdName",
+				TenantId: 1,
+			}
+			editedTestStore, err = storeService.Edit(editedStore)
+			assert.Error(t, err)
+			assert.Nil(t, editedTestStore)
+
+			editedStore = &model.Store{
+				Id:   1,
+				Name: "Edited Store",
+				// TenantId: 1,
+			}
+			editedTestStore, err = storeService.Edit(editedStore)
+			assert.Error(t, err)
+			assert.Nil(t, editedTestStore)
+		})
+	})
 }

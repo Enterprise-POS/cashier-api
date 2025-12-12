@@ -145,7 +145,6 @@ func TestStoreRepositoryImpl(t *testing.T) {
 	})
 
 	t.Run("SetActivate", func(t *testing.T) {
-
 		t.Run("NormalSetActivate", func(t *testing.T) {
 			// In this test, there will 2 test situation in the same scope
 			// - set into non active / store.is_active = false
@@ -197,6 +196,39 @@ func TestStoreRepositoryImpl(t *testing.T) {
 			err := storeRepository.SetActivate(testTenant.Id, 0, true)
 			assert.Error(t, err)
 			assert.Equal(t, fmt.Sprintf("[ERROR] No store found with tenant_id=%d and id=%d", testTenant.Id, 0), err.Error())
+		})
+	})
+
+	t.Run("Edit", func(t *testing.T) {
+		t.Run("NormalEdit", func(t *testing.T) {
+			// Store for current scope only
+			testStoreName := "StoreRepository_Edit_NormalEdit"
+			createdStore, err := storeRepository.Create(testTenant.Id, testStoreName)
+			require.NoError(t, err)
+			require.Equal(t, testStoreName, createdStore.Name)
+
+			// Edit the properties
+			createdStore.Name = "StoreRepository_Edit_NormalEdit(EDITED)"
+			updatedStore, err := storeRepository.Edit(createdStore)
+			assert.NoError(t, err)
+			assert.NotNil(t, updatedStore)
+			assert.Equal(t, createdStore.Id, updatedStore.Id)
+			assert.Equal(t, createdStore.Name, updatedStore.Name) // Here we edit the createdStore, so we can compare it
+
+			t.Cleanup(func() {
+				_, count, err := supabaseClient.From(StoreTable).
+					Delete("", "exact").
+					Eq("id", strconv.Itoa(updatedStore.Id)).
+					Execute()
+				require.NoError(t, err)
+				require.Equal(t, 1, int(count))
+			})
+		})
+
+		t.Run("EditNotFoundInDB", func(t *testing.T) {
+			updatedStore, err := storeRepository.Edit(&model.Store{Id: 9999, TenantId: 8888, Name: "Wrong"})
+			assert.Error(t, err)
+			assert.Nil(t, updatedStore)
 		})
 	})
 

@@ -14,6 +14,11 @@ type StoreRepository interface {
 	GetAll(tenantId, page, limit int, includeNonActive bool) ([]*model.Store, int, error)
 
 	/*
+		Edit store properties, example name
+	*/
+	Edit(tobeEditStore *model.Store) (*model.Store, error)
+
+	/*
 		Create new store
 	*/
 	Create(tenantId int, name string) (*model.Store, error)

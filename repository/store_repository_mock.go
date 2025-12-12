@@ -46,3 +46,14 @@ func (repository *StoreRepositoryMock) SetActivate(tenantId int, storeId int, se
 
 	return args.Error(0)
 }
+
+// Edit implements StoreRepository.
+func (repository *StoreRepositoryMock) Edit(tobeEditStore *model.Store) (*model.Store, error) {
+	args := repository.Mock.Called(tobeEditStore)
+
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+
+	return args.Get(0).(*model.Store), args.Error(1)
+}

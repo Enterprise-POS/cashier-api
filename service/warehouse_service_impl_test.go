@@ -29,6 +29,7 @@ func TestWarehouseServiceImpl(t *testing.T) {
 					TenantId:  1,
 					IsActive:  true,
 					CreatedAt: &now,
+					StockType: model.StockTypeTracked,
 				},
 				{
 					ItemId:    2,
@@ -37,6 +38,7 @@ func TestWarehouseServiceImpl(t *testing.T) {
 					TenantId:  1,
 					IsActive:  true,
 					CreatedAt: &now,
+					StockType: model.StockTypeTracked,
 				},
 				{
 					ItemId:    3,
@@ -45,6 +47,7 @@ func TestWarehouseServiceImpl(t *testing.T) {
 					TenantId:  1,
 					IsActive:  true,
 					CreatedAt: &now,
+					StockType: model.StockTypeTracked,
 				},
 				{
 					ItemId:    4,
@@ -53,6 +56,7 @@ func TestWarehouseServiceImpl(t *testing.T) {
 					TenantId:  1,
 					IsActive:  true,
 					CreatedAt: &now,
+					StockType: model.StockTypeTracked,
 				},
 				{
 					ItemId:    5,
@@ -61,6 +65,7 @@ func TestWarehouseServiceImpl(t *testing.T) {
 					TenantId:  1,
 					IsActive:  true,
 					CreatedAt: &now,
+					StockType: model.StockTypeTracked,
 				},
 			}
 
@@ -109,6 +114,7 @@ func TestWarehouseServiceImpl(t *testing.T) {
 					TenantId:  1,
 					IsActive:  true,
 					CreatedAt: &now,
+					StockType: model.StockTypeTracked,
 				},
 				{
 					ItemId:    2,
@@ -117,6 +123,7 @@ func TestWarehouseServiceImpl(t *testing.T) {
 					TenantId:  1,
 					IsActive:  true,
 					CreatedAt: &now,
+					StockType: model.StockTypeTracked,
 				},
 				{
 					ItemId:    3,
@@ -125,6 +132,7 @@ func TestWarehouseServiceImpl(t *testing.T) {
 					TenantId:  1,
 					IsActive:  true,
 					CreatedAt: &now,
+					StockType: model.StockTypeTracked,
 				},
 				{
 					ItemId:    4,
@@ -133,6 +141,7 @@ func TestWarehouseServiceImpl(t *testing.T) {
 					TenantId:  1,
 					IsActive:  true,
 					CreatedAt: &now,
+					StockType: model.StockTypeTracked,
 				},
 				{
 					ItemId:    5,
@@ -141,6 +150,7 @@ func TestWarehouseServiceImpl(t *testing.T) {
 					TenantId:  1,
 					IsActive:  true,
 					CreatedAt: &now,
+					StockType: model.StockTypeTracked,
 				},
 			}
 
@@ -184,19 +194,22 @@ func TestWarehouseServiceImpl(t *testing.T) {
 		t.Run("NormalCreate", func(t *testing.T) {
 			parameterItemDummies := []*model.Item{
 				{
-					ItemName: "Jasmine",
-					Stocks:   10,
-					TenantId: 1,
+					ItemName:  "Jasmine",
+					Stocks:    10,
+					TenantId:  1,
+					StockType: model.StockTypeTracked,
 				},
 				{
-					ItemName: "O'neil",
-					Stocks:   10,
-					TenantId: 1,
+					ItemName:  "O'neil",
+					Stocks:    10,
+					TenantId:  1,
+					StockType: model.StockTypeTracked,
 				},
 				{
-					ItemName: "puffer fish",
-					Stocks:   10,
-					TenantId: 1,
+					ItemName:  "puffer fish",
+					Stocks:    10,
+					TenantId:  1,
+					StockType: model.StockTypeTracked,
 				},
 			}
 			expectedItemDummies := []*model.Item{
@@ -205,6 +218,7 @@ func TestWarehouseServiceImpl(t *testing.T) {
 					ItemName:  "Jasmine",
 					Stocks:    10,
 					TenantId:  1,
+					StockType: model.StockTypeTracked,
 					IsActive:  true,
 					CreatedAt: &now,
 				},
@@ -213,6 +227,7 @@ func TestWarehouseServiceImpl(t *testing.T) {
 					ItemName:  "O'neil",
 					Stocks:    10,
 					TenantId:  1,
+					StockType: model.StockTypeTracked,
 					IsActive:  true,
 					CreatedAt: &now,
 				},
@@ -221,6 +236,7 @@ func TestWarehouseServiceImpl(t *testing.T) {
 					ItemName:  "puffer fish",
 					Stocks:    10,
 					TenantId:  1,
+					StockType: model.StockTypeTracked,
 					IsActive:  true,
 					CreatedAt: &now,
 				},
@@ -236,9 +252,10 @@ func TestWarehouseServiceImpl(t *testing.T) {
 		t.Run("NotAllowedItemName", func(t *testing.T) {
 			notAllowedItemName := []*model.Item{
 				{
-					ItemName: "123Tea",
-					Stocks:   10,
-					TenantId: 1,
+					ItemName:  "123Tea",
+					Stocks:    10,
+					TenantId:  1,
+					StockType: model.StockTypeTracked,
 				},
 			}
 
@@ -249,9 +266,10 @@ func TestWarehouseServiceImpl(t *testing.T) {
 
 			notAllowedItemName = []*model.Item{
 				{
-					ItemName: "'Tea",
-					Stocks:   10,
-					TenantId: 1,
+					ItemName:  "'Tea",
+					Stocks:    10,
+					TenantId:  1,
+					StockType: model.StockTypeTracked,
 				},
 			}
 
@@ -261,9 +279,10 @@ func TestWarehouseServiceImpl(t *testing.T) {
 
 			notAllowedItemName = []*model.Item{
 				{
-					ItemName: "Tea!",
-					Stocks:   10,
-					TenantId: 1,
+					ItemName:  "Tea!",
+					Stocks:    10,
+					TenantId:  1,
+					StockType: model.StockTypeTracked,
 				},
 			}
 
@@ -273,9 +292,10 @@ func TestWarehouseServiceImpl(t *testing.T) {
 
 			notAllowedItemName = []*model.Item{
 				{
-					ItemName: "",
-					Stocks:   10,
-					TenantId: 1,
+					ItemName:  "",
+					Stocks:    10,
+					TenantId:  1,
+					StockType: model.StockTypeTracked,
 				},
 			}
 
@@ -287,10 +307,11 @@ func TestWarehouseServiceImpl(t *testing.T) {
 		t.Run("IllegalInput", func(t *testing.T) {
 			illegalInput := []*model.Item{
 				{
-					ItemId:   1, // Item id not allowed
-					ItemName: "Jasmine Tea",
-					Stocks:   10,
-					TenantId: 1,
+					ItemId:    1, // Item id not allowed
+					ItemName:  "Jasmine Tea",
+					Stocks:    10,
+					TenantId:  1,
+					StockType: model.StockTypeTracked,
 				},
 			}
 
@@ -323,6 +344,7 @@ func TestWarehouseServiceImpl(t *testing.T) {
 				ItemName:  "Test item 1",
 				Stocks:    10,
 				TenantId:  1,
+				StockType: model.StockTypeTracked,
 				IsActive:  true,
 				CreatedAt: &now,
 			}
@@ -374,6 +396,7 @@ func TestWarehouseServiceImpl(t *testing.T) {
 				TenantId:  1,
 				IsActive:  false,
 				CreatedAt: &now,
+				StockType: model.StockTypeTracked,
 			}
 			warehouseRepo.Mock.On("Edit", -3, editedItem).Return(nil)
 			err := warehouseService.Edit(-3, editedItem)
@@ -388,6 +411,7 @@ func TestWarehouseServiceImpl(t *testing.T) {
 				TenantId:  999,
 				IsActive:  false,
 				CreatedAt: &now,
+				StockType: model.StockTypeTracked,
 			}
 			warehouseRepo.Mock = mock.Mock{}
 			warehouseRepo.Mock.On("Edit", -3, editedItem).Return(errors.New("[ERROR] Fatal error, current item from store never exist at warehouse"))
@@ -402,6 +426,7 @@ func TestWarehouseServiceImpl(t *testing.T) {
 				TenantId:  1,
 				IsActive:  false,
 				CreatedAt: &now,
+				StockType: model.StockTypeTracked,
 			}
 			warehouseRepo.Mock = mock.Mock{}
 			warehouseRepo.Mock.On("Edit", -3, editedItem).Return(errors.New("[ERROR] Fatal error, current item from store never exist at warehouse"))
@@ -418,6 +443,7 @@ func TestWarehouseServiceImpl(t *testing.T) {
 				TenantId:  1,
 				IsActive:  false,
 				CreatedAt: &now,
+				StockType: model.StockTypeTracked,
 			}
 			err := warehouseService.Edit(-3, editedItem)
 			assert.Error(t, err)
@@ -432,6 +458,7 @@ func TestWarehouseServiceImpl(t *testing.T) {
 				TenantId:  1,
 				IsActive:  false,
 				CreatedAt: &now,
+				StockType: model.StockTypeTracked,
 			}
 			err := warehouseService.Edit(-3, editedItem)
 			assert.Error(t, err)
@@ -446,6 +473,7 @@ func TestWarehouseServiceImpl(t *testing.T) {
 				// TenantId:  1,
 				IsActive:  false,
 				CreatedAt: &now,
+				StockType: model.StockTypeTracked,
 			}
 			err := warehouseService.Edit(-3, editedItem)
 			assert.Error(t, err)
@@ -460,6 +488,7 @@ func TestWarehouseServiceImpl(t *testing.T) {
 				TenantId:  1,
 				IsActive:  false,
 				CreatedAt: &now,
+				StockType: model.StockTypeTracked,
 			}
 			err := warehouseService.Edit(-1000, editedItem)
 			assert.Error(t, err)

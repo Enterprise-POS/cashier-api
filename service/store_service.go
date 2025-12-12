@@ -19,6 +19,7 @@ type StoreService interface {
 	SetActivate(tenantId, storeId int, setInto bool) error
 
 	/*
-		Edit store name
+		Edit store properties, example name
 	*/
+	Edit(tobeEditStore *model.Store) (*model.Store, error)
 }

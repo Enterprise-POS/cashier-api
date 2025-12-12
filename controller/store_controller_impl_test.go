@@ -90,6 +90,7 @@ func TestStoreControllerImpl(t *testing.T) {
 	tenantRestriction := middleware.RestrictByTenant(supabaseClient) // User only allowed to access associated tenant
 	app.Post("/stores/:tenantId", tenantRestriction, storeController.Create)
 	app.Get("/stores/:tenantId", tenantRestriction, storeController.GetAll)
+	app.Put("/stores/:tenantId", tenantRestriction, storeController.Edit)
 	app.Put("/stores/set_activate/:tenantId", tenantRestriction, storeController.SetActivate)
 
 	t.Run("Create", func(t *testing.T) {
@@ -352,6 +353,118 @@ func TestStoreControllerImpl(t *testing.T) {
 				Eq("id", strconv.Itoa(createdTestStore.Id)).
 				Execute()
 			require.NoError(t, err, "If this fail, then immediately delete the data from TestStoreControllerImpl/SetActivate (1)")
+		})
+	})
+
+	t.Run("Edit", func(t *testing.T) {
+		testStoreName := "Test Store Controller Edit"
+		byteBody, err := json.Marshal(fiber.Map{
+			"name": testStoreName,
+		})
+		require.NoError(t, err)
+		requestBody := strings.NewReader(string(byteBody))
+		request := httptest.NewRequest("POST", fmt.Sprint("/stores/", createdTestTenant.Id), requestBody)
+		request.Header.Set("Content-Type", "application/json")
+		request.AddCookie(enterprisePOSCookie)
+		response, err := app.Test(request, testTimeout)
+		assert.Nil(t, err)
+		assert.NotNil(t, response)
+		assert.Equal(t, http.StatusOK, response.StatusCode)
+
+		byteResponseBody, err := io.ReadAll(response.Body)
+		assert.NoError(t, err)
+
+		var responseBody struct {
+			Code   int    `json:"code"`
+			Status string `json:"status"`
+			Data   struct {
+				CreatedStore *model.Store `json:"created_store"`
+			} `json:"data"`
+		}
+		err = json.Unmarshal(byteResponseBody, &responseBody)
+		createdTestStore := responseBody.Data.CreatedStore
+
+		t.Run("NormalEdit", func(t *testing.T) {
+			byteBody, err := json.Marshal(fiber.Map{
+				"store_id": createdTestStore.Id,
+				"name":     "Test Store Controller Normal Edit",
+			})
+			require.NoError(t, err)
+			requestBody := strings.NewReader(string(byteBody))
+			request := httptest.NewRequest("PUT", fmt.Sprint("/stores/", createdTestTenant.Id), requestBody)
+			request.Header.Set("Content-Type", "application/json")
+			request.AddCookie(enterprisePOSCookie)
+			response, err := app.Test(request, testTimeout)
+			assert.Nil(t, err)
+			assert.NotNil(t, response)
+			assert.Equal(t, http.StatusOK, response.StatusCode)
+
+			// Test the properties, if it's really edited
+			var testStore *model.Store
+			_, err = supabaseClient.From(repository.StoreTable).
+				Select("*", "", false).
+				Eq("id", strconv.Itoa(createdTestStore.Id)).
+				Single().
+				ExecuteTo(&testStore)
+			assert.NoError(t, err)
+			assert.Equal(t, "Test Store Controller Normal Edit", testStore.Name)
+		})
+
+		t.Run("WrongInputType", func(t *testing.T) {
+			// Name should be int
+			byteBody, err := json.Marshal(fiber.Map{
+				"store_id": createdTestStore.Id,
+				"name":     1,
+			})
+			require.NoError(t, err)
+			requestBody := strings.NewReader(string(byteBody))
+			request := httptest.NewRequest("PUT", fmt.Sprint("/stores/", createdTestTenant.Id), requestBody)
+			request.Header.Set("Content-Type", "application/json")
+			request.AddCookie(enterprisePOSCookie)
+			response, err := app.Test(request, testTimeout)
+			assert.Nil(t, err)
+			assert.NotNil(t, response)
+			assert.Equal(t, http.StatusBadRequest, response.StatusCode)
+
+			// Store id should be string
+			byteBody, err = json.Marshal(fiber.Map{
+				"store_id": 1,
+				"name":     "Test Store Controller Normal Edit",
+			})
+			require.NoError(t, err)
+			requestBody = strings.NewReader(string(byteBody))
+			request = httptest.NewRequest("PUT", fmt.Sprint("/stores/", createdTestTenant.Id), requestBody)
+			request.Header.Set("Content-Type", "application/json")
+			request.AddCookie(enterprisePOSCookie)
+			response, err = app.Test(request, testTimeout)
+			assert.Nil(t, err)
+			assert.NotNil(t, response)
+			assert.Equal(t, http.StatusBadRequest, response.StatusCode)
+		})
+
+		t.Run("NotSpecifySomeField", func(t *testing.T) {
+			// This will return error because store_id will be 0 by Go default
+			byteBody, err := json.Marshal(fiber.Map{
+				// "store_id": createdTestStore.Id,
+				"name": "Test Store Controller Normal Edit",
+			})
+			require.NoError(t, err)
+			requestBody := strings.NewReader(string(byteBody))
+			request := httptest.NewRequest("PUT", fmt.Sprint("/stores/", createdTestTenant.Id), requestBody)
+			request.Header.Set("Content-Type", "application/json")
+			request.AddCookie(enterprisePOSCookie)
+			response, err := app.Test(request, testTimeout)
+			assert.Nil(t, err)
+			assert.NotNil(t, response)
+			assert.Equal(t, http.StatusBadRequest, response.StatusCode)
+		})
+
+		t.Cleanup(func() {
+			_, _, err := supabaseClient.From(repository.StoreTable).
+				Delete("", "").
+				Eq("id", strconv.Itoa(createdTestStore.Id)).
+				Execute()
+			require.NoError(t, err, "If this fail, then immediately delete the data from TestStoreControllerImpl/Edit (1)")
 		})
 	})
 

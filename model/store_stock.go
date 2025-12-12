@@ -21,6 +21,7 @@ type StoreStockV2 struct {
 	ItemName   string     `json:"item_name"`
 	Stocks     int        `json:"stocks"` // StoreStock Stock
 	Price      int        `json:"price"`
+	StockType  StockType  `json:"stock_type"`
 	CreatedAt  *time.Time `json:"created_at,omitempty"` // Warehouse Item created_at
 	ItemId     int        `json:"item_id"`
 	TotalCount int        `json:"total_count"`

@@ -72,9 +72,32 @@ func (repository *StoreRepositoryImpl) SetActivate(tenantId, storeId int, setInt
 	}
 
 	// If the request did not do anything then nothing happen, which mean invalid/error
+	// Should say this a warn instead an error ?
 	if len(message) == 0 || string(message) == "[]" {
 		return fmt.Errorf("[ERROR] No store found with tenant_id=%d and id=%d", tenantId, storeId)
 	}
 
 	return nil
+}
+
+// Edit implements StoreRepository.
+func (repository *StoreRepositoryImpl) Edit(tobeEditStore *model.Store) (*model.Store, error) {
+	tobeUpdatedValue := map[string]interface{}{
+		"name": tobeEditStore.Name,
+	}
+
+	var updatedStore *model.Store
+	_, err := repository.Client.From(StoreTable).
+		Update(tobeUpdatedValue, "", "").
+		Eq("tenant_id", strconv.Itoa(tobeEditStore.TenantId)).
+		Eq("id", strconv.Itoa(tobeEditStore.Id)).
+		Single().ExecuteTo(&updatedStore)
+	if err != nil {
+		return nil, err
+	}
+	if updatedStore == nil {
+		return nil, fmt.Errorf("[ERROR] No store found with tenant_id=%d and id=%d", tobeEditStore.Id, tobeEditStore.Id)
+	}
+
+	return updatedStore, nil
 }

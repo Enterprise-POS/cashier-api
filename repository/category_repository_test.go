@@ -305,10 +305,11 @@ func TestCategoryRepository(t *testing.T) {
 		t.Run("NormalRegister", func(t *testing.T) {
 			// Create warehouse item
 			dummyItem := &model.Item{
-				ItemName: "Test_CategoryRepositoryImpl_Register_NormalRegister 1",
-				Stocks:   10,
-				TenantId: TenantId,
-				IsActive: true,
+				ItemName:  "Test_CategoryRepositoryImpl_Register_NormalRegister 1",
+				Stocks:    10,
+				TenantId:  TenantId,
+				IsActive:  true,
+				StockType: model.StockTypeTracked,
 			}
 			_dummyItemFromDB, err := warehouseRepositoryImpl.CreateItem([]*model.Item{dummyItem})
 			require.Nil(t, err)
@@ -353,10 +354,11 @@ func TestCategoryRepository(t *testing.T) {
 		t.Run("DuplicateRegister", func(t *testing.T) {
 			// Create warehouse item
 			dummyItem := &model.Item{
-				ItemName: "Test_CategoryRepositoryImpl_Register_DuplicateRegister 1",
-				Stocks:   10,
-				TenantId: TenantId,
-				IsActive: true,
+				ItemName:  "Test_CategoryRepositoryImpl_Register_DuplicateRegister 1",
+				Stocks:    10,
+				StockType: model.StockTypeTracked,
+				TenantId:  TenantId,
+				IsActive:  true,
 			}
 			_dummyItemFromDB, err := warehouseRepositoryImpl.CreateItem([]*model.Item{dummyItem})
 			require.Nil(t, err)
@@ -412,10 +414,11 @@ func TestCategoryRepository(t *testing.T) {
 			// START:
 			// Create warehouse item
 			dummyItem := &model.Item{
-				ItemName: "Test_CategoryRepositoryImpl_Register_NormalUnregister 1",
-				Stocks:   10,
-				TenantId: TenantId,
-				IsActive: true,
+				ItemName:  "Test_CategoryRepositoryImpl_Register_NormalUnregister 1",
+				Stocks:    10,
+				StockType: model.StockTypeTracked,
+				TenantId:  TenantId,
+				IsActive:  true,
 			}
 			_dummyItemFromDB, err := warehouseRepositoryImpl.CreateItem([]*model.Item{dummyItem})
 			require.Nil(t, err)
@@ -493,10 +496,11 @@ func TestCategoryRepository(t *testing.T) {
 			// START:
 			// Create warehouse item
 			dummyItem := &model.Item{
-				ItemName: "Test_CategoryRepositoryImpl_EditItemCategory_NormalEditItemCategory 1",
-				Stocks:   10,
-				TenantId: TenantId,
-				IsActive: true,
+				ItemName:  "Test_CategoryRepositoryImpl_EditItemCategory_NormalEditItemCategory 1",
+				Stocks:    10,
+				StockType: model.StockTypeTracked,
+				TenantId:  TenantId,
+				IsActive:  true,
 			}
 			_dummyItemFromDB, err := warehouseRepositoryImpl.CreateItem([]*model.Item{dummyItem})
 			require.Nil(t, err)

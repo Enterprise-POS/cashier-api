@@ -2,6 +2,7 @@ package controller
 
 import (
 	common "cashier-api/helper"
+	"cashier-api/model"
 	"cashier-api/service"
 	"strconv"
 
@@ -96,7 +97,9 @@ func (controller *StoreControllerImpl) SetActivate(ctx *fiber.Ctx) error {
 	err := ctx.BodyParser(&body)
 	if err != nil {
 		return ctx.Status(fiber.StatusBadRequest).
-			JSON(common.NewWebResponseError(400, common.StatusError, "Something gone wrong ! The request body is malformed"))
+			JSON(common.NewWebResponseError(
+				400, common.StatusError, "Something gone wrong ! The request body is malformed",
+			))
 	}
 
 	err = controller.Service.SetActivate(tenantId, body.StoreId, body.SetInto)
@@ -106,4 +109,34 @@ func (controller *StoreControllerImpl) SetActivate(ctx *fiber.Ctx) error {
 	}
 
 	return ctx.SendStatus(fiber.StatusAccepted)
+}
+
+// Edit implements StoreController.
+func (controller *StoreControllerImpl) Edit(ctx *fiber.Ctx) error {
+	tenantId, _ := strconv.Atoi(ctx.Params("tenantId"))
+	type StoreSetActiveRequestBody struct {
+		StoreId int    `json:"store_id"`
+		Name    string `json:"name"`
+	}
+	var body StoreSetActiveRequestBody
+	err := ctx.BodyParser(&body)
+	if err != nil {
+		return ctx.Status(fiber.StatusBadRequest).
+			JSON(common.NewWebResponseError(
+				400, common.StatusError, "Something gone wrong ! The request body is malformed",
+			))
+	}
+
+	editedStore, err := controller.Service.Edit(
+		&model.Store{TenantId: tenantId, Id: body.StoreId, Name: body.Name},
+	)
+	if err != nil {
+		return ctx.Status(fiber.StatusBadRequest).
+			JSON(common.NewWebResponseError(400, common.StatusError, err.Error()))
+	}
+
+	return ctx.Status(fiber.StatusOK).
+		JSON(common.NewWebResponse(200, common.StatusSuccess, fiber.Map{
+			"edited_store": editedStore,
+		}))
 }

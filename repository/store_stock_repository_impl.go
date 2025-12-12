@@ -73,15 +73,10 @@ func (repository *StoreStockRepositoryImpl) GetV2(tenantId int, storeId int, lim
 				{"category_id":1,"category_name":"Fruits","item_id":267,"item_name":"Durian","stocks":10}
 			]
 	*/
-	if strings.Contains(data, "[ERROR]") {
-		// Extract the message
-		var postgreSQLException *exception.PostgreSQLException
-		err := json.Unmarshal([]byte(data), &postgreSQLException)
-		if err != nil {
-			return nil, 0, err
-		}
-
-		return nil, 0, postgreSQLException
+	var pgErr exception.PostgreSQLException
+	if err := json.Unmarshal([]byte(data), &pgErr); err == nil && pgErr.Code != "" {
+		// If "code" is not empty -> it's an error JSON
+		return nil, 0, &pgErr
 	}
 
 	var results []*model.StoreStockV2

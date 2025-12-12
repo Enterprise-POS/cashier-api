@@ -87,3 +87,25 @@ func (service *StoreServiceImpl) SetActivate(tenantId int, storeId int, setInto 
 
 	return nil
 }
+
+// Edit implements StoreService.
+func (service *StoreServiceImpl) Edit(tobeEditStore *model.Store) (*model.Store, error) {
+	if tobeEditStore.Id < 1 {
+		return nil, errors.New("Invalid store id")
+	}
+
+	if tobeEditStore.TenantId < 1 {
+		return nil, errors.New("Invalid tenant id")
+	}
+
+	if !service.CategoryNameRegex.MatchString(tobeEditStore.Name) {
+		return nil, fmt.Errorf("Current store name is not allowed: %s", tobeEditStore.Name)
+	}
+
+	editedStore, err := service.Repository.Edit(tobeEditStore)
+	if err != nil {
+		return nil, err
+	}
+
+	return editedStore, nil
+}
