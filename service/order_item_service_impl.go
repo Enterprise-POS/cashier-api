@@ -60,6 +60,10 @@ func (service *OrderItemServiceImpl) Transactions(params *repository.CreateTrans
 			priceConsistencyCheck[item.ItemId] = item.PurchasedPrice
 		}
 
+		if item.Quantity < 1 {
+			return 0, fmt.Errorf("Given quantity %d, from item_id: %d. Quantity should never be <= 0", item.Quantity, item.Id)
+		}
+
 		// Calculate totals
 		itemSubTotal := item.PurchasedPrice * item.Quantity
 		itemDiscount := item.DiscountAmount * item.Quantity
