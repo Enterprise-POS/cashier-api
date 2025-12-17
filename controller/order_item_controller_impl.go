@@ -1,11 +1,15 @@
 package controller
 
 import (
+	"cashier-api/exception"
 	common "cashier-api/helper"
 	"cashier-api/repository"
 	"cashier-api/service"
+	"fmt"
+	"strings"
 
 	"github.com/gofiber/fiber/v2"
+	log "github.com/sirupsen/logrus"
 )
 
 type OrderItemControllerImpl struct {
@@ -62,6 +66,24 @@ func (controller *OrderItemControllerImpl) Transactions(ctx *fiber.Ctx) error {
 
 	transactionId, err := controller.Service.Transactions(&body)
 	if err != nil {
+		if pgErr, ok := err.(*exception.PostgreSQLException); ok {
+			errMessage := pgErr.Message
+			switch pgErr.Code {
+			case "P0001":
+				if strings.Contains(errMessage, "Security violation") {
+					return ctx.Status(fiber.StatusForbidden).
+						JSON(common.NewWebResponseError(403, common.StatusError, err.Error()))
+				}
+
+				return ctx.Status(fiber.StatusBadRequest).
+					JSON(common.NewWebResponseError(400, common.StatusError, err.Error()))
+			default:
+				log.Error(fmt.Sprintf("[DB ERROR] message: %s, code: %s, hint: %s", pgErr.Message, pgErr.Code, pgErr.Hint))
+				ctx.Status(fiber.StatusInternalServerError).
+					JSON(common.NewWebResponseError(500, common.StatusError, fmt.Sprintf("[DB ERROR] message: %s, code: %s, hint: %s", pgErr.Message, pgErr.Code, pgErr.Hint)))
+			}
+		}
+
 		return ctx.Status(fiber.StatusBadRequest).
 			JSON(common.NewWebResponseError(400, common.StatusError, err.Error()))
 	}
