@@ -136,6 +136,12 @@ func main() {
 	apiV1.Put("/store_stocks/transfer_to_store_stock/:tenantId", tenantRestriction, storeStockController.TransferStockToStoreStock)
 	apiV1.Put("/store_stocks/transfer_to_warehouse/:tenantId", tenantRestriction, storeStockController.TransferStockToWarehouse)
 
+	orderItemRepository := repository.NewOrderItemRepositoryImpl(supabaseClient)
+	orderItemService := service.NewOrderItemServiceImpl(orderItemRepository)
+	orderItemController := controller.NewOrderItemControllerImpl(orderItemService)
+
+	apiV1.Post("/order_items/transactions/:tenantId", tenantRestriction, orderItemController.Transactions)
+
 	// Handle route not found (404)
 	app.All("*", func(ctx *fiber.Ctx) error {
 		return ctx.Status(fiber.StatusNotFound).

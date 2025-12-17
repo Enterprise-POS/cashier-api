@@ -1,11 +1,12 @@
-package repository
+package service
 
 import (
 	"cashier-api/helper/query"
 	"cashier-api/model"
+	"cashier-api/repository"
 )
 
-type OrderItemRepository interface {
+type OrderItemService interface {
 	/*
 		When cashier app press the button, then
 		this will called
@@ -25,22 +26,5 @@ type OrderItemRepository interface {
 	/*
 		This method will insert into 2 table
 	*/
-	Transactions(params *CreateTransactionParams) (int, error)
-}
-
-type CreateTransactionParams struct {
-	// Order summary
-	PurchasedPrice int `json:"purchased_price"`
-	TotalQuantity  int `json:"total_quantity"`
-	TotalAmount    int `json:"total_amount"`
-	DiscountAmount int `json:"discount_amount"`
-	SubTotal       int `json:"sub_total"`
-
-	// Items
-	Items []*model.PurchasedItemList `json:"items"`
-
-	// Validation/Context
-	UserId   int `json:"user_id"`
-	TenantId int `json:"tenant_id"`
-	StoreId  int `json:"store_id"`
+	Transactions(params *repository.CreateTransactionParams) (int, error)
 }

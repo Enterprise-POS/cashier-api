@@ -1,8 +1,10 @@
 package repository
 
 import (
+	"cashier-api/exception"
 	"cashier-api/helper/query"
 	"cashier-api/model"
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
@@ -89,4 +91,34 @@ func (repository *OrderItemRepositoryImpl) Get(tenantId int, limit int, page int
 	}
 
 	return results, int(count), nil
+}
+
+// Transactions implements OrderItemRepository.
+func (repository *OrderItemRepositoryImpl) Transactions(params *CreateTransactionParams) (int, error) {
+	response := repository.Client.Rpc("transactions", "", map[string]any{
+		"p_purchased_price": params.PurchasedPrice,
+		"p_total_quantity":  params.TotalQuantity,
+		"p_total_amount":    params.TotalAmount,
+		"p_discount_amount": params.DiscountAmount,
+		"p_subtotal":        params.SubTotal,
+
+		"p_items": params.Items,
+
+		"p_user_id":   params.UserId,
+		"p_tenant_id": params.TenantId,
+		"p_store_id":  params.StoreId,
+	})
+
+	var pgErr exception.PostgreSQLException
+	if err := json.Unmarshal([]byte(response), &pgErr); err == nil && pgErr.Code != "" {
+		// If "code" is not empty -> it's an error JSON
+		return 0, &pgErr
+	}
+
+	createdOrderItemId, err := strconv.Atoi(response)
+	if err != nil {
+		return 0, err
+	}
+
+	return createdOrderItemId, nil
 }
