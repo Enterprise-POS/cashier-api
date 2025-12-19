@@ -17,7 +17,7 @@ type OrderItemService interface {
 		Get the list of order_item, purchased_item_list will not included
 		2nd params return is the count of all data
 	*/
-	Get(tenantId int, limit int, page int, filters []*query.QueryFilter) ([]*model.OrderItem, int, error)
+	Get(tenantId, storeId, limit, page int, filters []*query.QueryFilter, dateFilter *query.DateFilter) ([]*model.OrderItem, int, error)
 
 	// FindById(itemId int, tenantId int) *model.Item
 	// CreateItem(item []*model.Item) error

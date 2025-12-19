@@ -1,24 +1,267 @@
 package service
 
 import (
+	"cashier-api/helper/query"
 	"cashier-api/model"
 	"cashier-api/repository"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
 
 func TestOrderItemServiceImpl(t *testing.T) {
-	orderItemRepo := repository.NewOrderItemRepositoryMock(&mock.Mock{}).(*repository.OrderItemRepositoryMock)
-	orderItemService := NewOrderItemServiceImpl(orderItemRepo)
-
+	now := time.Now()
 	const USER_ID = 1
 	const TENANT_ID = 1
 	const STORE_ID = 1
+	const LIMIT = 10
+	const PAGE = 1
+
+	t.Run("Get", func(t *testing.T) {
+		t.Run("NormalGet", func(t *testing.T) {
+			orderItemRepo := repository.NewOrderItemRepositoryMock(&mock.Mock{}).(*repository.OrderItemRepositoryMock)
+			orderItemService := NewOrderItemServiceImpl(orderItemRepo)
+			// filters := []*query.QueryFilter{}
+			// // dateFilters := nil
+			// orderItemRepo.Mock = &mock.Mock{}
+			// orderItemRepo.Mock.On("Get", TENANT_ID, STORE_ID, LIMIT, PAGE, filters, nil)
+			filters := []*query.QueryFilter{}
+			expectedItems := []*model.OrderItem{
+				{
+					Id:             1,
+					PurchasedPrice: 1000,
+					TotalQuantity:  1,
+					TotalAmount:    1000,
+					DiscountAmount: 0,
+					Subtotal:       1000,
+					CreatedAt:      &now,
+					StoreId:        STORE_ID,
+					TenantId:       TENANT_ID,
+				},
+			}
+			expectedCount := 1
+
+			// Mock expects page-1 (0-based indexing)
+			orderItemRepo.Mock.On("Get", TENANT_ID, STORE_ID, LIMIT, 0, filters, (*query.DateFilter)(nil)).
+				Return(expectedItems, expectedCount, nil)
+
+			orderItems, count, err := orderItemService.Get(TENANT_ID, STORE_ID, LIMIT, PAGE, filters, nil)
+
+			assert.NoError(t, err)
+			assert.Equal(t, expectedCount, count)
+			assert.Equal(t, expectedItems, orderItems)
+		})
+
+		t.Run("TenantOrStoreIdIsNotProvided", func(t *testing.T) {
+			orderItemRepo := repository.NewOrderItemRepositoryMock(&mock.Mock{}).(*repository.OrderItemRepositoryMock)
+			orderItemService := NewOrderItemServiceImpl(orderItemRepo)
+			// Invalid tenant id
+			orderItems, count, err := orderItemService.Get(0, STORE_ID, LIMIT, PAGE, nil, nil)
+			assert.Error(t, err)
+			assert.Equal(t, 0, count)
+			assert.Nil(t, orderItems)
+
+			// Invalid store id
+			orderItems, count, err = orderItemService.Get(TENANT_ID, 0, LIMIT, PAGE, nil, nil)
+			assert.Error(t, err)
+			assert.Equal(t, 0, count)
+			assert.Nil(t, orderItems)
+		})
+
+		t.Run("InvalidLimitAndPageParams", func(t *testing.T) {
+			orderItemRepo := repository.NewOrderItemRepositoryMock(&mock.Mock{}).(*repository.OrderItemRepositoryMock)
+			orderItemService := NewOrderItemServiceImpl(orderItemRepo)
+
+			// Test invalid limit (0)
+			orderItems, count, err := orderItemService.Get(TENANT_ID, STORE_ID, 0, PAGE, nil, nil)
+			assert.Error(t, err)
+			assert.Contains(t, err.Error(), "Limit could not less then 1")
+			assert.Equal(t, 0, count)
+			assert.Nil(t, orderItems)
+
+			// Test invalid page (0)
+			orderItems, count, err = orderItemService.Get(TENANT_ID, STORE_ID, LIMIT, 0, nil, nil)
+			assert.Error(t, err)
+			assert.Contains(t, err.Error(), "page could not less then 1")
+			assert.Equal(t, 0, count)
+			assert.Nil(t, orderItems)
+
+			// Negative limit
+			orderItems, count, err = orderItemService.Get(TENANT_ID, STORE_ID, -5, PAGE, nil, nil)
+			assert.Error(t, err)
+			assert.Equal(t, 0, count)
+			assert.Nil(t, orderItems)
+
+			// negative page
+			orderItems, count, err = orderItemService.Get(TENANT_ID, STORE_ID, LIMIT, -5, nil, nil)
+			assert.Error(t, err)
+			assert.Equal(t, 0, count)
+			assert.Nil(t, orderItems)
+		})
+
+		t.Run("InvalidPage_Zero", func(t *testing.T) {
+			orderItemRepo := repository.NewOrderItemRepositoryMock(&mock.Mock{}).(*repository.OrderItemRepositoryMock)
+			orderItemService := NewOrderItemServiceImpl(orderItemRepo)
+
+			orderItems, count, err := orderItemService.Get(TENANT_ID, STORE_ID, LIMIT, 0, nil, nil)
+
+			assert.Error(t, err)
+			assert.Contains(t, err.Error(), "page could not less then 1")
+			assert.Equal(t, 0, count)
+			assert.Nil(t, orderItems)
+		})
+
+		t.Run("InvalidPage_Negative", func(t *testing.T) {
+			orderItemRepo := repository.NewOrderItemRepositoryMock(&mock.Mock{}).(*repository.OrderItemRepositoryMock)
+			orderItemService := NewOrderItemServiceImpl(orderItemRepo)
+
+			orderItems, count, err := orderItemService.Get(TENANT_ID, STORE_ID, LIMIT, -1, nil, nil)
+
+			assert.Error(t, err)
+			assert.Contains(t, err.Error(), "page could not less then 1")
+			assert.Equal(t, 0, count)
+			assert.Nil(t, orderItems)
+		})
+
+		t.Run("DateFilter_StartDateAfterEndDate", func(t *testing.T) {
+			orderItemRepo := repository.NewOrderItemRepositoryMock(&mock.Mock{}).(*repository.OrderItemRepositoryMock)
+			orderItemService := NewOrderItemServiceImpl(orderItemRepo)
+
+			startDate := int64(1700000000)
+			endDate := int64(1600000000)
+			dateFilter := &query.DateFilter{
+				StartDate: &startDate,
+				EndDate:   &endDate,
+			}
+
+			orderItems, count, err := orderItemService.Get(TENANT_ID, STORE_ID, LIMIT, PAGE, nil, dateFilter)
+
+			assert.Error(t, err)
+			assert.Contains(t, err.Error(), "Start date")
+			assert.Contains(t, err.Error(), "cannot be after end date")
+			assert.Equal(t, 0, count)
+			assert.Nil(t, orderItems)
+		})
+
+		t.Run("DateFilter_NegativeStartDate", func(t *testing.T) {
+			orderItemRepo := repository.NewOrderItemRepositoryMock(&mock.Mock{}).(*repository.OrderItemRepositoryMock)
+			orderItemService := NewOrderItemServiceImpl(orderItemRepo)
+
+			startDate := int64(-1000)
+			dateFilter := &query.DateFilter{
+				StartDate: &startDate,
+			}
+
+			orderItems, count, err := orderItemService.Get(TENANT_ID, STORE_ID, LIMIT, PAGE, nil, dateFilter)
+
+			assert.Error(t, err)
+			assert.Contains(t, err.Error(), "Invalid start date timestamp")
+			assert.Equal(t, 0, count)
+			assert.Nil(t, orderItems)
+		})
+
+		t.Run("DateFilter_NegativeEndDate", func(t *testing.T) {
+			orderItemRepo := repository.NewOrderItemRepositoryMock(&mock.Mock{}).(*repository.OrderItemRepositoryMock)
+			orderItemService := NewOrderItemServiceImpl(orderItemRepo)
+
+			endDate := int64(-1000)
+			dateFilter := &query.DateFilter{
+				EndDate: &endDate,
+			}
+
+			orderItems, count, err := orderItemService.Get(TENANT_ID, STORE_ID, LIMIT, PAGE, nil, dateFilter)
+
+			assert.Error(t, err)
+			assert.Contains(t, err.Error(), "Invalid emd date timestamp")
+			assert.Equal(t, 0, count)
+			assert.Nil(t, orderItems)
+		})
+
+		t.Run("DateFilter_StartDateTooFarInFuture", func(t *testing.T) {
+			orderItemRepo := repository.NewOrderItemRepositoryMock(&mock.Mock{}).(*repository.OrderItemRepositoryMock)
+			orderItemService := NewOrderItemServiceImpl(orderItemRepo)
+
+			startDate := int64(5000000000) // 2100+
+			dateFilter := &query.DateFilter{
+				StartDate: &startDate,
+			}
+
+			orderItems, count, err := orderItemService.Get(TENANT_ID, STORE_ID, LIMIT, PAGE, nil, dateFilter)
+
+			assert.Error(t, err)
+			assert.Contains(t, err.Error(), "Start date is too far in the future")
+			assert.Equal(t, 0, count)
+			assert.Nil(t, orderItems)
+		})
+
+		t.Run("DateFilter_EndDateTooFarInFuture", func(t *testing.T) {
+			orderItemRepo := repository.NewOrderItemRepositoryMock(&mock.Mock{}).(*repository.OrderItemRepositoryMock)
+			orderItemService := NewOrderItemServiceImpl(orderItemRepo)
+
+			endDate := int64(5000000000) // Way beyond 2100
+			dateFilter := &query.DateFilter{
+				EndDate: &endDate,
+			}
+
+			orderItems, count, err := orderItemService.Get(TENANT_ID, STORE_ID, LIMIT, PAGE, nil, dateFilter)
+
+			assert.Error(t, err)
+			assert.Contains(t, err.Error(), "End date is too far in the future")
+			assert.Equal(t, 0, count)
+			assert.Nil(t, orderItems)
+		})
+
+		t.Run("DateFilter_ValidDateRange", func(t *testing.T) {
+			orderItemRepo := repository.NewOrderItemRepositoryMock(&mock.Mock{}).(*repository.OrderItemRepositoryMock)
+			orderItemService := NewOrderItemServiceImpl(orderItemRepo)
+
+			startDate := int64(1600000000)
+			endDate := int64(1700000000)
+			dateFilter := &query.DateFilter{
+				StartDate: &startDate,
+				EndDate:   &endDate,
+			}
+
+			expectedItems := []*model.OrderItem{}
+			expectedCount := 3
+
+			orderItemRepo.Mock.On("Get", TENANT_ID, STORE_ID, LIMIT, 0, ([]*query.QueryFilter)(nil), dateFilter).
+				Return(expectedItems, expectedCount, nil)
+
+			orderItems, count, err := orderItemService.Get(TENANT_ID, STORE_ID, LIMIT, PAGE, nil, dateFilter)
+
+			assert.NoError(t, err)
+			assert.Equal(t, expectedCount, count)
+			assert.Equal(t, expectedItems, orderItems)
+			orderItemRepo.Mock.AssertExpectations(t)
+		})
+
+		t.Run("RepositoryReturnsError", func(t *testing.T) {
+			orderItemRepo := repository.NewOrderItemRepositoryMock(&mock.Mock{}).(*repository.OrderItemRepositoryMock)
+			orderItemService := NewOrderItemServiceImpl(orderItemRepo)
+
+			expectedError := errors.New("database connection failed")
+
+			orderItemRepo.Mock.On("Get", TENANT_ID, STORE_ID, LIMIT, 0, ([]*query.QueryFilter)(nil), (*query.DateFilter)(nil)).
+				Return(([]*model.OrderItem)(nil), 0, expectedError)
+
+			orderItems, count, err := orderItemService.Get(TENANT_ID, STORE_ID, LIMIT, PAGE, nil, nil)
+
+			assert.Error(t, err)
+			assert.Equal(t, expectedError, err)
+			assert.Equal(t, 0, count)
+			assert.Nil(t, orderItems)
+			orderItemRepo.Mock.AssertExpectations(t)
+		})
+	})
 
 	t.Run("Transactions", func(t *testing.T) {
+		orderItemRepo := repository.NewOrderItemRepositoryMock(&mock.Mock{}).(*repository.OrderItemRepositoryMock)
+		orderItemService := NewOrderItemServiceImpl(orderItemRepo)
+
 		t.Run("NormalTransactions", func(t *testing.T) {
 			expectedParams := &repository.CreateTransactionParams{
 				PurchasedPrice: 10_000,

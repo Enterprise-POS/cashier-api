@@ -17,8 +17,13 @@ func NewOrderItemServiceMock(mock *mock.Mock) OrderItemService {
 }
 
 // Get implements OrderItemService.
-func (service *OrderItemServiceMock) Get(tenantId int, limit int, page int, filters []*query.QueryFilter) ([]*model.OrderItem, int, error) {
-	panic("unimplemented")
+func (service *OrderItemServiceMock) Get(tenantId int, storeId int, limit int, page int, filters []*query.QueryFilter, dateFilter *query.DateFilter) ([]*model.OrderItem, int, error) {
+	args := service.Mock.Called(tenantId, storeId, limit, page, filters, dateFilter)
+	if args.Get(0) == nil {
+		return nil, 0, args.Error(2)
+	}
+
+	return args.Get(0).([]*model.OrderItem), args.Int(1), nil
 }
 
 // PlaceOrderItem implements OrderItemService.

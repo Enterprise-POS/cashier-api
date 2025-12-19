@@ -64,7 +64,14 @@ QueryFilter:
 		CreatedAtAsc = true -> will order by ascending
 */
 
-func (repository *OrderItemRepositoryImpl) Get(tenantId int, limit int, page int, filters []*query.QueryFilter) ([]*model.OrderItem, int, error) {
+func (repository *OrderItemRepositoryImpl) Get(
+	tenantId int,
+	storeId int,
+	limit int,
+	page int,
+	filters []*query.QueryFilter,
+	dateFilter *query.DateFilter,
+) ([]*model.OrderItem, int, error) {
 	start := page * limit
 	end := start + limit - 1
 
@@ -74,7 +81,32 @@ func (repository *OrderItemRepositoryImpl) Get(tenantId int, limit int, page int
 		Eq("tenant_id", strconv.Itoa(tenantId)).
 		Range(start, end, "")
 
-		// Apply filter
+	// User / Front end application allowed to specify either to get all order or not
+	// When store id <= 0 will be handled by service
+	if storeId > 0 {
+		filterBuilder = filterBuilder.Eq("store_id", strconv.Itoa(storeId))
+	}
+
+	// Apply date filter
+	if dateFilter != nil {
+		// This is on demand filter may change in the future, maybe use column such as update_at, etc...
+		dateFilter.Column = "created_at"
+
+		if dateFilter.StartDate != nil && dateFilter.EndDate != nil {
+			// Range: 1 Dec 2025 - 31 Dec 2025
+			filterBuilder = filterBuilder.
+				Gte(dateFilter.Column, strconv.FormatInt(*dateFilter.StartDate, 10)).
+				Lte(dateFilter.Column, strconv.FormatInt(*dateFilter.EndDate, 10))
+		} else if dateFilter.StartDate != nil {
+			// Only start date (from 1 Dec 2025 onwards)
+			filterBuilder = filterBuilder.Gte(dateFilter.Column, strconv.FormatInt(*dateFilter.StartDate, 10))
+		} else if dateFilter.EndDate != nil {
+			// Only end date (up to 31 Dec 2025)
+			filterBuilder = filterBuilder.Lte(dateFilter.Column, strconv.FormatInt(*dateFilter.EndDate, 10))
+		}
+	}
+
+	// Apply filter
 	for _, filter := range filters {
 		if filter.Column == "" {
 			log.Warnf("WARN ! handled error, some filter is an empty string. from tenantId: %d", tenantId)

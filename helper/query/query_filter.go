@@ -10,6 +10,13 @@ type QueryFilter struct {
 	Ascending bool
 }
 
+// DateFilter represents a date range filter
+type DateFilter struct {
+	Column    string // e.g., "created_at", "updated_at", "order_date"
+	StartDate *int64 // nil means no start date filter
+	EndDate   *int64 // nil means no end date filter
+}
+
 // Generic
 const CreatedAtColumn ColumnName = "created_at"
 

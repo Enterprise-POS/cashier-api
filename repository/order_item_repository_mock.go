@@ -16,13 +16,20 @@ func NewOrderItemRepositoryMock(mock *mock.Mock) OrderItemRepository {
 }
 
 // Get implements OrderItemRepository.
-func (repository *OrderItemRepositoryMock) Get(tenantId int, limit int, page int, filters []*query.QueryFilter) ([]*model.OrderItem, int, error) {
-	args := repository.Mock.Called(tenantId, limit, page, filters)
+func (repository *OrderItemRepositoryMock) Get(
+	tenantId int,
+	storeId int,
+	limit int,
+	page int,
+	filters []*query.QueryFilter,
+	dateFilter *query.DateFilter,
+) ([]*model.OrderItem, int, error) {
+	args := repository.Mock.Called(tenantId, storeId, limit, page, filters, dateFilter)
 
 	if args.Get(0) == nil {
 		return nil, args.Int(1), args.Error(1)
 	} else {
-		return args.Get(0).([]*model.OrderItem), args.Int(1), nil
+		return args.Get(0).([]*model.OrderItem), args.Int(1), args.Error(2)
 	}
 }
 

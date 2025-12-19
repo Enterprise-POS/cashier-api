@@ -235,7 +235,7 @@ func TestOrderItemRepository(t *testing.T) {
 
 			page := 1
 			limit := 5
-			dummyCreatedOrderItems, count, err := orderItemRepo.Get(TENANT_ID, limit, page-1, nil)
+			dummyCreatedOrderItems, count, err := orderItemRepo.Get(TENANT_ID, 0, limit, page-1, nil, nil)
 			assert.Nil(t, err)
 			assert.Greater(t, count, 4)
 			assert.Equal(t, limit, len(dummyCreatedOrderItems))
@@ -333,12 +333,12 @@ func TestOrderItemRepository(t *testing.T) {
 
 			page := 1
 			limit := 5
-			dummyCreatedOrderItems, count, err := orderItemRepo.Get(TENANT_ID, limit, page-1, []*query.QueryFilter{
+			dummyCreatedOrderItems, count, err := orderItemRepo.Get(TENANT_ID, 0, limit, page-1, []*query.QueryFilter{
 				{
 					Column:    query.CreatedAtColumn,
 					Ascending: false,
 				},
-			})
+			}, nil)
 			assert.Nil(t, err)
 			assert.GreaterOrEqual(t, count, 5)
 			assert.Equal(t, limit, len(dummyCreatedOrderItems))
@@ -429,12 +429,12 @@ func TestOrderItemRepository(t *testing.T) {
 
 			page := 1
 			limit := 5
-			dummyCreatedOrderItems, count, err := orderItemRepo.Get(TENANT_ID, limit, page-1, []*query.QueryFilter{
+			dummyCreatedOrderItems, count, err := orderItemRepo.Get(TENANT_ID, 0, limit, page-1, []*query.QueryFilter{
 				{
 					Column:    query.TotalAmountColumn,
 					Ascending: false,
 				},
-			})
+			}, nil)
 			assert.Nil(t, err)
 			assert.GreaterOrEqual(t, count, 5)
 			assert.Equal(t, limit, len(dummyCreatedOrderItems))
