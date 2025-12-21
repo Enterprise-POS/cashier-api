@@ -140,6 +140,7 @@ func main() {
 	orderItemService := service.NewOrderItemServiceImpl(orderItemRepository)
 	orderItemController := controller.NewOrderItemControllerImpl(orderItemService)
 
+	apiV1.Post("/order_items/search/:tenantId", tenantRestriction, orderItemController.Get)
 	apiV1.Post("/order_items/transactions/:tenantId", tenantRestriction, orderItemController.Transactions)
 
 	// Handle route not found (404)

@@ -2,6 +2,7 @@ package repository
 
 import (
 	"cashier-api/exception"
+	common "cashier-api/helper"
 	"cashier-api/helper/query"
 	"cashier-api/model"
 	"encoding/json"
@@ -95,14 +96,16 @@ func (repository *OrderItemRepositoryImpl) Get(
 		if dateFilter.StartDate != nil && dateFilter.EndDate != nil {
 			// Range: 1 Dec 2025 - 31 Dec 2025
 			filterBuilder = filterBuilder.
-				Gte(dateFilter.Column, strconv.FormatInt(*dateFilter.StartDate, 10)).
-				Lte(dateFilter.Column, strconv.FormatInt(*dateFilter.EndDate, 10))
+				Gte(dateFilter.Column, common.EpochToRFC3339(*dateFilter.StartDate)).
+				Lte(dateFilter.Column, common.EpochToRFC3339(*dateFilter.EndDate))
 		} else if dateFilter.StartDate != nil {
 			// Only start date (from 1 Dec 2025 onwards)
-			filterBuilder = filterBuilder.Gte(dateFilter.Column, strconv.FormatInt(*dateFilter.StartDate, 10))
+			filterBuilder = filterBuilder.
+				Gte(dateFilter.Column, common.EpochToRFC3339(*dateFilter.StartDate))
 		} else if dateFilter.EndDate != nil {
 			// Only end date (up to 31 Dec 2025)
-			filterBuilder = filterBuilder.Lte(dateFilter.Column, strconv.FormatInt(*dateFilter.EndDate, 10))
+			filterBuilder = filterBuilder.
+				Lte(dateFilter.Column, common.EpochToRFC3339(*dateFilter.EndDate))
 		}
 	}
 

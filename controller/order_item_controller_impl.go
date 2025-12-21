@@ -3,9 +3,12 @@ package controller
 import (
 	"cashier-api/exception"
 	common "cashier-api/helper"
+	"cashier-api/helper/query"
+	"cashier-api/model"
 	"cashier-api/repository"
 	"cashier-api/service"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/gofiber/fiber/v2"
@@ -20,9 +23,56 @@ func NewOrderItemControllerImpl(service service.OrderItemService) OrderItemContr
 	return &OrderItemControllerImpl{Service: service}
 }
 
+type OrderItemControllerGetRequest struct {
+	TenantId   int                  `json:"tenant_id" binding:"required,gt=0"`
+	StoreId    int                  `json:"store_id" binding:"required,gt=0"`
+	Limit      int                  `json:"limit" binding:"required,gte=1,lte=100"`
+	Page       int                  `json:"page" binding:"required,gte=1"`
+	Filters    []*query.QueryFilter `json:"filters"`
+	DateFilter *query.DateFilter    `json:"date_filter"`
+}
+type OrderItemControllerGetResponse struct {
+	OrderItems          []*model.OrderItem `json:"order_items"`
+	TotalCount          int                `json:"total_count"`
+	Page                int                `json:"page"`
+	Limit               int                `json:"limit"`
+	RequestedBy         int                `json:"requested_by"`
+	RequestedByTenantId int                `json:"requested_by_tenant_id"`
+}
+
 // Get implements OrderItemController.
 func (controller *OrderItemControllerImpl) Get(ctx *fiber.Ctx) error {
-	panic("unimplemented")
+	// It's guaranteed to be not "", because restrict by tenant already did check first
+	tenantId, _ := strconv.Atoi(ctx.Params("tenantId"))
+
+	sub := ctx.Locals("sub")
+	id, ok := sub.(int)
+	if !ok {
+		return ctx.Status(fiber.StatusBadRequest).
+			JSON(common.NewWebResponseError(401, common.StatusError, "Unexpected behavior ! could not get the id"))
+	}
+
+	var body OrderItemControllerGetRequest
+	err := ctx.BodyParser(&body)
+	if err != nil {
+		return ctx.Status(fiber.StatusBadRequest).
+			JSON(common.NewWebResponseError(400, common.StatusError, "Something gone wrong ! The request body is malformed"))
+	}
+
+	orderItems, count, err := controller.Service.Get(body.TenantId, body.StoreId, body.Limit, body.Page, body.Filters, body.DateFilter)
+	if err != nil {
+		return ctx.Status(fiber.StatusBadRequest).
+			JSON(common.NewWebResponseError(400, common.StatusError, err.Error()))
+	}
+	return ctx.Status(fiber.StatusOK).
+		JSON(common.NewWebResponse(200, common.StatusSuccess, &OrderItemControllerGetResponse{
+			OrderItems:          orderItems,
+			TotalCount:          count,
+			Page:                body.Page,
+			Limit:               body.Limit,
+			RequestedBy:         id,
+			RequestedByTenantId: tenantId,
+		}))
 }
 
 // PlaceOrderItem implements OrderItemController.

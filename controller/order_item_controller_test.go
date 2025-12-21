@@ -2,6 +2,7 @@ package controller
 
 import (
 	"cashier-api/helper/client"
+	"cashier-api/helper/query"
 	"cashier-api/middleware"
 	"cashier-api/model"
 	"cashier-api/repository"
@@ -32,6 +33,7 @@ func TestOrderItemControllerImpl(t *testing.T) {
 	const STORE_ID = 1
 
 	//SETUP//
+	now := time.Now()
 	supabaseClient := client.CreateSupabaseClient()
 	testTimeout := int((time.Second * 5).Milliseconds())
 	app := fiber.New()
@@ -52,6 +54,7 @@ func TestOrderItemControllerImpl(t *testing.T) {
 	orderItemController := NewOrderItemControllerImpl(orderItemServiceMock)
 
 	app.Post("/order_items/transactions/:tenantId", tenantRestriction, orderItemController.Transactions)
+	app.Post("/order_items/search/:tenantId", tenantRestriction, orderItemController.Get)
 
 	/*
 		Required to test order_item controller
@@ -101,6 +104,84 @@ func TestOrderItemControllerImpl(t *testing.T) {
 	var enterprisePOSCookie *http.Cookie = extractEnterprisePOSCookie(response.Cookies())
 	require.NotNil(t, enterprisePOSCookie)
 
+	t.Run("Get", func(t *testing.T) {
+		t.Run("NormalGet", func(t *testing.T) {
+			expectedResponse := &OrderItemControllerGetResponse{
+				OrderItems: []*model.OrderItem{
+					{
+						Id:             1,
+						PurchasedPrice: 1000,
+						TotalQuantity:  1,
+						TotalAmount:    1000,
+						DiscountAmount: 0,
+						Subtotal:       1000,
+						CreatedAt:      &now,
+						StoreId:        STORE_ID,
+						TenantId:       createdTestTenant.Id,
+					},
+					{
+						Id:             2,
+						PurchasedPrice: 5000,
+						TotalQuantity:  1,
+						TotalAmount:    5000,
+						DiscountAmount: 0,
+						Subtotal:       5000,
+						CreatedAt:      &now,
+						StoreId:        STORE_ID,
+						TenantId:       createdTestTenant.Id,
+					},
+				},
+			}
+
+			startDate := int64(1600000000)
+			endDate := int64(1700000000)
+			dateFilter := &query.DateFilter{
+				StartDate: &startDate,
+				EndDate:   &endDate,
+			}
+			body := OrderItemControllerGetRequest{
+				TenantId: 1,
+				StoreId:  1,
+				Limit:    20,
+				Page:     1,
+				Filters: []*query.QueryFilter{
+					{
+						Column:    "created_at",
+						Ascending: true,
+					},
+				},
+				DateFilter: dateFilter,
+			}
+
+			byteBody, err := json.Marshal(&body)
+			require.NoError(t, err)
+			requestBody := strings.NewReader(string(byteBody))
+
+			orderItemServiceMock.Mock = &mock.Mock{}
+			orderItemServiceMock.Mock.On("Get", body.TenantId, body.StoreId, body.Limit, body.Page, body.Filters, body.DateFilter).
+				Return(expectedResponse.OrderItems, len(expectedResponse.OrderItems), nil)
+
+			request = httptest.NewRequest("POST", fmt.Sprintf("/order_items/search/%d", createdTestTenant.Id), requestBody)
+			request.Header.Set("Content-Type", "application/json")
+			request.AddCookie(enterprisePOSCookie)
+			response, err = app.Test(request, testTimeout)
+			assert.NoError(t, err)
+			assert.NotNil(t, response)
+			assert.Equal(t, http.StatusOK, response.StatusCode)
+
+			byteResponseBody, err := io.ReadAll(response.Body)
+			assert.NoError(t, err)
+
+			var responseBody OrderItemControllerGetResponse
+			err = json.Unmarshal(byteResponseBody, &responseBody)
+			assert.NoError(t, err)
+			assert.NotNil(t, responseBody)
+			assert.Equal(t, expectedResponse.TotalCount, responseBody.TotalCount)
+			assert.Equal(t, expectedResponse.Limit, responseBody.Limit)
+			assert.Equal(t, expectedResponse.RequestedByTenantId, responseBody.RequestedByTenantId)
+		})
+	})
+
 	t.Run("Transactions", func(t *testing.T) {
 		t.Run("NormalTransactions", func(t *testing.T) {
 			// Add query
@@ -133,6 +214,7 @@ func TestOrderItemControllerImpl(t *testing.T) {
 				StoreId:  STORE_ID,
 			}
 
+			orderItemServiceMock.Mock = &mock.Mock{}
 			orderItemServiceMock.Mock.On("Transactions", expectedParams).Return(1, nil)
 
 			byteBody, err := json.Marshal(expectedParams)

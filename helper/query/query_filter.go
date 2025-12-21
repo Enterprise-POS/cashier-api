@@ -6,15 +6,15 @@ QueryFilter help we query the column for DESC / ASC value
 type ColumnName = string
 
 type QueryFilter struct {
-	Column    ColumnName
-	Ascending bool
+	Column    ColumnName `json:"column"`
+	Ascending bool       `json:"ascending"`
 }
 
 // DateFilter represents a date range filter
 type DateFilter struct {
-	Column    string // e.g., "created_at", "updated_at", "order_date"
-	StartDate *int64 // nil means no start date filter
-	EndDate   *int64 // nil means no end date filter
+	Column    string `json:"column"`     // e.g., "created_at", "updated_at", "order_date"
+	StartDate *int64 `json:"start_date"` // nil means no start date filter
+	EndDate   *int64 `json:"end_date"`   // nil means no end date filter
 }
 
 // Generic
