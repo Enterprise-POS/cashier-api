@@ -6,9 +6,11 @@ import (
 	"cashier-api/helper/query"
 	"cashier-api/model"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/supabase-community/postgrest-go"
@@ -156,4 +158,69 @@ func (repository *OrderItemRepositoryImpl) Transactions(params *CreateTransactio
 	}
 
 	return createdOrderItemId, nil
+}
+
+// FindById implements OrderItemRepository.
+func (repository *OrderItemRepositoryImpl) FindById(orderItemId int, tenantId int) (*model.OrderItem, []*model.PurchasedItem, error) {
+	response := repository.Client.Rpc("get_order_item_details_by_id", "", map[string]any{
+		"p_order_item_id": orderItemId,
+		"p_tenant_id":     tenantId,
+	})
+
+	var pgErr exception.PostgreSQLException
+	if err := json.Unmarshal([]byte(response), &pgErr); err == nil && pgErr.Code != "" {
+		// If "code" is not empty -> it's an error JSON
+		return nil, nil, &pgErr
+	}
+
+	var results []struct {
+		// PurchasedItem fields
+		Id             int `json:"id"`
+		ItemId         int `json:"item_id"`
+		PurchasedPrice int `json:"purchased_price"`
+		Quantity       int `json:"quantity"`
+		DiscountAmount int `json:"discount_amount"`
+		TotalAmount    int `json:"total_amount"`
+
+		// OrderItem fields (with order_item_ prefix)
+		OrderItemId             int        `json:"order_item_id"`
+		OrderItemPurchasedPrice int        `json:"order_item_purchased_price"`
+		OrderItemSubtotal       int        `json:"order_item_subtotal"`
+		OrderItemTotalQuantity  int        `json:"order_item_total_quantity"`
+		OrderItemTotalAmount    int        `json:"order_item_total_amount"`
+		OrderItemCreatedAt      *time.Time `json:"order_item_created_at"`
+	}
+
+	err := json.Unmarshal([]byte(response), &results) // Added &
+	if err != nil {
+		return nil, nil, err
+	}
+	if len(results) == 0 {
+		return nil, nil, errors.New("no data found")
+	}
+
+	// Extract OrderItem from first row (since it's the same for all rows)
+	orderItem := &model.OrderItem{
+		Id:             results[0].OrderItemId,
+		PurchasedPrice: results[0].OrderItemPurchasedPrice,
+		Subtotal:       results[0].OrderItemSubtotal,
+		TotalQuantity:  results[0].OrderItemTotalQuantity,
+		TotalAmount:    results[0].OrderItemTotalAmount,
+		CreatedAt:      results[0].OrderItemCreatedAt,
+	}
+
+	// Extract all PurchasedItems
+	var purchasedItemList []*model.PurchasedItem
+	for _, row := range results {
+		purchasedItemList = append(purchasedItemList, &model.PurchasedItem{
+			Id:             row.Id,
+			ItemId:         row.ItemId,
+			PurchasedPrice: row.PurchasedPrice,
+			Quantity:       row.Quantity,
+			DiscountAmount: row.DiscountAmount,
+			TotalAmount:    row.TotalAmount,
+		})
+	}
+
+	return orderItem, purchasedItemList, nil
 }

@@ -7,7 +7,7 @@ import "time"
 	unless you create order_item first
 */
 
-type PurchasedItemList struct {
+type PurchasedItem struct {
 	Id             int        `json:"id,omitempty"`
 	Quantity       int        `json:"quantity"`
 	PurchasedPrice int        `json:"purchased_price"`

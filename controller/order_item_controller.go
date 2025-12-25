@@ -10,6 +10,11 @@ type OrderItemController interface {
 	PlaceOrderItem(ctx *fiber.Ctx) error
 
 	/*
+		Always minus page by 1 because PostgreSQL start index from 0
+	*/
+	FindById(ctx *fiber.Ctx) error
+
+	/*
 		Get the list of order_item, purchased_item_list will not included
 		2nd params return is the count of all data
 	*/

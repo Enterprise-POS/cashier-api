@@ -19,7 +19,11 @@ type OrderItemService interface {
 	*/
 	Get(tenantId, storeId, limit, page int, filters []*query.QueryFilter, dateFilter *query.DateFilter) ([]*model.OrderItem, int, error)
 
-	// FindById(itemId int, tenantId int) *model.Item
+	/*
+		Always minus page by 1 because PostgreSQL start index from 0
+	*/
+	FindById(orderItemid int, tenantId int) (*model.OrderItem, []*model.PurchasedItem, error)
+
 	// CreateItem(item []*model.Item) error
 	// Edit(quantity int, item *model.Item) error
 

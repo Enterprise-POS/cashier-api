@@ -18,14 +18,17 @@ type OrderItemRepository interface {
 	*/
 	Get(tenantId int, storeId int, limit int, page int, filters []*query.QueryFilter, dateFilter *query.DateFilter) ([]*model.OrderItem, int, error)
 
-	// FindById(itemId int, tenantId int) *model.Item
-	// CreateItem(item []*model.Item) error
-	// Edit(quantity int, item *model.Item) error
+	/*
+
+	 */
+	FindById(orderItemid int, tenantId int) (*model.OrderItem, []*model.PurchasedItem, error)
 
 	/*
 		This method will insert into 2 table
 	*/
 	Transactions(params *CreateTransactionParams) (int, error)
+
+	// Edit(quantity int, item *model.Item) error
 }
 
 type CreateTransactionParams struct {
@@ -37,7 +40,7 @@ type CreateTransactionParams struct {
 	SubTotal       int `json:"sub_total"`
 
 	// Items
-	Items []*model.PurchasedItemList `json:"items"`
+	Items []*model.PurchasedItem `json:"items"`
 
 	// Validation/Context
 	UserId   int `json:"user_id"`

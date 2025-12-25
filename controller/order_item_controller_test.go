@@ -8,10 +8,12 @@ import (
 	"cashier-api/repository"
 	"cashier-api/service"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -55,6 +57,7 @@ func TestOrderItemControllerImpl(t *testing.T) {
 
 	app.Post("/order_items/transactions/:tenantId", tenantRestriction, orderItemController.Transactions)
 	app.Post("/order_items/search/:tenantId", tenantRestriction, orderItemController.Get)
+	app.Get("/order_items/details/:tenantId", tenantRestriction, orderItemController.FindById) // Params=order_item_id
 
 	/*
 		Required to test order_item controller
@@ -192,7 +195,7 @@ func TestOrderItemControllerImpl(t *testing.T) {
 				DiscountAmount: 1_300,
 				SubTotal:       29_000, // 20_000 + 9_000
 
-				Items: []*model.PurchasedItemList{
+				Items: []*model.PurchasedItem{
 					{
 						Quantity:       2,
 						PurchasedPrice: 10_000,
@@ -239,7 +242,7 @@ func TestOrderItemControllerImpl(t *testing.T) {
 				"discount_amount": 1_300,
 				"sub_total":       "29_000", // Should be int
 
-				"items": []*model.PurchasedItemList{
+				"items": []*model.PurchasedItem{
 					{
 						Quantity:       2,
 						PurchasedPrice: 10_000,
@@ -269,6 +272,97 @@ func TestOrderItemControllerImpl(t *testing.T) {
 			byteResponseBody, err := io.ReadAll(response.Body)
 			assert.NoError(t, err)
 			assert.Contains(t, string(byteResponseBody), "Something gone wrong ! The request body is malformed")
+		})
+	})
+
+	t.Run("FindById", func(t *testing.T) {
+		t.Run("NormalFindById", func(t *testing.T) {
+			baseURL := fmt.Sprintf("/order_items/details/%d", createdTestTenant.Id)
+			parsedURL, err := url.Parse(baseURL)
+			params := url.Values{}
+			params.Add("order_item_id", "1")
+			parsedURL.RawQuery = params.Encode()
+
+			expectedOrderItem := &model.OrderItem{
+				Id:             1,
+				Subtotal:       29_000,
+				PurchasedPrice: 30_000,
+				TotalQuantity:  5,
+				TotalAmount:    27_700,
+				DiscountAmount: 1_300,
+				StoreId:        STORE_ID,
+				TenantId:       createdTestTenant.Id,
+				CreatedAt:      &now,
+			}
+
+			expectedPurchasedItemList := []*model.PurchasedItem{
+				{
+					Id:             1,
+					Quantity:       2,
+					PurchasedPrice: 10_000,
+					DiscountAmount: 500,
+					TotalAmount:    19_000, // (10_000 * 2) - (500 * 2)
+					ItemId:         1,
+					OrderItemId:    expectedOrderItem.Id,
+				},
+				{
+					Id:             2,
+					Quantity:       3,
+					PurchasedPrice: 3_000,
+					DiscountAmount: 100,
+					TotalAmount:    8_700, // (3_000 * 3) - (100 * 3)
+					ItemId:         2,
+					OrderItemId:    expectedOrderItem.Id,
+				},
+			}
+
+			orderItemServiceMock.Mock = &mock.Mock{}
+			orderItemServiceMock.Mock.On("FindById", expectedOrderItem.Id, createdTestTenant.Id).Return(expectedOrderItem, expectedPurchasedItemList, nil)
+
+			request = httptest.NewRequest("GET", parsedURL.String(), nil)
+			request.Header.Set("Content-Type", "application/json")
+			request.AddCookie(enterprisePOSCookie)
+			response, err = app.Test(request, testTimeout)
+			assert.NoError(t, err)
+			assert.NotNil(t, response)
+			assert.Equal(t, http.StatusOK, response.StatusCode)
+		})
+
+		t.Run("ErrorResponseFromService", func(t *testing.T) {
+			baseURL := fmt.Sprintf("/order_items/details/%d", createdTestTenant.Id)
+			parsedURL, err := url.Parse(baseURL)
+			require.NoError(t, err)
+			params := url.Values{}
+			params.Add("order_item_id", "999")
+			parsedURL.RawQuery = params.Encode()
+
+			orderItemServiceMock.Mock = &mock.Mock{}
+			orderItemServiceMock.Mock.On("FindById", 999, createdTestTenant.Id).Return(nil, nil, errors.New("Tenant id or Order item id Required !"))
+
+			request = httptest.NewRequest("GET", parsedURL.String(), nil)
+			request.Header.Set("Content-Type", "application/json")
+			request.AddCookie(enterprisePOSCookie)
+			response, err = app.Test(request, testTimeout)
+			assert.NoError(t, err)
+			assert.NotNil(t, response)
+			assert.Equal(t, http.StatusBadRequest, response.StatusCode)
+		})
+
+		t.Run("OrderItemIdNotSpecify", func(t *testing.T) {
+			baseURL := fmt.Sprintf("/order_items/details/%d", createdTestTenant.Id)
+			parsedURL, err := url.Parse(baseURL)
+			require.NoError(t, err)
+			//params := url.Values{}
+			//params.Add("order_item_id", "1")
+			//parsedURL.RawQuery = params.Encode()
+
+			request = httptest.NewRequest("GET", parsedURL.String(), nil)
+			request.Header.Set("Content-Type", "application/json")
+			request.AddCookie(enterprisePOSCookie)
+			response, err = app.Test(request, testTimeout)
+			assert.NoError(t, err)
+			assert.NotNil(t, response)
+			assert.Equal(t, http.StatusBadRequest, response.StatusCode)
 		})
 	})
 

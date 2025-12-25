@@ -7,9 +7,9 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestPurchasedItemList(t *testing.T) {
+func TestPurchasedItem(t *testing.T) {
 	now := time.Now()
-	purchasedItemList := &PurchasedItemList{
+	purchasedItemList := &PurchasedItem{
 		Id:             1,
 		CreatedAt:      &now,
 		ItemId:         1,

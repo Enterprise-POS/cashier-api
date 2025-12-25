@@ -140,6 +140,8 @@ func main() {
 	orderItemService := service.NewOrderItemServiceImpl(orderItemRepository)
 	orderItemController := controller.NewOrderItemControllerImpl(orderItemService)
 
+	// GET /order_items/:tenantId?order_item_id=99
+	apiV1.Get("/order_items/details/:tenantId", tenantRestriction, orderItemController.FindById)
 	apiV1.Post("/order_items/search/:tenantId", tenantRestriction, orderItemController.Get)
 	apiV1.Post("/order_items/transactions/:tenantId", tenantRestriction, orderItemController.Transactions)
 

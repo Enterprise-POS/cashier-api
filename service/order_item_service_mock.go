@@ -31,6 +31,16 @@ func (service *OrderItemServiceMock) PlaceOrderItem(*model.OrderItem) (*model.Or
 	panic("unimplemented")
 }
 
+// FindById implements OrderItemService.
+func (service *OrderItemServiceMock) FindById(orderItemid int, tenantId int) (*model.OrderItem, []*model.PurchasedItem, error) {
+	args := service.Mock.Called(orderItemid, tenantId)
+	if args.Get(0) == nil || args.Get(1) == nil {
+		return nil, nil, args.Error(2)
+	}
+
+	return args.Get(0).(*model.OrderItem), args.Get(1).([]*model.PurchasedItem), nil
+}
+
 // Transactions implements OrderItemService.
 func (service *OrderItemServiceMock) Transactions(params *repository.CreateTransactionParams) (int, error) {
 	args := service.Mock.Called(params)

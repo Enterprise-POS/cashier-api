@@ -80,9 +80,36 @@ func (controller *OrderItemControllerImpl) PlaceOrderItem(ctx *fiber.Ctx) error 
 	panic("unimplemented")
 }
 
+// FindById implements OrderItemController.
+func (controller *OrderItemControllerImpl) FindById(ctx *fiber.Ctx) error {
+	// It's guaranteed to be not "", because restrict by tenant already did check first
+	tenantId, _ := strconv.Atoi(ctx.Params("tenantId"))
+
+	rawOrderItemId := ctx.Query("order_item_id", "")
+	orderItemId, err := strconv.Atoi(rawOrderItemId)
+	if err != nil {
+		errorMsg := fmt.Sprintf("Error while get order_item_id, given error_item_id = %s", rawOrderItemId)
+		return ctx.Status(fiber.StatusBadRequest).
+			JSON(common.NewWebResponseError(400, common.StatusError, errorMsg))
+	}
+
+	orderItem, purchasedItemList, err := controller.Service.FindById(orderItemId, tenantId)
+	if err != nil {
+		return ctx.Status(fiber.StatusBadRequest).
+			JSON(common.NewWebResponseError(400, common.StatusError, err.Error()))
+	}
+
+	return ctx.Status(fiber.StatusOK).
+		JSON(common.NewWebResponse(200, common.StatusSuccess, fiber.Map{
+			"requested_order_item_id": orderItemId,
+			"order_item":              orderItem,
+			"purchased_item_list":     purchasedItemList,
+		}))
+}
+
 // Transactions implements OrderItemController.
 func (controller *OrderItemControllerImpl) Transactions(ctx *fiber.Ctx) error {
-	// Even PurchasedItemList need ID, but Go will create default id as 0 if we don't specify it
+	// Even PurchasedItem need ID, but Go will create default id as 0 if we don't specify it
 	// Expected body
 	/*
 		{

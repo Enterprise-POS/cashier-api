@@ -258,6 +258,84 @@ func TestOrderItemServiceImpl(t *testing.T) {
 		})
 	})
 
+	t.Run("FindById", func(t *testing.T) {
+		t.Run("NormalFindById", func(t *testing.T) {
+			orderItemRepo := repository.NewOrderItemRepositoryMock(&mock.Mock{}).(*repository.OrderItemRepositoryMock)
+			orderItemService := NewOrderItemServiceImpl(orderItemRepo)
+
+			expectedOrderItem := &model.OrderItem{
+				Id:             1,
+				DiscountAmount: 0,
+				Subtotal:       10000,
+				TotalAmount:    10000,
+				TotalQuantity:  1,
+				PurchasedPrice: 10000,
+				StoreId:        STORE_ID,
+				TenantId:       TENANT_ID,
+				CreatedAt:      &now,
+			}
+
+			expectedPurchasedList := []*model.PurchasedItem{
+				{
+					Id:             1,
+					TotalAmount:    10000,
+					Quantity:       1,
+					PurchasedPrice: 10000,
+					DiscountAmount: 0,
+					ItemId:         1,
+					OrderItemId:    expectedOrderItem.Id, // Connect with orderItem id
+					CreatedAt:      &now,
+				},
+				{
+					Id:             2,
+					TotalAmount:    5000,
+					Quantity:       1,
+					PurchasedPrice: 5000,
+					DiscountAmount: 0,
+					ItemId:         2,
+					OrderItemId:    expectedOrderItem.Id, // Connect with orderItem id
+					CreatedAt:      &now,
+				},
+			}
+
+			// Page minus by 1 because page will be 0 index from repository
+			orderItemRepo.Mock.On("FindById", expectedOrderItem.Id, TENANT_ID).Return(expectedOrderItem, expectedPurchasedList, nil)
+			orderItem, purchasedItemList, err := orderItemService.FindById(expectedOrderItem.Id, TENANT_ID)
+			assert.NoError(t, err)
+			assert.Len(t, purchasedItemList, 2)
+			assert.NotNil(t, orderItem)
+			for i, purchasedItem := range purchasedItemList {
+				assert.Equal(t, expectedPurchasedList[i].Id, purchasedItem.Id)
+				assert.Equal(t, expectedPurchasedList[i].ItemId, purchasedItem.ItemId)
+				assert.Equal(t, expectedPurchasedList[i].OrderItemId, purchasedItem.OrderItemId)
+			}
+		})
+
+		t.Run("InvalidParameter", func(t *testing.T) {
+			orderItemRepo := repository.NewOrderItemRepositoryMock(&mock.Mock{}).(*repository.OrderItemRepositoryMock)
+			orderItemService := NewOrderItemServiceImpl(orderItemRepo)
+
+			const (
+				TENANT_ID     = 1
+				ORDER_ITEM_ID = 1
+				LIMIT         = 10
+				PAGE          = 1
+			)
+
+			// tenant id
+			orderItem, purchasedItemList, err := orderItemService.FindById(ORDER_ITEM_ID, 0)
+			assert.Error(t, err)
+			assert.Nil(t, orderItem)
+			assert.Nil(t, purchasedItemList)
+
+			// order item id
+			orderItem, purchasedItemList, err = orderItemService.FindById(0, TENANT_ID)
+			assert.Error(t, err)
+			assert.Nil(t, orderItem)
+			assert.Nil(t, purchasedItemList)
+		})
+	})
+
 	t.Run("Transactions", func(t *testing.T) {
 		orderItemRepo := repository.NewOrderItemRepositoryMock(&mock.Mock{}).(*repository.OrderItemRepositoryMock)
 		orderItemService := NewOrderItemServiceImpl(orderItemRepo)
@@ -270,7 +348,7 @@ func TestOrderItemServiceImpl(t *testing.T) {
 				DiscountAmount: 0,
 				SubTotal:       10_000,
 
-				Items: []*model.PurchasedItemList{
+				Items: []*model.PurchasedItem{
 					{
 						Quantity:       1,
 						PurchasedPrice: 10_000,
@@ -340,7 +418,7 @@ func TestOrderItemServiceImpl(t *testing.T) {
 				TenantId: TENANT_ID,
 				StoreId:  STORE_ID,
 
-				Items: []*model.PurchasedItemList{},
+				Items: []*model.PurchasedItem{},
 			}
 			orderItemId, err = orderItemService.Transactions(invalidParams)
 			assert.Error(t, err)
@@ -359,7 +437,7 @@ func TestOrderItemServiceImpl(t *testing.T) {
 				DiscountAmount: 0,
 				SubTotal:       10_000,
 
-				Items: []*model.PurchasedItemList{
+				Items: []*model.PurchasedItem{
 					{
 						Quantity:       1,
 						PurchasedPrice: 10_000,
@@ -395,7 +473,7 @@ func TestOrderItemServiceImpl(t *testing.T) {
 				DiscountAmount: 0,
 				SubTotal:       10_000,
 
-				Items: []*model.PurchasedItemList{
+				Items: []*model.PurchasedItem{
 					{
 						Quantity:       1,
 						PurchasedPrice: 10_000,
@@ -424,7 +502,7 @@ func TestOrderItemServiceImpl(t *testing.T) {
 				DiscountAmount: 0,
 				SubTotal:       10_000,
 
-				Items: []*model.PurchasedItemList{
+				Items: []*model.PurchasedItem{
 					{
 						Quantity:       1,
 						PurchasedPrice: 10_000,
@@ -453,7 +531,7 @@ func TestOrderItemServiceImpl(t *testing.T) {
 				DiscountAmount: 0,
 				SubTotal:       9000, // Should be 10_000
 
-				Items: []*model.PurchasedItemList{
+				Items: []*model.PurchasedItem{
 					{
 						Quantity:       1,
 						PurchasedPrice: 10_000,
@@ -482,7 +560,7 @@ func TestOrderItemServiceImpl(t *testing.T) {
 				DiscountAmount: 0,
 				SubTotal:       10_000,
 
-				Items: []*model.PurchasedItemList{
+				Items: []*model.PurchasedItem{
 					{
 						Quantity:       1,
 						PurchasedPrice: 10_000,
@@ -511,7 +589,7 @@ func TestOrderItemServiceImpl(t *testing.T) {
 				DiscountAmount: 100, // Should be 0
 				SubTotal:       10_000,
 
-				Items: []*model.PurchasedItemList{
+				Items: []*model.PurchasedItem{
 					{
 						Quantity:       1,
 						PurchasedPrice: 10_000,
@@ -538,7 +616,7 @@ func TestOrderItemServiceImpl(t *testing.T) {
 				DiscountAmount: 0, // Should be 100
 				SubTotal:       10_000,
 
-				Items: []*model.PurchasedItemList{
+				Items: []*model.PurchasedItem{
 					{
 						Quantity:       1,
 						PurchasedPrice: 10_000,
@@ -567,7 +645,7 @@ func TestOrderItemServiceImpl(t *testing.T) {
 				DiscountAmount: 0,
 				SubTotal:       10_000,
 
-				Items: []*model.PurchasedItemList{
+				Items: []*model.PurchasedItem{
 					{
 						Quantity:       1,
 						PurchasedPrice: 10_000,
@@ -590,9 +668,9 @@ func TestOrderItemServiceImpl(t *testing.T) {
 
 		t.Run("TooManyItems", func(t *testing.T) {
 			// Create 1001 items to exceed the limit
-			items := make([]*model.PurchasedItemList, 1001)
+			items := make([]*model.PurchasedItem, 1001)
 			for i := 0; i < 1001; i++ {
-				items[i] = &model.PurchasedItemList{
+				items[i] = &model.PurchasedItem{
 					Quantity:       1,
 					PurchasedPrice: 10_000,
 					DiscountAmount: 0,
@@ -621,9 +699,9 @@ func TestOrderItemServiceImpl(t *testing.T) {
 
 		t.Run("ExactlyMaxItems", func(t *testing.T) {
 			// Test with exactly 1000 items (boundary test - should succeed)
-			items := make([]*model.PurchasedItemList, 1000)
+			items := make([]*model.PurchasedItem, 1000)
 			for i := 0; i < 1000; i++ {
-				items[i] = &model.PurchasedItemList{
+				items[i] = &model.PurchasedItem{
 					Quantity:       1,
 					PurchasedPrice: 10_000,
 					DiscountAmount: 0,
@@ -661,7 +739,7 @@ func TestOrderItemServiceImpl(t *testing.T) {
 				DiscountAmount: 1_300,
 				SubTotal:       29_000, // 20_000 + 9_000
 
-				Items: []*model.PurchasedItemList{
+				Items: []*model.PurchasedItem{
 					{
 						Quantity:       2,
 						PurchasedPrice: 10_000,
@@ -700,7 +778,7 @@ func TestOrderItemServiceImpl(t *testing.T) {
 				DiscountAmount: 0,
 				SubTotal:       10_000,
 
-				Items: []*model.PurchasedItemList{
+				Items: []*model.PurchasedItem{
 					{
 						Quantity:       1,
 						PurchasedPrice: 10_000,

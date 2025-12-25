@@ -168,10 +168,23 @@ func (service *OrderItemServiceImpl) Transactions(params *repository.CreateTrans
 	}
 
 	orderId, err := service.Repository.Transactions(params)
-
 	if err != nil {
 		return 0, fmt.Errorf("Failed to create transaction: %w", err)
 	}
 
 	return orderId, nil
+}
+
+// FindById implements OrderItemService.
+func (service *OrderItemServiceImpl) FindById(orderItemid int, tenantId int) (*model.OrderItem, []*model.PurchasedItem, error) {
+	if tenantId <= 0 || orderItemid <= 0 {
+		return nil, nil, errors.New("Tenant id or Order item id Required !")
+	}
+
+	orderItem, purchasedItemList, err := service.Repository.FindById(orderItemid, tenantId)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return orderItem, purchasedItemList, nil
 }
