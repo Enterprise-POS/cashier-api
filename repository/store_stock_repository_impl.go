@@ -172,3 +172,23 @@ func (repository *StoreStockRepositoryImpl) Edit(item *model.StoreStock) error {
 
 	return nil
 }
+
+// LoadCashierData implements StoreStockRepository.
+func (repository *StoreStockRepositoryImpl) LoadCashierData(tenantId int, storeId int) ([]*model.CashierData, error) {
+	var response string = repository.Client.Rpc("load_cashier_data", "", map[string]any{
+		"p_tenant_id": tenantId,
+		"p_store_id":  storeId,
+	})
+
+	var cashierData []*model.CashierData
+	err := json.Unmarshal([]byte(response), &cashierData)
+	if err != nil {
+		return nil, err
+	}
+
+	if cashierData == nil {
+		return nil, errors.New("unexpected null response from database")
+	}
+
+	return cashierData, nil
+}

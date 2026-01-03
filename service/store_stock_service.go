@@ -19,4 +19,9 @@ type StoreStockService interface {
 	*/
 	TransferStockToWarehouse(quantity int, itemId int, storeId int, tenantId int) error  // store_stock -> warehouse
 	TransferStockToStoreStock(quantity int, itemId int, storeId int, tenantId int) error // warehouse -> store_stock
+
+	/*
+		Load all necessary store stock item and category for cashier app
+	*/
+	LoadCashierData(tenantId int, storeId int) ([]*model.CashierData, error)
 }

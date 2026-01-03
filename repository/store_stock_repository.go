@@ -23,4 +23,9 @@ type StoreStockRepository interface {
 		Yet there is no delete method for stock that quantity less than 0
 	*/
 	// Delete()
+
+	/*
+		Load all necessary store stock item and category for cashier app
+	*/
+	LoadCashierData(tenantId int, storeId int) ([]*model.CashierData, error)
 }

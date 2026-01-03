@@ -495,6 +495,10 @@ func TestStoreStockControllerImpl(t *testing.T) {
 
 	})
 
+	t.Run("LoadCashierData", func(t *testing.T) {
+
+	})
+
 	t.Cleanup(func() {
 		_, _, err = supabaseClient.From(repository.StoreTable).
 			Delete("", "").

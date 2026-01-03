@@ -167,3 +167,20 @@ func (service *StoreStockServiceImpl) Edit(tobeEditStoreStock *model.StoreStock)
 
 	return nil
 }
+
+// LoadCashierData implements StoreStockService.
+func (service *StoreStockServiceImpl) LoadCashierData(tenantId int, storeId int) ([]*model.CashierData, error) {
+	if tenantId < 1 {
+		return nil, errors.New("Item id could not be empty or fill with 0")
+	}
+	if storeId < 1 {
+		return nil, errors.New("Store id could not be empty or fill with 0")
+	}
+
+	cashierData, err := service.Repository.LoadCashierData(tenantId, storeId)
+	if err != nil {
+		return nil, err
+	}
+
+	return cashierData, nil
+}

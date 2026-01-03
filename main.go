@@ -130,6 +130,8 @@ func main() {
 	storeStockService := service.NewStoreStockServiceImpl(storeStockRepository)
 	storeStockController := controller.NewStoreStockControllerImpl(storeStockService)
 
+	// GET /store_stocks/load_cashier_data/:tenantId?store_id=99
+	apiV1.Get("/store_stocks/load_cashier_data/:tenantId", tenantRestriction, storeStockController.LoadCashierData)
 	apiV1.Get("/store_stocks/:tenantId", tenantRestriction, storeStockController.Get)
 	apiV1.Get("/store_stocks/v2/:tenantId", tenantRestriction, storeStockController.GetV2)
 	apiV1.Put("/store_stocks/edit/:tenantId", tenantRestriction, storeStockController.Edit)

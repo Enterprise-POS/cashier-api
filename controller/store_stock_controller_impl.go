@@ -4,6 +4,7 @@ import (
 	common "cashier-api/helper"
 	"cashier-api/model"
 	"cashier-api/service"
+	"fmt"
 	"strconv"
 
 	"github.com/gofiber/fiber/v2"
@@ -186,4 +187,27 @@ func (controller *StoreStockControllerImpl) TransferStockToWarehouse(ctx *fiber.
 	}
 
 	return ctx.SendStatus(fiber.StatusAccepted)
+}
+
+// LoadCashierData implements StoreStockController.
+func (controller *StoreStockControllerImpl) LoadCashierData(ctx *fiber.Ctx) error {
+	paramStoreId := ctx.Query("store_id", "")
+	storeId, err := strconv.Atoi(paramStoreId)
+	if err != nil {
+		response := common.NewWebResponseError(fiber.StatusBadRequest, common.StatusError, fmt.Sprintf("Please check store id param ! Given store id: %s", paramStoreId))
+		return ctx.Status(fiber.StatusBadRequest).JSON(response)
+	}
+
+	tenantId, _ := strconv.Atoi(ctx.Params("tenantId"))
+
+	cashierData, err := controller.Service.LoadCashierData(tenantId, storeId)
+	if err != nil {
+		return ctx.Status(fiber.StatusBadRequest).
+			JSON(common.NewWebResponseError(400, common.StatusError, err.Error()))
+	}
+
+	return ctx.Status(fiber.StatusOK).
+		JSON(common.NewWebResponse(200, common.StatusSuccess, fiber.Map{
+			"cashier_data": cashierData,
+		}))
 }

@@ -68,3 +68,13 @@ func (repository *StoreStockRepositoryMock) Edit(item *model.StoreStock) error {
 		return args.Error(0)
 	}
 }
+
+// LoadCashierData implements StoreStockRepository.
+func (repository *StoreStockRepositoryMock) LoadCashierData(tenantId int, storeId int) ([]*model.CashierData, error) {
+	args := repository.Mock.Called(tenantId, storeId)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	} else {
+		return args.Get(0).([]*model.CashierData), nil
+	}
+}

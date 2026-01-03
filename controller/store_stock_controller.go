@@ -1,6 +1,8 @@
 package controller
 
-import "github.com/gofiber/fiber/v2"
+import (
+	"github.com/gofiber/fiber/v2"
+)
 
 type StoreStockController interface {
 	/*
@@ -23,4 +25,9 @@ type StoreStockController interface {
 	*/
 	TransferStockToWarehouse(ctx *fiber.Ctx) error
 	TransferStockToStoreStock(ctx *fiber.Ctx) error
+
+	/*
+		Load all necessary store stock item and category for cashier app
+	*/
+	LoadCashierData(ctx *fiber.Ctx) error
 }

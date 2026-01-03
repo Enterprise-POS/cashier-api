@@ -26,3 +26,21 @@ type StoreStockV2 struct {
 	ItemId     int        `json:"item_id"`
 	TotalCount int        `json:"total_count"`
 }
+
+/*
+Special struct for load data at cashier app
+*/
+type CashierData struct {
+	CategoryId   int    `json:"category_id"`
+	CategoryName string `json:"category_name"`
+
+	ItemId    int       `json:"item_id"`
+	ItemName  string    `json:"item_name"`
+	Stocks    int       `json:"stocks"`
+	StockType StockType `json:"stock_type"`
+	IsActive  bool      `json:"is_active"`
+
+	StoreStockId     int `json:"store_stock_id"`
+	StoreStockStocks int `json:"store_stock_stocks"`
+	StoreStockPrice  int `json:"store_stock_price"`
+}
