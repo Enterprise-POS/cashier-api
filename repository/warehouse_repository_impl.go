@@ -110,14 +110,11 @@ func (warehouse *WarehouseRepositoryImpl) CreateItem(items []*model.Item) ([]*mo
 	return itemsList, nil
 }
 
-// TODO: Refactor, need for StockType
 func (warehouse *WarehouseRepositoryImpl) Edit(quantity int, item *model.Item) error {
 	message := warehouse.Client.Rpc("edit_warehouse_item", "", map[string]interface{}{
-		"p_quantity":  quantity,      // int
-		"p_item_name": item.ItemName, // string
-
-		// DEPRECATED: category table created
-		"p_category": 0, // int
+		"p_quantity":   quantity,      // int
+		"p_item_name":  item.ItemName, // string
+		"p_stock_type": item.StockType,
 
 		"p_item_id":   item.ItemId,   // int
 		"p_tenant_id": item.TenantId, // int

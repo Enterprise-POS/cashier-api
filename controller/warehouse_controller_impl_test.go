@@ -411,6 +411,7 @@ func TestWarehouseControllerImpl(t *testing.T) {
 				"item": fiber.Map{
 					"item_id":   item1.ItemId,
 					"item_name": item1.ItemName + " edited",
+					"stock_type": item1.StockType,
 				},
 			})
 			require.NoError(t, err)

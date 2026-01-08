@@ -120,6 +120,7 @@ func TestWarehouseRepository(t *testing.T) {
 		dummyItemFromDB := _dummyItemFromDB[0]
 		dummyItemFromDB.ItemName = "Edit Name2"
 		dummyItemFromDB.Stocks = 15
+		dummyItemFromDB.StockType = model.StockTypeTracked
 
 		// In the front this code below should be applied
 		// Decrement -
@@ -158,10 +159,11 @@ func TestWarehouseRepository(t *testing.T) {
 
 		// If the items never even exist handle
 		var notExistItem = &model.Item{
-			ItemId:   0,
-			ItemName: "Test TestWarehouseRepository_Edit Not exist item",
-			Stocks:   99,
-			TenantId: 1,
+			ItemId:    0,
+			ItemName:  "Test TestWarehouseRepository_Edit Not exist item",
+			Stocks:    99,
+			TenantId:  1,
+			StockType: model.StockTypeTracked,
 		}
 		err = warehouseRepo.Edit(-1, notExistItem)
 		assert.NotNil(t, err)

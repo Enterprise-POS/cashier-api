@@ -131,6 +131,12 @@ func (service *WarehouseServiceImpl) Edit(quantity int, item *model.Item) error 
 	if quantity > 999 || quantity < -999 {
 		return errors.New("You can only increase an item's quantity up to 999 or decrease by -999")
 	}
+	switch item.StockType {
+	case model.StockTypeTracked, model.StockTypeUnlimited:
+		// ok
+	default:
+		return fmt.Errorf("Invalid stock_type value. Must be TRACKED or UNLIMITED, got: %q", item.StockType)
+	}
 
 	err := service.Repository.Edit(quantity, item)
 	if err != nil {

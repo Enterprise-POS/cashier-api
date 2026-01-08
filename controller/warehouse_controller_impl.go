@@ -189,8 +189,9 @@ func (controller *WarehouseControllerImpl) Edit(ctx *fiber.Ctx) error {
 	// - ItemName
 	// - Quantity (via quantity parameter)
 	type ReqItem struct {
-		ItemName string `json:"item_name"`
-		ItemId   int    `json:"item_id"`
+		ItemName  string          `json:"item_name"`
+		StockType model.StockType `json:"stock_type"`
+		ItemId    int             `json:"item_id"`
 	}
 	var body struct {
 		Quantity int     `json:"quantity"`
@@ -207,9 +208,10 @@ func (controller *WarehouseControllerImpl) Edit(ctx *fiber.Ctx) error {
 	tenantId, _ := strconv.Atoi(ctx.Params("tenantId"))
 
 	tobeEditItem := &model.Item{
-		ItemId:   body.Item.ItemId,
-		TenantId: tenantId,
-		ItemName: body.Item.ItemName,
+		ItemId:    body.Item.ItemId,
+		TenantId:  tenantId,
+		ItemName:  body.Item.ItemName,
+		StockType: body.Item.StockType,
 	}
 	err = controller.Service.Edit(body.Quantity, tobeEditItem)
 	if err != nil {
