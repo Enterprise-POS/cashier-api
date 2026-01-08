@@ -27,9 +27,10 @@ type CategoryWithItem struct {
 	// CreatedAt *time.Time `json:"created_at"`
 
 	// Item reference
-	ItemId   int    `json:"item_id"`
-	ItemName string `json:"item_name"`
-	Stocks   int    `json:"stocks"`
+	ItemId    int       `json:"item_id"`
+	ItemName  string    `json:"item_name"`
+	Stocks    int       `json:"stocks"`
+	StockType StockType `json:"stock_type"`
 
 	TotalCount int `json:"total_count"`
 }
