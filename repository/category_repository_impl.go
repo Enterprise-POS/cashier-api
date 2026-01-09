@@ -136,7 +136,7 @@ func (repository *CategoryRepositoryImpl) Get(tenantId, page, limit int, nameQue
 		Limit(limit, "")
 
 	if nameQuery != "" {
-		query = query.Like("category_name", "%"+nameQuery+"%")
+		query = query.Like("category_name", nameQuery+"%")
 	}
 
 	count, err := query.ExecuteTo(&results)

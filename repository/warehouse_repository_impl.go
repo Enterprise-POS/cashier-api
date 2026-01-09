@@ -38,7 +38,7 @@ func (warehouse *WarehouseRepositoryImpl) GetActiveItem(tenantId int, limit int,
 		Limit(limit, "")
 
 	if nameQuery != "" {
-		query = query.Like("item_name", "%"+nameQuery+"%")
+		query = query.Like("item_name", nameQuery+"%")
 	}
 
 	count, err := query.ExecuteTo(&itemsList)
@@ -62,7 +62,7 @@ func (warehouse *WarehouseRepositoryImpl) Get(tenantId int, limit int, page int,
 		Limit(limit, "")
 
 	if nameQuery != "" {
-		query = query.Like("item_name", "%"+nameQuery+"%")
+		query = query.Like("item_name", nameQuery+"%")
 	}
 
 	count, err := query.ExecuteTo(&itemsList)
