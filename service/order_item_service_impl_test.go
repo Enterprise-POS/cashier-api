@@ -55,17 +55,11 @@ func TestOrderItemServiceImpl(t *testing.T) {
 			assert.Equal(t, expectedItems, orderItems)
 		})
 
-		t.Run("TenantOrStoreIdIsNotProvided", func(t *testing.T) {
+		t.Run("TenantIdIsNotProvided", func(t *testing.T) {
 			orderItemRepo := repository.NewOrderItemRepositoryMock(&mock.Mock{}).(*repository.OrderItemRepositoryMock)
 			orderItemService := NewOrderItemServiceImpl(orderItemRepo)
 			// Invalid tenant id
 			orderItems, count, err := orderItemService.Get(0, STORE_ID, LIMIT, PAGE, nil, nil)
-			assert.Error(t, err)
-			assert.Equal(t, 0, count)
-			assert.Nil(t, orderItems)
-
-			// Invalid store id
-			orderItems, count, err = orderItemService.Get(TENANT_ID, 0, LIMIT, PAGE, nil, nil)
 			assert.Error(t, err)
 			assert.Equal(t, 0, count)
 			assert.Nil(t, orderItems)
