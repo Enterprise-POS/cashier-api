@@ -81,8 +81,7 @@ func (repository *OrderItemRepositoryImpl) Get(
 	var results []*model.OrderItem
 	filterBuilder := repository.Client.From(OrderItemTable).
 		Select("*", "exact", false).
-		Eq("tenant_id", strconv.Itoa(tenantId)).
-		Range(start, end, "")
+		Eq("tenant_id", strconv.Itoa(tenantId))
 
 	// User / Front end application allowed to specify either to get all order or not
 	// When store id <= 0 will be handled by service
@@ -97,9 +96,15 @@ func (repository *OrderItemRepositoryImpl) Get(
 
 		if dateFilter.StartDate != nil && dateFilter.EndDate != nil {
 			// Range: 1 Dec 2025 - 31 Dec 2025
-			filterBuilder = filterBuilder.
-				Gte(dateFilter.Column, common.EpochToRFC3339(*dateFilter.StartDate)).
-				Lte(dateFilter.Column, common.EpochToRFC3339(*dateFilter.EndDate))
+			// fmt.Println(common.EpochToRFC3339(*dateFilter.StartDate), common.EpochToRFC3339(*dateFilter.EndDate))
+			filterBuilder = filterBuilder.And(
+				fmt.Sprintf(
+					"%s.gte.%s,%s.lt.%s",
+					dateFilter.Column, common.EpochToRFC3339(*dateFilter.StartDate),
+					dateFilter.Column, common.EpochToRFC3339(*dateFilter.EndDate),
+				),
+				"",
+			)
 		} else if dateFilter.StartDate != nil {
 			// Only start date (from 1 Dec 2025 onwards)
 			filterBuilder = filterBuilder.
@@ -120,6 +125,8 @@ func (repository *OrderItemRepositoryImpl) Get(
 			filterBuilder = filterBuilder.Order(filter.Column, &postgrest.OrderOpts{Ascending: filter.Ascending})
 		}
 	}
+
+	filterBuilder = filterBuilder.Range(start, end, "")
 
 	// Execute / request to DB
 	count, err := filterBuilder.ExecuteTo(&results)

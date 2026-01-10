@@ -27,7 +27,7 @@ func (service *OrderItemServiceImpl) Get(
 	filters []*query.QueryFilter,
 	dateFilter *query.DateFilter,
 ) ([]*model.OrderItem, int, error) {
-	if tenantId <= 0 || storeId <= 0 {
+	if tenantId <= 0 {
 		return nil, 0, errors.New("Tenant id, Store id, User id is Required !")
 	}
 
