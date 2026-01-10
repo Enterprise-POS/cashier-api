@@ -124,7 +124,7 @@ func TestWarehouseControllerImpl(t *testing.T) {
 
 			// Add query parameters
 			query := parsedUrl.Query()
-			query.Set("name_query", "NormalGetActiveItem") // or any value
+			query.Set("name_query", "Test 1") // or any value
 			parsedUrl.RawQuery = query.Encode()
 
 			// Create the request
@@ -409,8 +409,8 @@ func TestWarehouseControllerImpl(t *testing.T) {
 			byteBody, err := json.Marshal(fiber.Map{
 				"quantity": -3,
 				"item": fiber.Map{
-					"item_id":   item1.ItemId,
-					"item_name": item1.ItemName + " edited",
+					"item_id":    item1.ItemId,
+					"item_name":  item1.ItemName + " edited",
 					"stock_type": item1.StockType,
 				},
 			})

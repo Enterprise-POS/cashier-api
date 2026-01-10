@@ -415,7 +415,7 @@ func TestWarehouseRepository(t *testing.T) {
 		// // First page
 		currentPage := 1
 		itemPerPage := 2
-		items, count, err := warehouseRepo.GetActiveItem(1, itemPerPage, currentPage, "WarehouseRepository_GetActiveItem")
+		items, count, err := warehouseRepo.GetActiveItem(1, itemPerPage, currentPage, "Test")
 		assert.NotEqual(t, 0, count)
 		assert.NoError(t, err)
 		assert.Equal(t, 2, len(items))

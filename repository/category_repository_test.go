@@ -134,12 +134,12 @@ func TestCategoryRepository(t *testing.T) {
 			dummyCategories := []*model.Category{
 				{
 					// Id: ,
-					CategoryName: "Test_GetByNameQuery_1_" + uniqueString,
+					CategoryName: "Test_GetByNameQuery 1 " + uniqueString,
 					TenantId:     TenantId,
 				},
 				{
 					// Id: ,
-					CategoryName: "Test_GetByNameQuery_2_" + uniqueString,
+					CategoryName: "Test_GetByNameQuery 2_" + uniqueString,
 					TenantId:     TenantId,
 				},
 			}
@@ -153,7 +153,7 @@ func TestCategoryRepository(t *testing.T) {
 			require.NotNil(t, expectedDummyData)
 
 			page := 1
-			categories, count, err := categoryRepositoryImpl.Get(TenantId, 1, page-1, uniqueString)
+			categories, count, err := categoryRepositoryImpl.Get(TenantId, 1, page-1, "Test_GetByNameQuery")
 			assert.NoError(t, err)
 			assert.NotNil(t, categories)
 			assert.Equal(t, len(dummyCategories), count)
