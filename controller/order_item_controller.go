@@ -20,12 +20,13 @@ type OrderItemController interface {
 	*/
 	Get(ctx *fiber.Ctx) error
 
-	// FindById(itemId int, tenantId int) *model.Item
-	// CreateItem(item []*model.Item) error
-	// Edit(quantity int, item *model.Item) error
-
 	/*
 		This method will insert into 2 table
 	*/
 	Transactions(ctx *fiber.Ctx) error
+
+	/*
+		Using aggregate function from SQL to get report
+	*/
+	GetSalesReport(ctx *fiber.Ctx) error
 }

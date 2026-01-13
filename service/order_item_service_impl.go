@@ -28,7 +28,7 @@ func (service *OrderItemServiceImpl) Get(
 	dateFilter *query.DateFilter,
 ) ([]*model.OrderItem, int, error) {
 	if tenantId <= 0 {
-		return nil, 0, errors.New("Tenant id, Store id, User id is Required !")
+		return nil, 0, errors.New("Tenant id is Required !")
 	}
 
 	if limit < 1 {
@@ -187,4 +187,57 @@ func (service *OrderItemServiceImpl) FindById(orderItemid int, tenantId int) (*m
 	}
 
 	return orderItem, purchasedItemList, nil
+}
+
+// GetSalesReport implements OrderItemService.
+func (service *OrderItemServiceImpl) GetSalesReport(tenantId int, storeId int, dateFilter *query.DateFilter) (*repository.SalesReport, error) {
+	if tenantId <= 0 {
+		return nil, errors.New("Tenant id is Required !")
+	}
+	// storeId = 0 is allowed, this allow to get report from all store
+	if storeId < 0 {
+		return nil, fmt.Errorf("Given store id value is not allowed. storeId: %d", storeId)
+	}
+
+	// dateFilter is allowed to nil
+	// Date filter validation
+	if dateFilter != nil {
+		// Check if both dates are provided and start is after end
+		if dateFilter.StartDate != nil && dateFilter.EndDate != nil {
+			if *dateFilter.StartDate > *dateFilter.EndDate {
+				return nil, fmt.Errorf("Start date (%d) cannot be after end date (%d)", *dateFilter.StartDate, *dateFilter.EndDate)
+			}
+		}
+
+		// Check for negative timestamps (dates before 1970)
+		if dateFilter.StartDate != nil && *dateFilter.StartDate < 0 {
+			return nil, fmt.Errorf("Invalid start date timestamp: %d", *dateFilter.StartDate)
+		}
+		if dateFilter.EndDate != nil && *dateFilter.EndDate < 0 {
+			return nil, fmt.Errorf("Invalid emd date timestamp: %d", *dateFilter.EndDate)
+		}
+
+		// Check for unreasonably far future dates (e.g., year 2100+)
+		maxTimestamp := int64(4102444800) // 2100-01-01 00:00:00 UTC
+		if dateFilter.StartDate != nil && *dateFilter.StartDate > maxTimestamp {
+			return nil, fmt.Errorf("Start date is too far in the future: %d", *dateFilter.StartDate)
+		}
+		if dateFilter.EndDate != nil && *dateFilter.EndDate > maxTimestamp {
+			return nil, fmt.Errorf("End date is too far in the future: %d", *dateFilter.EndDate)
+		}
+
+		// Check for user intentionally specify endDate bigger than startDate
+		if dateFilter.StartDate != nil && dateFilter.EndDate != nil {
+			if *dateFilter.StartDate > *dateFilter.EndDate {
+				return nil, fmt.Errorf("Start date (%d) cannot be after end date (%d)", *dateFilter.StartDate, *dateFilter.EndDate)
+			}
+		}
+	}
+
+	salesReport, err := service.Repository.GetSalesReport(tenantId, storeId, dateFilter)
+	if err != nil {
+		return nil, err
+	}
+
+	return salesReport, nil
 }

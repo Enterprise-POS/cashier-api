@@ -50,3 +50,13 @@ func (service *OrderItemServiceMock) Transactions(params *repository.CreateTrans
 
 	return args.Int(0), nil
 }
+
+// GetSalesReport implements OrderItemService.
+func (service *OrderItemServiceMock) GetSalesReport(tenantId int, storeId int, dateFilter *query.DateFilter) (*repository.SalesReport, error) {
+	args := service.Mock.Called(tenantId, storeId, dateFilter)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+
+	return args.Get(0).(*repository.SalesReport), nil
+}

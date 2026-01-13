@@ -226,8 +226,58 @@ func (repository *OrderItemRepositoryImpl) FindById(orderItemId int, tenantId in
 			Quantity:       row.Quantity,
 			DiscountAmount: row.DiscountAmount,
 			TotalAmount:    row.TotalAmount,
+
+			// We don't request the order_item_id because
+			// we already know if the data return it's guaranteed
+			// that the order_item_id is from parameter is correct
+			OrderItemId: orderItemId,
 		})
 	}
 
 	return orderItem, purchasedItemList, nil
+}
+
+// GetReport implements OrderItemRepository.
+func (repository *OrderItemRepositoryImpl) GetSalesReport(tenantId int, storeId int, dateFilter *query.DateFilter) (*SalesReport, error) {
+	var response string
+	if dateFilter != nil {
+		if dateFilter.StartDate != nil && dateFilter.EndDate != nil {
+			response = repository.Client.Rpc("sales_report", "", map[string]any{
+				"p_tenant_id":        tenantId,
+				"p_store_id":         storeId,
+				"p_start_date_epoch": *dateFilter.StartDate,
+				"p_end_date_epoch":   *dateFilter.EndDate,
+			})
+		} else if dateFilter.StartDate != nil {
+			response = repository.Client.Rpc("sales_report", "", map[string]any{
+				"p_tenant_id":        tenantId,
+				"p_store_id":         storeId,
+				"p_start_date_epoch": *dateFilter.StartDate,
+			})
+		} else if dateFilter.EndDate != nil {
+			response = repository.Client.Rpc("sales_report", "", map[string]any{
+				"p_tenant_id":      tenantId,
+				"p_store_id":       storeId,
+				"p_end_date_epoch": *dateFilter.EndDate,
+			})
+		}
+	} else {
+		response = repository.Client.Rpc("sales_report", "", map[string]any{
+			"p_tenant_id": tenantId,
+			"p_store_id":  storeId,
+		})
+	}
+
+	var salesReport []*SalesReport
+	err := json.Unmarshal([]byte(response), &salesReport)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(salesReport) == 0 {
+		log.Errorf("Sales report return nil. Failed to Unmarshal the json. response from server: %s", response)
+		return nil, errors.New("Unexpected error while requesting sales report. Please try again later")
+	}
+
+	return salesReport[0], nil
 }
