@@ -20,6 +20,7 @@ func NewWarehouseServiceImpl(repository repository.WarehouseRepository) Warehous
 
 		// Other struct also apply the same regex rule
 		// - store_stock_service
+		// - order_item_service.Transactions
 		ItemNameRegexRule: regexp.MustCompile(`^[\p{Han}\p{Hiragana}\p{Katakana}a-zA-Z][\p{Han}\p{Hiragana}\p{Katakana}a-zA-Z0-9' ]*$`),
 	}
 }

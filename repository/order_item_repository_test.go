@@ -460,4 +460,7 @@ func TestOrderItemRepository(t *testing.T) {
 	t.Run("FindById", func(t *testing.T) {
 		t.Skip("DBMS relation too deep")
 	})
+	t.Run("GetSalesReport", func(t *testing.T) {
+		t.Skip("DBMS relation too deep")
+	})
 }

@@ -31,4 +31,9 @@ type OrderItemService interface {
 		This method will insert into 2 table
 	*/
 	Transactions(params *repository.CreateTransactionParams) (int, error)
+
+	/*
+		Using aggregate function from SQL to get report
+	*/
+	GetSalesReport(tenantId int, storeId int, dateFilter *query.DateFilter) (*repository.SalesReport, error)
 }

@@ -51,6 +51,8 @@ func main() {
 	// 	AllowOrigins:     "http://localhost:3000",
 	// 	AllowCredentials: true,
 	// }))
+	// app.Use(middleware.RequestDebug())
+
 	app.Use(recover.New(recover.Config{EnableStackTrace: true}))
 
 	app.Use(middleware.RateLimiter())
@@ -146,6 +148,7 @@ func main() {
 	apiV1.Get("/order_items/details/:tenantId", tenantRestriction, orderItemController.FindById)
 	apiV1.Post("/order_items/search/:tenantId", tenantRestriction, orderItemController.Get)
 	apiV1.Post("/order_items/transactions/:tenantId", tenantRestriction, orderItemController.Transactions)
+	apiV1.Post("/order_items/sales_report/:tenantId", tenantRestriction, orderItemController.GetSalesReport)
 
 	// Handle route not found (404)
 	app.All("*", func(ctx *fiber.Ctx) error {

@@ -182,12 +182,13 @@ func (repository *OrderItemRepositoryImpl) FindById(orderItemId int, tenantId in
 
 	var results []struct {
 		// PurchasedItem fields
-		Id             int `json:"id"`
-		ItemId         int `json:"item_id"`
-		PurchasedPrice int `json:"purchased_price"`
-		Quantity       int `json:"quantity"`
-		DiscountAmount int `json:"discount_amount"`
-		TotalAmount    int `json:"total_amount"`
+		Id               int    `json:"id"`
+		ItemId           int    `json:"item_id"`
+		PurchasedPrice   int    `json:"purchased_price"`
+		Quantity         int    `json:"quantity"`
+		DiscountAmount   int    `json:"discount_amount"`
+		TotalAmount      int    `json:"total_amount"`
+		ItemNameSnapshot string `json:"item_name_snapshot"`
 
 		// OrderItem fields (with order_item_ prefix)
 		OrderItemId             int        `json:"order_item_id"`
@@ -196,6 +197,7 @@ func (repository *OrderItemRepositoryImpl) FindById(orderItemId int, tenantId in
 		OrderItemTotalQuantity  int        `json:"order_item_total_quantity"`
 		OrderItemTotalAmount    int        `json:"order_item_total_amount"`
 		OrderItemCreatedAt      *time.Time `json:"order_item_created_at"`
+		OrderItemStoreId        int        `json:"order_item_store_id"`
 	}
 
 	err := json.Unmarshal([]byte(response), &results) // Added &
@@ -214,20 +216,74 @@ func (repository *OrderItemRepositoryImpl) FindById(orderItemId int, tenantId in
 		TotalQuantity:  results[0].OrderItemTotalQuantity,
 		TotalAmount:    results[0].OrderItemTotalAmount,
 		CreatedAt:      results[0].OrderItemCreatedAt,
+		TenantId:       tenantId,
+		DiscountAmount: 0,
+		StoreId:        results[0].OrderItemStoreId,
 	}
 
 	// Extract all PurchasedItems
 	var purchasedItemList []*model.PurchasedItem
 	for _, row := range results {
 		purchasedItemList = append(purchasedItemList, &model.PurchasedItem{
-			Id:             row.Id,
-			ItemId:         row.ItemId,
-			PurchasedPrice: row.PurchasedPrice,
-			Quantity:       row.Quantity,
-			DiscountAmount: row.DiscountAmount,
-			TotalAmount:    row.TotalAmount,
+			Id:               row.Id,
+			ItemId:           row.ItemId,
+			PurchasedPrice:   row.PurchasedPrice,
+			Quantity:         row.Quantity,
+			DiscountAmount:   row.DiscountAmount,
+			TotalAmount:      row.TotalAmount,
+			ItemNameSnapshot: row.ItemNameSnapshot,
+
+			// We don't request the order_item_id because
+			// we already know if the data return it's guaranteed
+			// that the order_item_id is from parameter is correct
+			OrderItemId: orderItemId,
 		})
 	}
 
 	return orderItem, purchasedItemList, nil
+}
+
+// GetReport implements OrderItemRepository.
+func (repository *OrderItemRepositoryImpl) GetSalesReport(tenantId int, storeId int, dateFilter *query.DateFilter) (*SalesReport, error) {
+	var response string
+	if dateFilter != nil {
+		if dateFilter.StartDate != nil && dateFilter.EndDate != nil {
+			response = repository.Client.Rpc("sales_report", "", map[string]any{
+				"p_tenant_id":        tenantId,
+				"p_store_id":         storeId,
+				"p_start_date_epoch": *dateFilter.StartDate,
+				"p_end_date_epoch":   *dateFilter.EndDate,
+			})
+		} else if dateFilter.StartDate != nil {
+			response = repository.Client.Rpc("sales_report", "", map[string]any{
+				"p_tenant_id":        tenantId,
+				"p_store_id":         storeId,
+				"p_start_date_epoch": *dateFilter.StartDate,
+			})
+		} else if dateFilter.EndDate != nil {
+			response = repository.Client.Rpc("sales_report", "", map[string]any{
+				"p_tenant_id":      tenantId,
+				"p_store_id":       storeId,
+				"p_end_date_epoch": *dateFilter.EndDate,
+			})
+		}
+	} else {
+		response = repository.Client.Rpc("sales_report", "", map[string]any{
+			"p_tenant_id": tenantId,
+			"p_store_id":  storeId,
+		})
+	}
+
+	var salesReport []*SalesReport
+	err := json.Unmarshal([]byte(response), &salesReport)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(salesReport) == 0 {
+		log.Errorf("Sales report return nil. Failed to Unmarshal the json. response from server: %s", response)
+		return nil, errors.New("Unexpected error while requesting sales report. Please try again later")
+	}
+
+	return salesReport[0], nil
 }
