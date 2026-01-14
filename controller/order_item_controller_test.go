@@ -197,18 +197,20 @@ func TestOrderItemControllerImpl(t *testing.T) {
 
 				Items: []*model.PurchasedItem{
 					{
-						Quantity:       2,
-						PurchasedPrice: 10_000,
-						DiscountAmount: 500,
-						TotalAmount:    19_000, // (10_000 * 2) - (500 * 2)
-						ItemId:         1,
+						Quantity:         2,
+						PurchasedPrice:   10_000,
+						DiscountAmount:   500,
+						TotalAmount:      19_000, // (10_000 * 2) - (500 * 2)
+						ItemId:           1,
+						ItemNameSnapshot: "Item 1 Snapshot",
 					},
 					{
-						Quantity:       3,
-						PurchasedPrice: 3_000,
-						DiscountAmount: 100,
-						TotalAmount:    8_700, // (3_000 * 3) - (100 * 3)
-						ItemId:         2,
+						Quantity:         3,
+						PurchasedPrice:   3_000,
+						DiscountAmount:   100,
+						TotalAmount:      8_700, // (3_000 * 3) - (100 * 3)
+						ItemId:           2,
+						ItemNameSnapshot: "Item 2 Snapshot",
 					},
 				},
 
@@ -244,11 +246,12 @@ func TestOrderItemControllerImpl(t *testing.T) {
 
 				"items": []*model.PurchasedItem{
 					{
-						Quantity:       2,
-						PurchasedPrice: 10_000,
-						DiscountAmount: 500,
-						TotalAmount:    19_000, // (10_000 * 2) - (500 * 2)
-						ItemId:         1,
+						Quantity:         2,
+						PurchasedPrice:   10_000,
+						DiscountAmount:   500,
+						TotalAmount:      19_000, // (10_000 * 2) - (500 * 2)
+						ItemId:           1,
+						ItemNameSnapshot: "Item Name Snapshot",
 					},
 				},
 
@@ -297,22 +300,24 @@ func TestOrderItemControllerImpl(t *testing.T) {
 
 			expectedPurchasedItemList := []*model.PurchasedItem{
 				{
-					Id:             1,
-					Quantity:       2,
-					PurchasedPrice: 10_000,
-					DiscountAmount: 500,
-					TotalAmount:    19_000, // (10_000 * 2) - (500 * 2)
-					ItemId:         1,
-					OrderItemId:    expectedOrderItem.Id,
+					Id:               1,
+					Quantity:         2,
+					PurchasedPrice:   10_000,
+					DiscountAmount:   500,
+					TotalAmount:      19_000, // (10_000 * 2) - (500 * 2)
+					ItemId:           1,
+					OrderItemId:      expectedOrderItem.Id,
+					ItemNameSnapshot: "Item Name Snapshot",
 				},
 				{
-					Id:             2,
-					Quantity:       3,
-					PurchasedPrice: 3_000,
-					DiscountAmount: 100,
-					TotalAmount:    8_700, // (3_000 * 3) - (100 * 3)
-					ItemId:         2,
-					OrderItemId:    expectedOrderItem.Id,
+					Id:               2,
+					Quantity:         3,
+					PurchasedPrice:   3_000,
+					DiscountAmount:   100,
+					TotalAmount:      8_700, // (3_000 * 3) - (100 * 3)
+					ItemId:           2,
+					OrderItemId:      expectedOrderItem.Id,
+					ItemNameSnapshot: "Item Name Snapshot 2",
 				},
 			}
 

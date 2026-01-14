@@ -126,6 +126,7 @@ func (controller *OrderItemControllerImpl) Transactions(ctx *fiber.Ctx) error {
 						"purchased_price": 10_000,
 						"discount_amount": 500,
 						"total_amount":    19_000, // (10_000 * 2) - (500 * 2)
+						"item_name_snapshot": "some item name"
 					},
 				],
 

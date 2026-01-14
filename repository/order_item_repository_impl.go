@@ -182,12 +182,13 @@ func (repository *OrderItemRepositoryImpl) FindById(orderItemId int, tenantId in
 
 	var results []struct {
 		// PurchasedItem fields
-		Id             int `json:"id"`
-		ItemId         int `json:"item_id"`
-		PurchasedPrice int `json:"purchased_price"`
-		Quantity       int `json:"quantity"`
-		DiscountAmount int `json:"discount_amount"`
-		TotalAmount    int `json:"total_amount"`
+		Id               int    `json:"id"`
+		ItemId           int    `json:"item_id"`
+		PurchasedPrice   int    `json:"purchased_price"`
+		Quantity         int    `json:"quantity"`
+		DiscountAmount   int    `json:"discount_amount"`
+		TotalAmount      int    `json:"total_amount"`
+		ItemNameSnapshot string `json:"item_name_snapshot"`
 
 		// OrderItem fields (with order_item_ prefix)
 		OrderItemId             int        `json:"order_item_id"`
@@ -220,12 +221,13 @@ func (repository *OrderItemRepositoryImpl) FindById(orderItemId int, tenantId in
 	var purchasedItemList []*model.PurchasedItem
 	for _, row := range results {
 		purchasedItemList = append(purchasedItemList, &model.PurchasedItem{
-			Id:             row.Id,
-			ItemId:         row.ItemId,
-			PurchasedPrice: row.PurchasedPrice,
-			Quantity:       row.Quantity,
-			DiscountAmount: row.DiscountAmount,
-			TotalAmount:    row.TotalAmount,
+			Id:               row.Id,
+			ItemId:           row.ItemId,
+			PurchasedPrice:   row.PurchasedPrice,
+			Quantity:         row.Quantity,
+			DiscountAmount:   row.DiscountAmount,
+			TotalAmount:      row.TotalAmount,
+			ItemNameSnapshot: row.ItemNameSnapshot,
 
 			// We don't request the order_item_id because
 			// we already know if the data return it's guaranteed

@@ -6,15 +6,18 @@ import (
 	"cashier-api/repository"
 	"errors"
 	"fmt"
+	"regexp"
 )
 
 type OrderItemServiceImpl struct {
-	Repository repository.OrderItemRepository
+	Repository        repository.OrderItemRepository
+	ItemNameRegexRule *regexp.Regexp
 }
 
 func NewOrderItemServiceImpl(repository repository.OrderItemRepository) OrderItemService {
 	return &OrderItemServiceImpl{
-		Repository: repository,
+		Repository:        repository,
+		ItemNameRegexRule: regexp.MustCompile(`^[\p{Han}\p{Hiragana}\p{Katakana}a-zA-Z][\p{Han}\p{Hiragana}\p{Katakana}a-zA-Z0-9' ]*$`),
 	}
 }
 
@@ -120,6 +123,11 @@ func (service *OrderItemServiceImpl) Transactions(params *repository.CreateTrans
 
 		if item.Quantity < 1 {
 			return 0, fmt.Errorf("Given quantity %d, from item_id: %d. Quantity should never be <= 0", item.Quantity, item.Id)
+		}
+
+		if !service.ItemNameRegexRule.MatchString(item.ItemNameSnapshot) {
+			// This is the same regex with WarehouseService.CreateItem
+			return 0, fmt.Errorf("Illegal input from item name snapshot: %s", item.ItemNameSnapshot)
 		}
 
 		// Calculate totals
