@@ -197,6 +197,7 @@ func (repository *OrderItemRepositoryImpl) FindById(orderItemId int, tenantId in
 		OrderItemTotalQuantity  int        `json:"order_item_total_quantity"`
 		OrderItemTotalAmount    int        `json:"order_item_total_amount"`
 		OrderItemCreatedAt      *time.Time `json:"order_item_created_at"`
+		OrderItemStoreId        int        `json:"order_item_store_id"`
 	}
 
 	err := json.Unmarshal([]byte(response), &results) // Added &
@@ -215,6 +216,9 @@ func (repository *OrderItemRepositoryImpl) FindById(orderItemId int, tenantId in
 		TotalQuantity:  results[0].OrderItemTotalQuantity,
 		TotalAmount:    results[0].OrderItemTotalAmount,
 		CreatedAt:      results[0].OrderItemCreatedAt,
+		TenantId:       tenantId,
+		DiscountAmount: 0,
+		StoreId:        results[0].OrderItemStoreId,
 	}
 
 	// Extract all PurchasedItems
