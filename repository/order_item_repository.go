@@ -29,6 +29,11 @@ type OrderItemRepository interface {
 	Transactions(params *CreateTransactionParams) (int, error)
 
 	// Edit(quantity int, item *model.Item) error
+
+	/*
+		Using aggregate function from SQL to get report
+	*/
+	GetSalesReport(tenantId int, storeId int, dateFilter *query.DateFilter) (*SalesReport, error)
 }
 
 type CreateTransactionParams struct {
@@ -46,4 +51,13 @@ type CreateTransactionParams struct {
 	UserId   int `json:"user_id"`
 	TenantId int `json:"tenant_id"`
 	StoreId  int `json:"store_id"`
+}
+
+type SalesReport struct {
+	SumPurchasedPrice int `json:"sum_purchased_price"`
+	SumTotalQuantity  int `json:"sum_total_quantity"`
+	SumTotalAmount    int `json:"sum_total_amount"`
+	SumDiscountAmount int `json:"sum_discount_amount"`
+	SumSubtotal       int `json:"sum_subtotal"`
+	SumTransactions   int `json:"sum_transactions"`
 }

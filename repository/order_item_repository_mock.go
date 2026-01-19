@@ -59,3 +59,13 @@ func (repository *OrderItemRepositoryMock) FindById(itemId int, tenantId int) (*
 
 	return args.Get(0).(*model.OrderItem), args.Get(1).([]*model.PurchasedItem), nil
 }
+
+// GetSalesReport implements OrderItemRepository.
+func (repository *OrderItemRepositoryMock) GetSalesReport(tenantId int, storeId int, dateFilter *query.DateFilter) (*SalesReport, error) {
+	args := repository.Mock.Called(tenantId, storeId, dateFilter)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+
+	return args.Get(0).(*SalesReport), nil
+}

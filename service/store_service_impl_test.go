@@ -1,6 +1,7 @@
 package service
 
 import (
+	"cashier-api/helper/query"
 	"cashier-api/model"
 	"cashier-api/repository"
 	"errors"
@@ -203,6 +204,191 @@ func TestStoreServiceImpl(t *testing.T) {
 			editedTestStore, err = storeService.Edit(editedStore)
 			assert.Error(t, err)
 			assert.Nil(t, editedTestStore)
+		})
+	})
+
+	t.Run("GetSalesReport", func(t *testing.T) {
+		storeId := 1
+		orderItemRepository := repository.NewOrderItemRepositoryMock(&mock.Mock{}).(*repository.OrderItemRepositoryMock)
+		orderItemService := NewOrderItemServiceImpl(orderItemRepository)
+
+		t.Run("NormalGetSalesReport", func(t *testing.T) {
+			startDate := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC).Unix()
+			endDate := time.Date(2024, 1, 31, 23, 59, 59, 0, time.UTC).Unix()
+
+			dateFilter := &query.DateFilter{
+				Column:    "created_at",
+				StartDate: &startDate,
+				EndDate:   &endDate,
+			}
+
+			expectedReport := &repository.SalesReport{
+				SumPurchasedPrice: 50000,
+				SumTotalQuantity:  150,
+				SumTotalAmount:    100000,
+				SumDiscountAmount: 10000,
+				SumSubtotal:       90000,
+				SumTransactions:   50,
+			}
+
+			orderItemRepository.Mock = &mock.Mock{}
+			orderItemRepository.Mock.On("GetSalesReport", tenantId, storeId, dateFilter).Return(expectedReport, nil)
+
+			report, err := orderItemService.GetSalesReport(tenantId, storeId, dateFilter)
+			assert.NoError(t, err)
+			assert.NotNil(t, report)
+			assert.Equal(t, expectedReport.SumPurchasedPrice, report.SumPurchasedPrice)
+			assert.Equal(t, expectedReport.SumTotalQuantity, report.SumTotalQuantity)
+			assert.Equal(t, expectedReport.SumTotalAmount, report.SumTotalAmount)
+			assert.Equal(t, expectedReport.SumDiscountAmount, report.SumDiscountAmount)
+			assert.Equal(t, expectedReport.SumSubtotal, report.SumSubtotal)
+			assert.Equal(t, expectedReport.SumTransactions, report.SumTransactions)
+		})
+
+		t.Run("WithOnlyStartDate", func(t *testing.T) {
+			startDate := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC).Unix()
+
+			dateFilter := &query.DateFilter{
+				Column:    "created_at",
+				StartDate: &startDate,
+				EndDate:   nil,
+			}
+
+			expectedReport := &repository.SalesReport{
+				SumPurchasedPrice: 25000,
+				SumTotalQuantity:  75,
+				SumTotalAmount:    50000,
+				SumDiscountAmount: 5000,
+				SumSubtotal:       45000,
+				SumTransactions:   25,
+			}
+
+			orderItemRepository.Mock = &mock.Mock{}
+			orderItemRepository.Mock.On("GetSalesReport", tenantId, storeId, dateFilter).Return(expectedReport, nil)
+
+			report, err := orderItemService.GetSalesReport(tenantId, storeId, dateFilter)
+			assert.NoError(t, err)
+			assert.NotNil(t, report)
+			assert.Equal(t, expectedReport.SumSubtotal, report.SumSubtotal)
+		})
+
+		t.Run("WithOnlyEndDate", func(t *testing.T) {
+			endDate := time.Date(2024, 1, 31, 23, 59, 59, 0, time.UTC).Unix()
+
+			dateFilter := &query.DateFilter{
+				Column:    "created_at",
+				StartDate: nil,
+				EndDate:   &endDate,
+			}
+
+			expectedReport := &repository.SalesReport{
+				SumPurchasedPrice: 40000,
+				SumTotalQuantity:  120,
+				SumTotalAmount:    80000,
+				SumDiscountAmount: 8000,
+				SumSubtotal:       72000,
+				SumTransactions:   40,
+			}
+
+			orderItemRepository.Mock = &mock.Mock{}
+			orderItemRepository.Mock.On("GetSalesReport", tenantId, storeId, dateFilter).Return(expectedReport, nil)
+
+			report, err := orderItemService.GetSalesReport(tenantId, storeId, dateFilter)
+			assert.NoError(t, err)
+			assert.NotNil(t, report)
+			assert.Equal(t, expectedReport.SumSubtotal, report.SumSubtotal)
+		})
+
+		t.Run("WithoutDateFilter", func(t *testing.T) {
+			dateFilter := &query.DateFilter{
+				Column:    "created_at",
+				StartDate: nil,
+				EndDate:   nil,
+			}
+
+			expectedReport := &repository.SalesReport{
+				SumPurchasedPrice: 75000,
+				SumTotalQuantity:  225,
+				SumTotalAmount:    150000,
+				SumDiscountAmount: 15000,
+				SumSubtotal:       135000,
+				SumTransactions:   75,
+			}
+
+			orderItemRepository.Mock = &mock.Mock{}
+			orderItemRepository.Mock.On("GetSalesReport", tenantId, storeId, dateFilter).Return(expectedReport, nil)
+
+			report, err := orderItemService.GetSalesReport(tenantId, storeId, dateFilter)
+			assert.NoError(t, err)
+			assert.NotNil(t, report)
+			assert.Equal(t, expectedReport.SumSubtotal, report.SumSubtotal)
+		})
+
+		t.Run("InvalidParameter", func(t *testing.T) {
+			startDate := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC).Unix()
+			endDate := time.Date(2024, 1, 31, 23, 59, 59, 0, time.UTC).Unix()
+
+			dateFilter := &query.DateFilter{
+				Column:    "created_at",
+				StartDate: &startDate,
+				EndDate:   &endDate,
+			}
+
+			// Invalid tenant id
+			report, err := orderItemService.GetSalesReport(0, storeId, dateFilter)
+			assert.Error(t, err)
+			assert.Nil(t, report)
+
+			// Invalid store id
+			report, err = orderItemService.GetSalesReport(tenantId, -1, dateFilter)
+			assert.Error(t, err)
+			assert.Nil(t, report)
+		})
+
+		t.Run("InvalidDateRange", func(t *testing.T) {
+			// End date before start date
+			startDate := time.Date(2024, 1, 31, 0, 0, 0, 0, time.UTC).Unix()
+			endDate := time.Date(2024, 1, 1, 23, 59, 59, 0, time.UTC).Unix()
+
+			dateFilter := &query.DateFilter{
+				Column:    "created_at",
+				StartDate: &startDate,
+				EndDate:   &endDate,
+			}
+
+			report, err := orderItemService.GetSalesReport(tenantId, storeId, dateFilter)
+			assert.Error(t, err)
+			assert.Nil(t, report)
+		})
+
+		t.Run("NoDataFound", func(t *testing.T) {
+			startDate := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC).Unix()
+			endDate := time.Date(2024, 1, 31, 23, 59, 59, 0, time.UTC).Unix()
+
+			dateFilter := &query.DateFilter{
+				Column:    "created_at",
+				StartDate: &startDate,
+				EndDate:   &endDate,
+			}
+
+			emptyReport := &repository.SalesReport{
+				SumPurchasedPrice: 0,
+				SumTotalQuantity:  0,
+				SumTotalAmount:    0,
+				SumDiscountAmount: 0,
+				SumSubtotal:       0,
+				SumTransactions:   0,
+			}
+
+			orderItemRepository.Mock = &mock.Mock{}
+			orderItemRepository.Mock.On("GetSalesReport", tenantId, storeId, dateFilter).Return(emptyReport, nil)
+
+			report, err := orderItemService.GetSalesReport(tenantId, storeId, dateFilter)
+			assert.NoError(t, err)
+			assert.NotNil(t, report)
+			assert.Equal(t, 0, report.SumPurchasedPrice)
+			assert.Equal(t, 0, report.SumTotalQuantity)
+			assert.Equal(t, 0, report.SumTransactions)
 		})
 	})
 }

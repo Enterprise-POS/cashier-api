@@ -46,20 +46,22 @@ func TestPurchasedItem(t *testing.T) {
 		require.NotNil(t, dummyOrderItemFromDB)
 
 		dummyPurchasedItem1 := &model.PurchasedItem{
-			ItemId:         APPLE_ID,
-			OrderItemId:    dummyOrderItemFromDB.Id,
-			Quantity:       2,
-			PurchasedPrice: APPLE_PRICE,
-			DiscountAmount: 0,
-			TotalAmount:    2 * APPLE_PRICE,
+			ItemId:           APPLE_ID,
+			OrderItemId:      dummyOrderItemFromDB.Id,
+			Quantity:         2,
+			PurchasedPrice:   APPLE_PRICE,
+			DiscountAmount:   0,
+			TotalAmount:      2 * APPLE_PRICE,
+			ItemNameSnapshot: "Item Name Snapshot 1",
 		}
 		dummyPurchasedItem2 := &model.PurchasedItem{
-			ItemId:         PEACH_ID,
-			OrderItemId:    dummyOrderItemFromDB.Id,
-			Quantity:       1,
-			PurchasedPrice: PEACH_PRICE,
-			DiscountAmount: 0,
-			TotalAmount:    1 * PEACH_PRICE,
+			ItemId:           PEACH_ID,
+			OrderItemId:      dummyOrderItemFromDB.Id,
+			Quantity:         1,
+			PurchasedPrice:   PEACH_PRICE,
+			DiscountAmount:   0,
+			TotalAmount:      1 * PEACH_PRICE,
+			ItemNameSnapshot: "Item Name Snapshot 2",
 		}
 
 		// TEST: No error and no return data
@@ -85,23 +87,25 @@ func TestPurchasedItem(t *testing.T) {
 		// item_id
 		// order_item_id
 		dummyPurchasedItem3 := &model.PurchasedItem{
-			ItemId:         -1,
-			OrderItemId:    dummyOrderItemFromDB.Id,
-			Quantity:       1,
-			PurchasedPrice: PEACH_PRICE,
-			DiscountAmount: 0,
-			TotalAmount:    1 * PEACH_PRICE,
+			ItemId:           -1,
+			OrderItemId:      dummyOrderItemFromDB.Id,
+			Quantity:         1,
+			PurchasedPrice:   PEACH_PRICE,
+			DiscountAmount:   0,
+			TotalAmount:      1 * PEACH_PRICE,
+			ItemNameSnapshot: "Item Name Snapshot",
 		}
 		_, err = purchasedItemListRepo.CreateList([]*model.PurchasedItem{dummyPurchasedItem3}, false)
 		assert.NotNil(t, err)
 		assert.Equal(t, "(23503) insert or update on table \"purchased_item_list\" violates foreign key constraint \"purchased_item_list_item_id_fkey\"", err.Error())
 		dummyPurchasedItem4 := &model.PurchasedItem{
-			ItemId:         PEACH_ID,
-			OrderItemId:    -1,
-			Quantity:       1,
-			PurchasedPrice: PEACH_PRICE,
-			DiscountAmount: 0,
-			TotalAmount:    1 * PEACH_PRICE,
+			ItemId:           PEACH_ID,
+			OrderItemId:      -1,
+			Quantity:         1,
+			PurchasedPrice:   PEACH_PRICE,
+			DiscountAmount:   0,
+			TotalAmount:      1 * PEACH_PRICE,
+			ItemNameSnapshot: "Item Name Snapshot",
 		}
 		_, err = purchasedItemListRepo.CreateList([]*model.PurchasedItem{dummyPurchasedItem4}, false)
 		assert.NotNil(t, err)
@@ -135,20 +139,22 @@ func TestPurchasedItem(t *testing.T) {
 			require.NotNil(t, newDummyOrderItem)
 
 			dummyPurchasedItem1 := &model.PurchasedItem{
-				ItemId:         APPLE_ID,
-				OrderItemId:    newDummyOrderItem.Id,
-				Quantity:       2,
-				PurchasedPrice: APPLE_PRICE,
-				DiscountAmount: 0,
-				TotalAmount:    2 * APPLE_PRICE,
+				ItemId:           APPLE_ID,
+				OrderItemId:      newDummyOrderItem.Id,
+				Quantity:         2,
+				PurchasedPrice:   APPLE_PRICE,
+				DiscountAmount:   0,
+				TotalAmount:      2 * APPLE_PRICE,
+				ItemNameSnapshot: "Item Name Snapshot",
 			}
 			dummyPurchasedItem2 := &model.PurchasedItem{
-				ItemId:         PEACH_ID,
-				OrderItemId:    newDummyOrderItem.Id,
-				Quantity:       1,
-				PurchasedPrice: PEACH_PRICE,
-				DiscountAmount: 0,
-				TotalAmount:    1 * PEACH_PRICE,
+				ItemId:           PEACH_ID,
+				OrderItemId:      newDummyOrderItem.Id,
+				Quantity:         1,
+				PurchasedPrice:   PEACH_PRICE,
+				DiscountAmount:   0,
+				TotalAmount:      1 * PEACH_PRICE,
+				ItemNameSnapshot: "Item Name Snapshot",
 			}
 			returnedData, err := purchasedItemListRepo.CreateList([]*model.PurchasedItem{dummyPurchasedItem1, dummyPurchasedItem2}, false)
 			assert.Nil(t, returnedData)
