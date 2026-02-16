@@ -272,24 +272,24 @@ func TestOrderItemServiceImpl(t *testing.T) {
 
 			expectedPurchasedList := []*model.PurchasedItem{
 				{
-					Id:             1,
-					TotalAmount:    10000,
-					Quantity:       1,
-					PurchasedPrice: 10000,
-					DiscountAmount: 0,
-					ItemId:         1,
-					OrderItemId:    expectedOrderItem.Id, // Connect with orderItem id
-					CreatedAt:      &now,
+					Id:                 1,
+					TotalAmount:        10000,
+					Quantity:           1,
+					StorePriceSnapshot: 10000,
+					DiscountAmount:     0,
+					ItemId:             1,
+					OrderItemId:        expectedOrderItem.Id, // Connect with orderItem id
+					CreatedAt:          &now,
 				},
 				{
-					Id:             2,
-					TotalAmount:    5000,
-					Quantity:       1,
-					PurchasedPrice: 5000,
-					DiscountAmount: 0,
-					ItemId:         2,
-					OrderItemId:    expectedOrderItem.Id, // Connect with orderItem id
-					CreatedAt:      &now,
+					Id:                 2,
+					TotalAmount:        5000,
+					Quantity:           1,
+					StorePriceSnapshot: 5000,
+					DiscountAmount:     0,
+					ItemId:             2,
+					OrderItemId:        expectedOrderItem.Id, // Connect with orderItem id
+					CreatedAt:          &now,
 				},
 			}
 
@@ -345,12 +345,12 @@ func TestOrderItemServiceImpl(t *testing.T) {
 
 				Items: []*model.PurchasedItem{
 					{
-						Quantity:         1,
-						PurchasedPrice:   10_000,
-						DiscountAmount:   0,
-						TotalAmount:      10_000,
-						ItemId:           1,
-						ItemNameSnapshot: "Item Name Snapshow",
+						Quantity:           1,
+						StorePriceSnapshot: 10_000,
+						DiscountAmount:     0,
+						TotalAmount:        10_000,
+						ItemId:             1,
+						ItemNameSnapshot:   "Item Name Snapshow",
 					},
 				},
 
@@ -435,20 +435,20 @@ func TestOrderItemServiceImpl(t *testing.T) {
 
 				Items: []*model.PurchasedItem{
 					{
-						Quantity:         1,
-						PurchasedPrice:   10_000,
-						DiscountAmount:   0,
-						TotalAmount:      10_000,
-						ItemId:           1,
-						ItemNameSnapshot: "Item Name Snapshot",
+						Quantity:           1,
+						StorePriceSnapshot: 10_000,
+						DiscountAmount:     0,
+						TotalAmount:        10_000,
+						ItemId:             1,
+						ItemNameSnapshot:   "Item Name Snapshot",
 					},
 					{
-						Quantity:         1,
-						PurchasedPrice:   9000, // Should be 10_000
-						DiscountAmount:   0,
-						TotalAmount:      10_000,
-						ItemId:           1, //  It has the same id
-						ItemNameSnapshot: "Item Name Snapshot",
+						Quantity:           1,
+						StorePriceSnapshot: 9000, // Should be 10_000
+						DiscountAmount:     0,
+						TotalAmount:        10_000,
+						ItemId:             1, //  It has the same id
+						ItemNameSnapshot:   "Item Name Snapshot",
 					},
 				},
 
@@ -473,12 +473,12 @@ func TestOrderItemServiceImpl(t *testing.T) {
 
 				Items: []*model.PurchasedItem{
 					{
-						Quantity:         1,
-						PurchasedPrice:   10_000,
-						DiscountAmount:   100,
-						TotalAmount:      10_000, // Should be 9900
-						ItemId:           1,
-						ItemNameSnapshot: "Item Name Snapshot",
+						Quantity:           1,
+						StorePriceSnapshot: 10_000,
+						DiscountAmount:     100,
+						TotalAmount:        10_000, // Should be 9900
+						ItemId:             1,
+						ItemNameSnapshot:   "Item Name Snapshot",
 					},
 				},
 
@@ -503,12 +503,12 @@ func TestOrderItemServiceImpl(t *testing.T) {
 
 				Items: []*model.PurchasedItem{
 					{
-						Quantity:         1,
-						PurchasedPrice:   10_000,
-						DiscountAmount:   0,
-						TotalAmount:      10_000,
-						ItemId:           1,
-						ItemNameSnapshot: "Item Name Snapshot",
+						Quantity:           1,
+						StorePriceSnapshot: 10_000,
+						DiscountAmount:     0,
+						TotalAmount:        10_000,
+						ItemId:             1,
+						ItemNameSnapshot:   "Item Name Snapshot",
 					},
 				},
 
@@ -533,12 +533,12 @@ func TestOrderItemServiceImpl(t *testing.T) {
 
 				Items: []*model.PurchasedItem{
 					{
-						Quantity:         1,
-						PurchasedPrice:   10_000,
-						DiscountAmount:   0,
-						TotalAmount:      10_000,
-						ItemId:           1,
-						ItemNameSnapshot: "Item Name Snapshot",
+						Quantity:           1,
+						StorePriceSnapshot: 10_000,
+						DiscountAmount:     0,
+						TotalAmount:        10_000,
+						ItemId:             1,
+						ItemNameSnapshot:   "Item Name Snapshot",
 					},
 				},
 
@@ -563,12 +563,12 @@ func TestOrderItemServiceImpl(t *testing.T) {
 
 				Items: []*model.PurchasedItem{
 					{
-						Quantity:         1,
-						PurchasedPrice:   10_000,
-						DiscountAmount:   0,
-						TotalAmount:      10_000,
-						ItemId:           1,
-						ItemNameSnapshot: "Item Name Snapshot",
+						Quantity:           1,
+						StorePriceSnapshot: 10_000,
+						DiscountAmount:     0,
+						TotalAmount:        10_000,
+						ItemId:             1,
+						ItemNameSnapshot:   "Item Name Snapshot",
 					},
 				},
 
@@ -593,12 +593,12 @@ func TestOrderItemServiceImpl(t *testing.T) {
 
 				Items: []*model.PurchasedItem{
 					{
-						Quantity:         1,
-						PurchasedPrice:   10_000,
-						DiscountAmount:   0,
-						TotalAmount:      10_000,
-						ItemId:           1,
-						ItemNameSnapshot: "Item Name Snapshot",
+						Quantity:           1,
+						StorePriceSnapshot: 10_000,
+						DiscountAmount:     0,
+						TotalAmount:        10_000,
+						ItemId:             1,
+						ItemNameSnapshot:   "Item Name Snapshot",
 					},
 				},
 
@@ -621,12 +621,12 @@ func TestOrderItemServiceImpl(t *testing.T) {
 
 				Items: []*model.PurchasedItem{
 					{
-						Quantity:         1,
-						PurchasedPrice:   10_000,
-						DiscountAmount:   1_000,
-						TotalAmount:      9_000,
-						ItemId:           1,
-						ItemNameSnapshot: "Item Name Snapshot",
+						Quantity:           1,
+						StorePriceSnapshot: 10_000,
+						DiscountAmount:     1_000,
+						TotalAmount:        9_000,
+						ItemId:             1,
+						ItemNameSnapshot:   "Item Name Snapshot",
 					},
 				},
 
@@ -651,12 +651,12 @@ func TestOrderItemServiceImpl(t *testing.T) {
 
 				Items: []*model.PurchasedItem{
 					{
-						Quantity:         1,
-						PurchasedPrice:   10_000,
-						DiscountAmount:   0,
-						TotalAmount:      10_000,
-						ItemId:           1,
-						ItemNameSnapshot: "Item Name Snapshot",
+						Quantity:           1,
+						StorePriceSnapshot: 10_000,
+						DiscountAmount:     0,
+						TotalAmount:        10_000,
+						ItemId:             1,
+						ItemNameSnapshot:   "Item Name Snapshot",
 					},
 				},
 
@@ -676,12 +676,12 @@ func TestOrderItemServiceImpl(t *testing.T) {
 			items := make([]*model.PurchasedItem, 1001)
 			for i := 0; i < 1001; i++ {
 				items[i] = &model.PurchasedItem{
-					Quantity:         1,
-					PurchasedPrice:   10_000,
-					DiscountAmount:   0,
-					TotalAmount:      10_000,
-					ItemId:           i + 1,
-					ItemNameSnapshot: fmt.Sprintf("Item Name snapshot %d", i),
+					Quantity:           1,
+					StorePriceSnapshot: 10_000,
+					DiscountAmount:     0,
+					TotalAmount:        10_000,
+					ItemId:             i + 1,
+					ItemNameSnapshot:   fmt.Sprintf("Item Name snapshot %d", i),
 				}
 			}
 
@@ -708,12 +708,12 @@ func TestOrderItemServiceImpl(t *testing.T) {
 			items := make([]*model.PurchasedItem, 1000)
 			for i := 0; i < 1000; i++ {
 				items[i] = &model.PurchasedItem{
-					Quantity:         1,
-					PurchasedPrice:   10_000,
-					DiscountAmount:   0,
-					TotalAmount:      10_000,
-					ItemId:           i + 1,
-					ItemNameSnapshot: fmt.Sprintf("Item Name snapshot %d", i),
+					Quantity:           1,
+					StorePriceSnapshot: 10_000,
+					DiscountAmount:     0,
+					TotalAmount:        10_000,
+					ItemId:             i + 1,
+					ItemNameSnapshot:   fmt.Sprintf("Item Name snapshot %d", i),
 				}
 			}
 
@@ -748,20 +748,20 @@ func TestOrderItemServiceImpl(t *testing.T) {
 
 				Items: []*model.PurchasedItem{
 					{
-						Quantity:         2,
-						PurchasedPrice:   10_000,
-						DiscountAmount:   500,
-						TotalAmount:      19_000, // (10_000 * 2) - (500 * 2)
-						ItemId:           1,
-						ItemNameSnapshot: "Item Name Snapshot 1",
+						Quantity:           2,
+						StorePriceSnapshot: 10_000,
+						DiscountAmount:     500,
+						TotalAmount:        19_000, // (10_000 * 2) - (500 * 2)
+						ItemId:             1,
+						ItemNameSnapshot:   "Item Name Snapshot 1",
 					},
 					{
-						Quantity:         3,
-						PurchasedPrice:   3_000,
-						DiscountAmount:   100,
-						TotalAmount:      8_700, // (3_000 * 3) - (100 * 3)
-						ItemId:           2,
-						ItemNameSnapshot: "Item Name Snapshot 2",
+						Quantity:           3,
+						StorePriceSnapshot: 3_000,
+						DiscountAmount:     100,
+						TotalAmount:        8_700, // (3_000 * 3) - (100 * 3)
+						ItemId:             2,
+						ItemNameSnapshot:   "Item Name Snapshot 2",
 					},
 				},
 
@@ -789,12 +789,12 @@ func TestOrderItemServiceImpl(t *testing.T) {
 
 				Items: []*model.PurchasedItem{
 					{
-						Quantity:         1,
-						PurchasedPrice:   10_000,
-						DiscountAmount:   0,
-						TotalAmount:      10_000,
-						ItemId:           1,
-						ItemNameSnapshot: "Item Name Snapshot",
+						Quantity:           1,
+						StorePriceSnapshot: 10_000,
+						DiscountAmount:     0,
+						TotalAmount:        10_000,
+						ItemId:             1,
+						ItemNameSnapshot:   "Item Name Snapshot",
 					},
 				},
 
