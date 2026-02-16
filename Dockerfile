@@ -18,6 +18,8 @@ COPY --from=build /myapp /myapp
 # Set the MODE environment variable
 ENV MODE=prod
 
+EXPOSE 8000
+
 ENTRYPOINT ["/myapp"]
 
 # gcloud builds submit --tag gcr.io/<project-name>/<project-name> .
