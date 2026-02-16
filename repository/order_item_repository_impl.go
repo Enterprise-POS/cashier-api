@@ -182,13 +182,14 @@ func (repository *OrderItemRepositoryImpl) FindById(orderItemId int, tenantId in
 
 	var results []struct {
 		// PurchasedItem fields
-		Id                 int    `json:"id"`
-		ItemId             int    `json:"item_id"`
-		StorePriceSnapshot int    `json:"store_price_snapshot"`
-		Quantity           int    `json:"quantity"`
-		DiscountAmount     int    `json:"discount_amount"`
-		TotalAmount        int    `json:"total_amount"`
-		ItemNameSnapshot   string `json:"item_name_snapshot"`
+		Id                   int    `json:"id"`
+		ItemId               int    `json:"item_id"`
+		StorePriceSnapshot   int    `json:"store_price_snapshot"`
+		BasePriceSnapshot    int    `json:"base_price_snapshot"`
+		Quantity             int    `json:"quantity"`
+		DiscountAmount       int    `json:"discount_amount"`
+		TotalAmount          int    `json:"total_amount"`
+		ItemNameSnapshot     string `json:"item_name_snapshot"`
 
 		// OrderItem fields (with order_item_ prefix)
 		OrderItemId                  int        `json:"order_item_id"`
@@ -225,13 +226,14 @@ func (repository *OrderItemRepositoryImpl) FindById(orderItemId int, tenantId in
 	var purchasedItemList []*model.PurchasedItem
 	for _, row := range results {
 		purchasedItemList = append(purchasedItemList, &model.PurchasedItem{
-			Id:                 row.Id,
-			ItemId:             row.ItemId,
-			StorePriceSnapshot: row.StorePriceSnapshot,
-			Quantity:           row.Quantity,
-			DiscountAmount:     row.DiscountAmount,
-			TotalAmount:        row.TotalAmount,
-			ItemNameSnapshot:   row.ItemNameSnapshot,
+			Id:                   row.Id,
+			ItemId:               row.ItemId,
+			StorePriceSnapshot:   row.StorePriceSnapshot,
+			BasePriceSnapshot:    row.BasePriceSnapshot,
+			Quantity:             row.Quantity,
+			DiscountAmount:       row.DiscountAmount,
+			TotalAmount:          row.TotalAmount,
+			ItemNameSnapshot:     row.ItemNameSnapshot,
 
 			// We don't request the order_item_id because
 			// we already know if the data return it's guaranteed

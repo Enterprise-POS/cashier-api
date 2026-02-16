@@ -31,6 +31,7 @@ type CategoryWithItem struct {
 	ItemName  string    `json:"item_name"`
 	Stocks    int       `json:"stocks"`
 	StockType StockType `json:"stock_type"`
+	BasePrice int       `json:"base_price"`
 
 	TotalCount int `json:"total_count"`
 }
