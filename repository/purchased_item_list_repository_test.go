@@ -53,6 +53,7 @@ func TestPurchasedItem(t *testing.T) {
 			DiscountAmount:     0,
 			TotalAmount:        2 * APPLE_PRICE,
 			ItemNameSnapshot:   "Item Name Snapshot 1",
+			BasePriceSnapshot:  100,
 		}
 		dummyPurchasedItem2 := &model.PurchasedItem{
 			ItemId:             PEACH_ID,
@@ -62,6 +63,7 @@ func TestPurchasedItem(t *testing.T) {
 			DiscountAmount:     0,
 			TotalAmount:        1 * PEACH_PRICE,
 			ItemNameSnapshot:   "Item Name Snapshot 2",
+			BasePriceSnapshot:  100,
 		}
 
 		// TEST: No error and no return data
@@ -94,6 +96,7 @@ func TestPurchasedItem(t *testing.T) {
 			DiscountAmount:     0,
 			TotalAmount:        1 * PEACH_PRICE,
 			ItemNameSnapshot:   "Item Name Snapshot",
+			BasePriceSnapshot:  100,
 		}
 		_, err = purchasedItemListRepo.CreateList([]*model.PurchasedItem{dummyPurchasedItem3}, false)
 		assert.NotNil(t, err)
@@ -106,6 +109,7 @@ func TestPurchasedItem(t *testing.T) {
 			DiscountAmount:     0,
 			TotalAmount:        1 * PEACH_PRICE,
 			ItemNameSnapshot:   "Item Name Snapshot",
+			BasePriceSnapshot:  100,
 		}
 		_, err = purchasedItemListRepo.CreateList([]*model.PurchasedItem{dummyPurchasedItem4}, false)
 		assert.NotNil(t, err)
@@ -146,6 +150,7 @@ func TestPurchasedItem(t *testing.T) {
 				DiscountAmount:     0,
 				TotalAmount:        2 * APPLE_PRICE,
 				ItemNameSnapshot:   "Item Name Snapshot",
+				BasePriceSnapshot:  100,
 			}
 			dummyPurchasedItem2 := &model.PurchasedItem{
 				ItemId:             PEACH_ID,
@@ -155,6 +160,7 @@ func TestPurchasedItem(t *testing.T) {
 				DiscountAmount:     0,
 				TotalAmount:        1 * PEACH_PRICE,
 				ItemNameSnapshot:   "Item Name Snapshot",
+				BasePriceSnapshot:  100,
 			}
 			returnedData, err := purchasedItemListRepo.CreateList([]*model.PurchasedItem{dummyPurchasedItem1, dummyPurchasedItem2}, false)
 			assert.Nil(t, returnedData)
