@@ -43,6 +43,7 @@ type CashierData struct {
 	Stocks    int       `json:"stocks"`
 	StockType StockType `json:"stock_type"`
 	IsActive  bool      `json:"is_active"`
+	BasePrice int       `json:"base_price"`
 
 	StoreStockId     int `json:"store_stock_id"`
 	StoreStockStocks int `json:"store_stock_stocks"`
