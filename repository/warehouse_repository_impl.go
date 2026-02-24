@@ -115,6 +115,7 @@ func (warehouse *WarehouseRepositoryImpl) Edit(quantity int, item *model.Item) e
 		"p_quantity":   quantity,      // int
 		"p_item_name":  item.ItemName, // string
 		"p_stock_type": item.StockType,
+		"p_base_price": item.BasePrice,
 
 		"p_item_id":   item.ItemId,   // int
 		"p_tenant_id": item.TenantId, // int

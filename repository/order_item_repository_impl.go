@@ -182,22 +182,23 @@ func (repository *OrderItemRepositoryImpl) FindById(orderItemId int, tenantId in
 
 	var results []struct {
 		// PurchasedItem fields
-		Id               int    `json:"id"`
-		ItemId           int    `json:"item_id"`
-		PurchasedPrice   int    `json:"purchased_price"`
-		Quantity         int    `json:"quantity"`
-		DiscountAmount   int    `json:"discount_amount"`
-		TotalAmount      int    `json:"total_amount"`
-		ItemNameSnapshot string `json:"item_name_snapshot"`
+		Id                   int    `json:"id"`
+		ItemId               int    `json:"item_id"`
+		StorePriceSnapshot   int    `json:"store_price_snapshot"`
+		BasePriceSnapshot    int    `json:"base_price_snapshot"`
+		Quantity             int    `json:"quantity"`
+		DiscountAmount       int    `json:"discount_amount"`
+		TotalAmount          int    `json:"total_amount"`
+		ItemNameSnapshot     string `json:"item_name_snapshot"`
 
 		// OrderItem fields (with order_item_ prefix)
-		OrderItemId             int        `json:"order_item_id"`
-		OrderItemPurchasedPrice int        `json:"order_item_purchased_price"`
-		OrderItemSubtotal       int        `json:"order_item_subtotal"`
-		OrderItemTotalQuantity  int        `json:"order_item_total_quantity"`
-		OrderItemTotalAmount    int        `json:"order_item_total_amount"`
-		OrderItemCreatedAt      *time.Time `json:"order_item_created_at"`
-		OrderItemStoreId        int        `json:"order_item_store_id"`
+		OrderItemId                  int        `json:"order_item_id"`
+		OrderItemStorePurchasedPrice int        `json:"order_item_purchased_price"`
+		OrderItemSubtotal            int        `json:"order_item_subtotal"`
+		OrderItemTotalQuantity       int        `json:"order_item_total_quantity"`
+		OrderItemTotalAmount         int        `json:"order_item_total_amount"`
+		OrderItemCreatedAt           *time.Time `json:"order_item_created_at"`
+		OrderItemStoreId             int        `json:"order_item_store_id"`
 	}
 
 	err := json.Unmarshal([]byte(response), &results) // Added &
@@ -211,7 +212,7 @@ func (repository *OrderItemRepositoryImpl) FindById(orderItemId int, tenantId in
 	// Extract OrderItem from first row (since it's the same for all rows)
 	orderItem := &model.OrderItem{
 		Id:             results[0].OrderItemId,
-		PurchasedPrice: results[0].OrderItemPurchasedPrice,
+		PurchasedPrice: results[0].OrderItemStorePurchasedPrice,
 		Subtotal:       results[0].OrderItemSubtotal,
 		TotalQuantity:  results[0].OrderItemTotalQuantity,
 		TotalAmount:    results[0].OrderItemTotalAmount,
@@ -225,13 +226,14 @@ func (repository *OrderItemRepositoryImpl) FindById(orderItemId int, tenantId in
 	var purchasedItemList []*model.PurchasedItem
 	for _, row := range results {
 		purchasedItemList = append(purchasedItemList, &model.PurchasedItem{
-			Id:               row.Id,
-			ItemId:           row.ItemId,
-			PurchasedPrice:   row.PurchasedPrice,
-			Quantity:         row.Quantity,
-			DiscountAmount:   row.DiscountAmount,
-			TotalAmount:      row.TotalAmount,
-			ItemNameSnapshot: row.ItemNameSnapshot,
+			Id:                   row.Id,
+			ItemId:               row.ItemId,
+			StorePriceSnapshot:   row.StorePriceSnapshot,
+			BasePriceSnapshot:    row.BasePriceSnapshot,
+			Quantity:             row.Quantity,
+			DiscountAmount:       row.DiscountAmount,
+			TotalAmount:          row.TotalAmount,
+			ItemNameSnapshot:     row.ItemNameSnapshot,
 
 			// We don't request the order_item_id because
 			// we already know if the data return it's guaranteed

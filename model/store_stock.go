@@ -17,14 +17,18 @@ When GET the data from store_stock. Sometimes
 we want the name as well
 */
 type StoreStockV2 struct {
-	Id         int        `json:"id,omitempty"`
-	ItemName   string     `json:"item_name"`
-	Stocks     int        `json:"stocks"` // StoreStock Stock
-	Price      int        `json:"price"`
-	StockType  StockType  `json:"stock_type"`
-	CreatedAt  *time.Time `json:"created_at,omitempty"` // Warehouse Item created_at
-	ItemId     int        `json:"item_id"`
-	TotalCount int        `json:"total_count"`
+	Id           int        `json:"id,omitempty"`
+	ItemName     string     `json:"item_name"`
+	Stocks       int        `json:"stocks"` // StoreStock Stock
+	Price        int        `json:"price"`
+	StockType    StockType  `json:"stock_type"`
+	CreatedAt    *time.Time `json:"created_at,omitempty"` // Warehouse Item created_at
+	ItemId       int        `json:"item_id"`
+	TotalCount   int        `json:"total_count"`
+	BasePrice    int        `json:"base_price"`
+	IsActive     bool       `json:"is_active"`
+	CategoryId   int        `json:"category_id"`
+	CategoryName string     `json:"category_name"`
 }
 
 /*

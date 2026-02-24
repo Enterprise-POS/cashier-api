@@ -1,4 +1,4 @@
-.env
+.env*
 
 # binary file not required for production, production instance/computer should build by itself
 main.exe

@@ -110,8 +110,9 @@ func (controller *WarehouseControllerImpl) CreateItem(ctx *fiber.Ctx) error {
 
 	// Define item fields
 	type BodyItems struct {
-		ItemName string `json:"item_name"`
-		Stocks   int    `json:"stocks"`
+		ItemName  string `json:"item_name"`
+		Stocks    int    `json:"stocks"`
+		BasePrice int    `json:"base_price"`
 	}
 
 	// Define full request body (embedding BodyItems)
@@ -132,6 +133,7 @@ func (controller *WarehouseControllerImpl) CreateItem(ctx *fiber.Ctx) error {
 		tobeCreatedItems = append(tobeCreatedItems, &model.Item{
 			ItemName:  item.ItemName,
 			Stocks:    item.Stocks,
+			BasePrice: item.BasePrice,
 			TenantId:  tenantId,
 			IsActive:  true, // Always true because this is creating new item
 			StockType: model.StockTypeTracked,
@@ -188,9 +190,11 @@ func (controller *WarehouseControllerImpl) Edit(ctx *fiber.Ctx) error {
 	// Currently allowed to update properties
 	// - ItemName
 	// - Quantity (via quantity parameter)
+	// - BasePrice
 	type ReqItem struct {
 		ItemName  string          `json:"item_name"`
 		StockType model.StockType `json:"stock_type"`
+		BasePrice int             `json:"base_price"`
 		ItemId    int             `json:"item_id"`
 	}
 	var body struct {
@@ -212,6 +216,7 @@ func (controller *WarehouseControllerImpl) Edit(ctx *fiber.Ctx) error {
 		TenantId:  tenantId,
 		ItemName:  body.Item.ItemName,
 		StockType: body.Item.StockType,
+		BasePrice: body.Item.BasePrice,
 	}
 	err = controller.Service.Edit(body.Quantity, tobeEditItem)
 	if err != nil {

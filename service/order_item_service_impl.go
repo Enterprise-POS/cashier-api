@@ -113,12 +113,12 @@ func (service *OrderItemServiceImpl) Transactions(params *repository.CreateTrans
 	for _, item := range params.Items {
 		// Check price consistency for same item
 		if existingPrice, exists := priceConsistencyCheck[item.ItemId]; exists {
-			if existingPrice != item.PurchasedPrice {
+			if existingPrice != item.StorePriceSnapshot {
 				return 0, fmt.Errorf("Price mismatch for item_id %d: expected %d, got %d",
-					item.ItemId, existingPrice, item.PurchasedPrice)
+					item.ItemId, existingPrice, item.StorePriceSnapshot)
 			}
 		} else {
-			priceConsistencyCheck[item.ItemId] = item.PurchasedPrice
+			priceConsistencyCheck[item.ItemId] = item.StorePriceSnapshot
 		}
 
 		if item.Quantity < 1 {
@@ -131,7 +131,7 @@ func (service *OrderItemServiceImpl) Transactions(params *repository.CreateTrans
 		}
 
 		// Calculate totals
-		itemSubTotal := item.PurchasedPrice * item.Quantity
+		itemSubTotal := item.StorePriceSnapshot * item.Quantity
 		itemDiscount := item.DiscountAmount * item.Quantity
 		itemTotal := itemSubTotal - itemDiscount
 

@@ -86,6 +86,12 @@ func (service *WarehouseServiceImpl) CreateItem(items []*model.Item) ([]*model.I
 		if item.Stocks < 0 {
 			item.Stocks = 0
 		}
+
+		// Base price validation
+		if item.BasePrice < 0 {
+			isError = true
+			errorString += fmt.Sprintf("Base price cannot be negative for item: %s (given: %d)\n", item.ItemName, item.BasePrice)
+		}
 	}
 
 	// While scanning, if 1 item get is invalid, then all operation will fail
@@ -137,6 +143,9 @@ func (service *WarehouseServiceImpl) Edit(quantity int, item *model.Item) error 
 		// ok
 	default:
 		return fmt.Errorf("Invalid stock_type value. Must be TRACKED or UNLIMITED, got: %q", item.StockType)
+	}
+	if item.BasePrice < 0 {
+		return fmt.Errorf("Base price cannot be negative (given: %d)", item.BasePrice)
 	}
 
 	err := service.Repository.Edit(quantity, item)
