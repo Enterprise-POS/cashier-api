@@ -33,13 +33,14 @@ func TestTenantControllerImpl(t *testing.T) {
 	}
 
 	supabaseClient := client.CreateSupabaseClient()
+	gormClient := client.CreateGormClient()
 
 	// To create new user, User endpoint are needed
-	userRepository := repository.NewUserRepositoryImpl(supabaseClient)
+	userRepository := repository.NewUserRepositoryImpl(gormClient)
 	userService := service.NewUserServiceImpl(userRepository)
 	userController := NewUserControllerImpl(userService)
 
-	tenantRepo := repository.NewTenantRepositoryImpl(supabaseClient)
+	tenantRepo := repository.NewTenantRepositoryImpl(gormClient)
 	tenantService := service.NewTenantServiceImpl(tenantRepo)
 	tenantController := NewTenantControllerImpl(tenantService)
 

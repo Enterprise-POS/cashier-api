@@ -37,11 +37,13 @@ func TestOrderItemControllerImpl(t *testing.T) {
 	//SETUP//
 	now := time.Now()
 	supabaseClient := client.CreateSupabaseClient()
+	gormClient := client.CreateGormClient()
+
 	testTimeout := int((time.Second * 5).Milliseconds())
 	app := fiber.New()
 
 	//IMPLEMENTATION//
-	userRepository := repository.NewUserRepositoryImpl(supabaseClient)
+	userRepository := repository.NewUserRepositoryImpl(gormClient)
 	userService := service.NewUserServiceImpl(userRepository)
 	userController := NewUserControllerImpl(userService)
 

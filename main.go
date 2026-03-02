@@ -45,6 +45,7 @@ func main() {
 
 	// DB client
 	supabaseClient := client.CreateSupabaseClient()
+	gormClient := client.CreateGormClient()
 
 	// 02 Middleware, Security
 	// app.Use(cors.New(cors.Config{
@@ -68,7 +69,7 @@ func main() {
 	})
 
 	// public
-	userRepository := repository.NewUserRepositoryImpl(supabaseClient)
+	userRepository := repository.NewUserRepositoryImpl(gormClient)
 	userService := service.NewUserServiceImpl(userRepository)
 	userController := controller.NewUserControllerImpl(userService)
 
@@ -79,7 +80,7 @@ func main() {
 	// protected only login user
 	apiV1.Use(middleware.ProtectedRoute)
 
-	tenantRepository := repository.NewTenantRepositoryImpl(supabaseClient)
+	tenantRepository := repository.NewTenantRepositoryImpl(gormClient)
 	tenantService := service.NewTenantServiceImpl(tenantRepository)
 	tenantController := controller.NewTenantControllerImpl(tenantService)
 

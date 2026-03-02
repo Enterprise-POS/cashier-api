@@ -46,11 +46,12 @@ func (service *TenantServiceImpl) NewTenant(tenant *model.Tenant, sub int) error
 		log.Errorf("Data type error. tenant Id should not be inserted. Specified tenant id: %d", tenant.Id)
 		return fmt.Errorf("Data type error. tenant Id should not be inserted. Specified tenant id: %d", tenant.Id)
 	}
-	if tenant.CreatedAt != nil {
+	if !tenant.CreatedAt.IsZero() {
 		log.Errorf("Data type error. tenant created_at should not be inserted. Specified tenant created at: %s", tenant.CreatedAt.String())
 		return fmt.Errorf("Data type error. tenant  should not be inserted. Specified tenant : %s", tenant.CreatedAt.String())
 	}
 
+	// Does not return new tenant data, instead just return error
 	return service.Repository.NewTenant(tenant)
 }
 

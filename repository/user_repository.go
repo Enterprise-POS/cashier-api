@@ -6,7 +6,7 @@ type UserRepository interface {
 	/*
 		Get all user
 	*/
-	GetByEmail(email string) (*model.UserRegisterForm, error)
+	GetByEmail(email string) (*model.User, error)
 
 	/*
 		Will connect to tenant table

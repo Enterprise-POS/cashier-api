@@ -41,7 +41,9 @@ func TestStoreControllerImpl(t *testing.T) {
 	testTimeout := int((time.Second * 5).Milliseconds())
 	app := fiber.New()
 	supabaseClient := client.CreateSupabaseClient()
-	userRepository := repository.NewUserRepositoryImpl(supabaseClient)
+	gormClient := client.CreateGormClient()
+
+	userRepository := repository.NewUserRepositoryImpl(gormClient)
 	userService := service.NewUserServiceImpl(userRepository)
 	userController := NewUserControllerImpl(userService)
 	app.Post("/users/sign_in", userController.SignInWithEmailAndPassword)

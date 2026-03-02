@@ -28,14 +28,14 @@ func TestTenantServiceImpl(t *testing.T) {
 					Name:        "Dummy Tenant",
 					OwnerUserId: userId,
 					IsActive:    true,
-					CreatedAt:   &now,
+					CreatedAt:   now,
 				},
 				{
 					Id:          2,
 					Name:        "Dummy Tenant",
 					OwnerUserId: 3, // other user id
 					IsActive:    true,
-					CreatedAt:   &now,
+					CreatedAt:   now,
 				},
 			}
 			tenantRepo.Mock.On("GetTenantWithUser", userId).Return(expectedTenants, nil)
@@ -58,7 +58,6 @@ func TestTenantServiceImpl(t *testing.T) {
 
 	t.Run("NewTenant", func(t *testing.T) {
 		t.Run("NormalCreate", func(t *testing.T) {
-			now := time.Now()
 			userId := 1
 			sub := userId // typically get from JWT payload
 			dummyTenant := &model.Tenant{
@@ -67,14 +66,7 @@ func TestTenantServiceImpl(t *testing.T) {
 				IsActive:    true,
 			}
 
-			expectedDummyTenant := &model.Tenant{
-				Id:          1,
-				Name:        "Dummy Tenant",
-				OwnerUserId: userId,
-				IsActive:    true,
-				CreatedAt:   &now,
-			}
-			tenantRepo.Mock.On("NewTenant", dummyTenant).Return(expectedDummyTenant, nil)
+			tenantRepo.Mock.On("NewTenant", dummyTenant).Return(nil)
 			err := tenantService.NewTenant(dummyTenant, sub)
 			assert.Nil(t, err)
 		})
@@ -115,7 +107,7 @@ func TestTenantServiceImpl(t *testing.T) {
 				Name:        "Dummy Tenant",
 				OwnerUserId: userId,
 				IsActive:    true,
-				CreatedAt:   &now, // specified created_at is not allowed
+				CreatedAt:   now, // specified created_at is not allowed
 			}
 
 			err := tenantService.NewTenant(dummyTenant, sub)
@@ -130,7 +122,7 @@ func TestTenantServiceImpl(t *testing.T) {
 				Name:        "          ",
 				OwnerUserId: userId,
 				IsActive:    true,
-				CreatedAt:   &now,
+				CreatedAt:   now,
 			}
 
 			err := tenantService.NewTenant(dummyTenant, sub)
@@ -140,7 +132,7 @@ func TestTenantServiceImpl(t *testing.T) {
 				Name:        "",
 				OwnerUserId: userId,
 				IsActive:    true,
-				CreatedAt:   &now,
+				CreatedAt:   now,
 			}
 
 			err = tenantService.NewTenant(dummyTenant2, sub)
@@ -244,13 +236,13 @@ func TestTenantServiceImpl(t *testing.T) {
 					Id:        1,
 					Name:      "Test 1",
 					Email:     "test@gmail.com",
-					CreatedAt: &now,
+					CreatedAt: now,
 				},
 				{
 					Id:        currentRequestedUserId,
 					Name:      "Test 2",
 					Email:     "test2@gmail.com",
-					CreatedAt: &now,
+					CreatedAt: now,
 				},
 			}
 			tenantRepo.Mock.On("GetTenantMembers", tenantId).Return(tenantMembers, nil)
@@ -268,13 +260,13 @@ func TestTenantServiceImpl(t *testing.T) {
 					Id:        1,
 					Name:      "Test 1",
 					Email:     "test@gmail.com",
-					CreatedAt: &now,
+					CreatedAt: now,
 				},
 				{
 					Id:        2,
 					Name:      "Test 2",
 					Email:     "test2@gmail.com",
-					CreatedAt: &now,
+					CreatedAt: now,
 				},
 			}
 

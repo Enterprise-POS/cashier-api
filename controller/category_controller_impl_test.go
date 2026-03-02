@@ -33,7 +33,9 @@ func TestCategoryControllerImpl(t *testing.T) {
 	testTimeout := int((time.Second * 5).Milliseconds())
 	app := fiber.New()
 	supabase := client.CreateSupabaseClient()
-	userRepository := repository.NewUserRepositoryImpl(supabase)
+	gormClient := client.CreateGormClient()
+
+	userRepository := repository.NewUserRepositoryImpl(gormClient)
 	userService := service.NewUserServiceImpl(userRepository)
 	userController := NewUserControllerImpl(userService)
 	app.Post("/users/sign_in", userController.SignInWithEmailAndPassword)

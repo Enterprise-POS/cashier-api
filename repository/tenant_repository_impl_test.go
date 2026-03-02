@@ -19,7 +19,8 @@ func TestTenantRepositoryImpl(t *testing.T) {
 	const UserId = 1
 
 	t.Run("GetByUserId", func(t *testing.T) {
-		tenantRepo := NewTenantRepositoryImpl(supabaseClient)
+		gormClient := client.CreateGormClient()
+		tenantRepo := NewTenantRepositoryImpl(gormClient)
 
 		t.Run("NormalGetByUserId", func(t *testing.T) {
 			// Create the tenant first
@@ -43,7 +44,8 @@ func TestTenantRepositoryImpl(t *testing.T) {
 	})
 
 	t.Run("Create", func(t *testing.T) {
-		tenantRepo := NewTenantRepositoryImpl(supabaseClient)
+		gormClient := client.CreateGormClient()
+		tenantRepo := NewTenantRepositoryImpl(gormClient)
 
 		t.Run("NormalCreate", func(t *testing.T) {
 			// Create the tenant first
@@ -65,7 +67,8 @@ func TestTenantRepositoryImpl(t *testing.T) {
 	})
 
 	t.Run("GetTenantWithUser", func(t *testing.T) {
-		tenantRepo := NewTenantRepositoryImpl(supabaseClient)
+		gormClient := client.CreateGormClient()
+		tenantRepo := NewTenantRepositoryImpl(gormClient)
 
 		t.Run("NormalGet", func(t *testing.T) {
 			// Create the tenant first
@@ -103,7 +106,8 @@ func TestTenantRepositoryImpl(t *testing.T) {
 	})
 
 	t.Run("NewTenant", func(t *testing.T) {
-		tenantRepo := NewTenantRepositoryImpl(supabaseClient)
+		gormClient := client.CreateGormClient()
+		tenantRepo := NewTenantRepositoryImpl(gormClient)
 
 		t.Run("NormalInput", func(t *testing.T) {
 			dummyTenant := &model.Tenant{
@@ -141,8 +145,9 @@ func TestTenantRepositoryImpl(t *testing.T) {
 	})
 
 	t.Run("AddUserToTenant", func(t *testing.T) {
-		tenantRepo := NewTenantRepositoryImpl(supabaseClient)
-		userRepo := NewUserRepositoryImpl(supabaseClient)
+		gormClient := client.CreateGormClient()
+		userRepo := NewUserRepositoryImpl(gormClient)
+		tenantRepo := NewTenantRepositoryImpl(gormClient)
 
 		// create user
 		dummyUser := model.User{
@@ -220,7 +225,7 @@ func TestTenantRepositoryImpl(t *testing.T) {
 			data, err := tenantRepo.AddUserToTenant(notAvailableUserId, createdTenantId)
 			assert.Nil(t, data)
 			assert.NotNil(t, err)
-			assert.Equal(t, "(23503) insert or update on table \"user_mtm_tenant\" violates foreign key constraint \"user_mtm_tenant_user_id_fkey\"", err.Error())
+			assert.Contains(t, err.Error(), "23503")
 		})
 
 		t.Run("TenantIdNotAvailable", func(t *testing.T) {
@@ -228,7 +233,7 @@ func TestTenantRepositoryImpl(t *testing.T) {
 			data, err := tenantRepo.AddUserToTenant(newCreatedDummyUser.Id, notAvailableTenantId)
 			assert.Nil(t, data)
 			assert.NotNil(t, err)
-			assert.Equal(t, "(23503) insert or update on table \"user_mtm_tenant\" violates foreign key constraint \"user_mtm_tenant_tenant_id_fkey\"", err.Error())
+			assert.Contains(t, err.Error(), "23503")
 		})
 
 		// Clean up helper dummy
@@ -241,8 +246,9 @@ func TestTenantRepositoryImpl(t *testing.T) {
 	})
 
 	t.Run("RemoveUserFromTenant", func(t *testing.T) {
-		tenantRepo := NewTenantRepositoryImpl(supabaseClient)
-		userRepo := NewUserRepositoryImpl(supabaseClient)
+		gormClient := client.CreateGormClient()
+		userRepo := NewUserRepositoryImpl(gormClient)
+		tenantRepo := NewTenantRepositoryImpl(gormClient)
 
 		// create user
 		dummyUser := model.User{
@@ -319,7 +325,7 @@ func TestTenantRepositoryImpl(t *testing.T) {
 			response, err := tenantRepo.RemoveUserFromTenant(&model.UserMtmTenant{UserId: newCreatedDummyUser2.Id, TenantId: createdTenantId}, newCreatedDummyUser2.Id)
 			assert.Error(t, err)
 			assert.Equal(t, "", response)
-			assert.Equal(t, "\"[ERROR] Illegal action! Removing user only allowed by the owner\"", err.Error())
+			assert.Equal(t, "[ERROR] Illegal action! Removing user only allowed by the owner", err.Error())
 
 			// Clean up
 			_, _, err = supabaseClient.From(UserTable).Delete("", "").Eq("id", strconv.Itoa(newCreatedDummyUser2.Id)).Execute()
@@ -389,8 +395,9 @@ func TestTenantRepositoryImpl(t *testing.T) {
 	})
 
 	t.Run("GetTenantMembers", func(t *testing.T) {
-		tenantRepo := NewTenantRepositoryImpl(supabaseClient)
-		userRepo := NewUserRepositoryImpl(supabaseClient)
+		gormClient := client.CreateGormClient()
+		userRepo := NewUserRepositoryImpl(gormClient)
+		tenantRepo := NewTenantRepositoryImpl(gormClient)
 
 		// create user
 		dummyUser := model.User{

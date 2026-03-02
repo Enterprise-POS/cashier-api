@@ -17,12 +17,13 @@ import (
 func TestStoreRepositoryImpl(t *testing.T) {
 	var supabaseClient *supabase.Client = client.CreateSupabaseClient()
 	storeRepository := NewStoreRepositoryImpl(supabaseClient)
+	gormClient := client.CreateGormClient()
 
 	// Test Setup
 	// - Create User
 	// - Create Tenant
-	userRepository := NewUserRepositoryImpl(supabaseClient)
-	tenantRepository := NewTenantRepositoryImpl(supabaseClient)
+	userRepository := NewUserRepositoryImpl(gormClient)
+	tenantRepository := NewTenantRepositoryImpl(gormClient)
 
 	// User
 	testUserName := "Test User Name"

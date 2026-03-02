@@ -40,12 +40,14 @@ func TestWarehouseControllerImpl(t *testing.T) {
 	*/
 	app := fiber.New()
 	supabaseClient := client.CreateSupabaseClient()
+	gormClient := client.CreateGormClient()
+
 	warehouseRepo := repository.NewWarehouseRepositoryImpl(supabaseClient)
 	warehouseService := service.NewWarehouseServiceImpl(warehouseRepo)
 	warehouseController := NewWarehouseControllerImpl(warehouseService)
 
 	// user
-	userRepository := repository.NewUserRepositoryImpl(supabaseClient)
+	userRepository := repository.NewUserRepositoryImpl(gormClient)
 	userService := service.NewUserServiceImpl(userRepository)
 	userController := NewUserControllerImpl(userService)
 
