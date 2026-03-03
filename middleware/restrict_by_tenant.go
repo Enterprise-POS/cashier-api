@@ -7,13 +7,13 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	log "github.com/sirupsen/logrus"
-	"github.com/supabase-community/supabase-go"
+	"gorm.io/gorm"
 )
 
 /*
 Always put this middleware after protected_route middleware
 */
-func RestrictByTenant(client *supabase.Client) fiber.Handler {
+func RestrictByTenant(client *gorm.DB) fiber.Handler {
 	return func(ctx *fiber.Ctx) error {
 		// Get user id (from JWT middleware -> ctx.Locals("sub"))
 		sub := ctx.Locals("sub")
@@ -41,12 +41,7 @@ func RestrictByTenant(client *supabase.Client) fiber.Handler {
 		// Check if relation exists in user_mtm_tenant
 		// supabase returns error when no rows found
 		var exist model.UserMtmTenant
-		_, err = client.From("user_mtm_tenant").
-			Select("user_id, tenant_id", "", false).
-			Eq("user_id", strconv.Itoa(userId)).
-			Eq("tenant_id", paramTenantId).
-			Single().
-			ExecuteTo(&exist)
+		err = client.Select("user_id, tenant_id").Where("user_id", userId).Where("tenant_id", paramTenantId).Take(&exist).Error
 
 		if err != nil {
 			log.Warnf("Forbidden action detected. Current user is not associate with requested tenant. From userId: %d, requesting for tenantId: %s", userId, paramTenantId)
