@@ -42,7 +42,7 @@ func TestCategoryControllerImpl(t *testing.T) {
 
 	// protected only login user
 	app.Use(middleware.ProtectedRoute)
-	categoryRepository := repository.NewCategoryRepositoryImpl(supabase)
+	categoryRepository := repository.NewCategoryRepositoryImpl(gormClient)
 	categoryService := service.NewCategoryServiceImpl(categoryRepository)
 	categoryController := NewCategoryControllerImpl(categoryService)
 
@@ -176,11 +176,9 @@ func TestCategoryControllerImpl(t *testing.T) {
 			response, err := app.Test(request, testTimeout)
 			assert.Nil(t, err)
 			assert.NotNil(t, response)
-			assert.Equal(t, http.StatusBadRequest, response.StatusCode)
+			assert.Equal(t, http.StatusOK, response.StatusCode)
 
-			body, err := io.ReadAll(response.Body)
-			assert.NoError(t, err)
-			assert.Contains(t, string(body), "Requested range not satisfiable")
+			// Even it's overlap no error required
 		})
 
 		t.Cleanup(func() {
@@ -533,7 +531,8 @@ func TestCategoryControllerImpl(t *testing.T) {
 
 			body, err := io.ReadAll(response.Body)
 			assert.NoError(t, err)
-			assert.Contains(t, string(body), "Something gone wrong. Duplicate category detected")
+			//assert.Contains(t, string(body), "Something gone wrong. Duplicate category detected")
+			assert.Contains(t, string(body), "23505")
 		})
 	})
 

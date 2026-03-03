@@ -12,7 +12,7 @@ func TestCategory(t *testing.T) {
 	category := &Category{
 		Id:           1,
 		CategoryName: "Test Category 1",
-		CreatedAt:    &now,
+		CreatedAt:    now,
 		TenantId:     1,
 	}
 

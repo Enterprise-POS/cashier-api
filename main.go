@@ -106,7 +106,7 @@ func main() {
 	apiV1.Put("/warehouses/edit/:tenantId", tenantRestriction, warehouseController.Edit)
 	apiV1.Put("/warehouses/activate/:tenantId", tenantRestriction, warehouseController.SetActivate)
 
-	categoryRepository := repository.NewCategoryRepositoryImpl(supabaseClient)
+	categoryRepository := repository.NewCategoryRepositoryImpl(gormClient)
 	categoryService := service.NewCategoryServiceImpl(categoryRepository)
 	categoryController := controller.NewCategoryControllerImpl(categoryService)
 
