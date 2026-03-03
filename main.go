@@ -44,7 +44,6 @@ func main() {
 	})
 
 	// DB client
-	supabaseClient := client.CreateSupabaseClient()
 	gormClient := client.CreateGormClient()
 
 	// 02 Middleware, Security
@@ -129,7 +128,7 @@ func main() {
 	apiV1.Put("/stores/:tenantId", tenantRestriction, storeController.Edit)
 	apiV1.Put("/stores/set_activate/:tenantId", tenantRestriction, storeController.SetActivate)
 
-	storeStockRepository := repository.NewStoreStockRepositoryImpl(supabaseClient)
+	storeStockRepository := repository.NewStoreStockRepositoryImpl(gormClient)
 	storeStockService := service.NewStoreStockServiceImpl(storeStockRepository)
 	storeStockController := controller.NewStoreStockControllerImpl(storeStockService)
 

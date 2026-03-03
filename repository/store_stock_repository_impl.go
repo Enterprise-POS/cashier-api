@@ -1,88 +1,56 @@
 package repository
 
 import (
-	"cashier-api/exception"
 	"cashier-api/model"
-	"encoding/json"
 	"errors"
 	"regexp"
-	"strconv"
 	"strings"
 
 	log "github.com/sirupsen/logrus"
-	"github.com/supabase-community/supabase-go"
+	"gorm.io/gorm"
 )
 
 type StoreStockRepositoryImpl struct {
-	Client *supabase.Client
+	Client *gorm.DB
 }
 
 const StoreStockTable string = "store_stock"
 
-func NewStoreStockRepositoryImpl(client *supabase.Client) StoreStockRepository {
+func NewStoreStockRepositoryImpl(client *gorm.DB) StoreStockRepository {
 	return &StoreStockRepositoryImpl{Client: client}
 }
 
 func (repository *StoreStockRepositoryImpl) Get(tenantId int, storeId int, limit int, page int) ([]*model.StoreStock, int, error) {
-	// Even user see first page written in 1, we must subtract by 1 otherwise range error
 	start := page * limit
-	end := start + limit - 1
 
-	data, count, err := repository.Client.From(StoreStockTable).
-		// exact: Will return the total items are there
-		Select("*", "exact", false).
+	var results []*model.StoreStock
+	var totalCount int64
 
-		// Only return the requested tenant
-		Eq("tenant_id", strconv.Itoa(tenantId)).
-		Range(start, end, "").
-		Limit(limit, "").
-		Execute()
+	query := repository.Client.Model(&model.StoreStock{}).
+		Where("tenant_id = ?", tenantId)
 
-	if err != nil {
+	if err := query.Count(&totalCount).Error; err != nil {
 		return nil, 0, err
 	}
 
-	var result []*model.StoreStock
-	err = json.Unmarshal(data, &result)
-	if err != nil {
-		log.Error(err.Error())
+	if err := query.Offset(start).Limit(limit).Find(&results).Error; err != nil {
 		return nil, 0, errors.New("fatal error while converting data")
 	}
 
-	return result, int(count), nil
+	return results, int(totalCount), nil
 }
 
 // GetV2 implements StoreStockRepository.
 func (repository *StoreStockRepositoryImpl) GetV2(tenantId int, storeId int, limit int, page int, nameQuery string) ([]*model.StoreStockV2, int, error) {
 	start := page * limit
-	// end := start + limit - 1
-
-	data := repository.Client.Rpc("get_store_stocks", "", map[string]interface{}{
-		"p_tenant_id":  tenantId,
-		"p_store_id":   storeId,
-		"p_limit":      limit,
-		"p_offset":     start,
-		"p_name_query": nameQuery,
-	})
-
-	/*
-		Example return, either error string contains error message or json string
-		- [ERROR]
-		- [
-				{"category_id":1,"category_name":"Fruits","item_id":1,"item_name":"Apple","stocks":358},
-				{"category_id":1,"category_name":"Fruits","item_id":267,"item_name":"Durian","stocks":10}
-			]
-	*/
-	var pgErr exception.PostgreSQLException
-	if err := json.Unmarshal([]byte(data), &pgErr); err == nil && pgErr.Code != "" {
-		// If "code" is not empty -> it's an error JSON
-		return nil, 0, &pgErr
-	}
 
 	var results []*model.StoreStockV2
-	err := json.Unmarshal([]byte(data), &results)
+	err := repository.Client.Raw(
+		"SELECT * FROM get_store_stocks(?, ?, ?, ?, ?)",
+		tenantId, storeId, limit, start, nameQuery,
+	).Scan(&results).Error
 	if err != nil {
-		log.Errorf("ERROR ! While unmarshaling data at CategoryRepositoryImpl.GetItemsByCategory. tenantId: %d, storeId: %d", tenantId, storeId)
+		log.Errorf("ERROR ! While querying data at StoreStockRepositoryImpl.GetV2. tenantId: %d, storeId: %d", tenantId, storeId)
 		return nil, 0, err
 	}
 
@@ -109,11 +77,14 @@ TransferStockToWarehouse:
 	TODO: resolve security alert from supabase, 'search_path'
 */
 func (repository *StoreStockRepositoryImpl) TransferStockToWarehouse(quantity int, itemId int, storeId int, tenantId int) error {
-	var message string = repository.Client.Rpc("transfer_stock_to_warehouse", "", map[string]interface{}{
-		"p_quantity":  quantity,
-		"p_item_id":   itemId,
-		"p_store_id":  storeId,
-		"p_tenant_id": tenantId})
+	var message string
+	err := repository.Client.Raw(
+		"SELECT transfer_stock_to_warehouse(?, ?, ?, ?)",
+		quantity, itemId, storeId, tenantId,
+	).Scan(&message).Error
+	if err != nil {
+		return err
+	}
 
 	if strings.Contains(message, "[ERROR]") {
 		return errors.New(message)
@@ -138,11 +109,14 @@ TransferStockToStoreStock:
 	TODO: resolve security alert from supabase, 'search_path'
 */
 func (repository *StoreStockRepositoryImpl) TransferStockToStoreStock(quantity int, itemId int, storeId int, tenantId int) error {
-	var message string = repository.Client.Rpc("transfer_stocks_to_store_stock", "", map[string]interface{}{
-		"p_quantity":  quantity,
-		"p_item_id":   itemId,
-		"p_store_id":  storeId,
-		"p_tenant_id": tenantId})
+	var message string
+	err := repository.Client.Raw(
+		"SELECT transfer_stocks_to_store_stock(?, ?, ?, ?)",
+		quantity, itemId, storeId, tenantId,
+	).Scan(&message).Error
+	if err != nil {
+		return err
+	}
 
 	if strings.Contains(message, "[ERROR]") {
 		return errors.New(message)
@@ -153,18 +127,18 @@ func (repository *StoreStockRepositoryImpl) TransferStockToStoreStock(quantity i
 
 // Edit implements StoreStockRepository.
 func (repository *StoreStockRepositoryImpl) Edit(item *model.StoreStock) error {
-	var message string = repository.Client.Rpc("edit_store_stock_item", "", map[string]interface{}{
-		"p_store_stock_id": item.Id,
-		"p_price":          item.Price, // Tobe updated price
-		"p_store_id":       item.StoreId,
-		"p_tenant_id":      item.TenantId,
-		"p_item_id":        item.ItemId,
-	})
+	var message string
+	err := repository.Client.Raw(
+		"SELECT edit_store_stock_item(?, ?, ?, ?, ?)",
+		item.Id, item.Price, item.StoreId, item.TenantId, item.ItemId,
+	).Scan(&message).Error
+	if err != nil {
+		return err
+	}
 
 	// [ERROR] || [FATAL ERROR]
 	if strings.Contains(message, "ERROR") {
-		// From first character [ take all the word until ], change to empty ("")
-		// The blank at the end is required
+		// Strip the bracket prefix e.g. "[ERROR] " or "[FATAL ERROR] "
 		re := regexp.MustCompile(`\[[^\]]*\] `)
 		cleanMsg := re.ReplaceAllString(message, "")
 		return errors.New(cleanMsg)
@@ -175,18 +149,16 @@ func (repository *StoreStockRepositoryImpl) Edit(item *model.StoreStock) error {
 
 // LoadCashierData implements StoreStockRepository.
 func (repository *StoreStockRepositoryImpl) LoadCashierData(tenantId int, storeId int) ([]*model.CashierData, error) {
-	var response string = repository.Client.Rpc("load_cashier_data", "", map[string]any{
-		"p_tenant_id": tenantId,
-		"p_store_id":  storeId,
-	})
-
 	var cashierData []*model.CashierData
-	err := json.Unmarshal([]byte(response), &cashierData)
+	err := repository.Client.Raw(
+		"SELECT * FROM load_cashier_data(?, ?)",
+		tenantId, storeId,
+	).Scan(&cashierData).Error
 	if err != nil {
 		return nil, err
 	}
 
-	if cashierData == nil {
+	if len(cashierData) == 0 {
 		return nil, errors.New("unexpected null response from database")
 	}
 

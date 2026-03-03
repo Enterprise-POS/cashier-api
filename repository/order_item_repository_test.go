@@ -26,7 +26,7 @@ func TestOrderItemRepository(t *testing.T) {
 		// TEST: Normal insert
 		warehouseRepo := NewWarehouseRepositoryImpl(gormClient)
 		orderItemRepo := NewOrderItemRepositoryImpl(gormClient)
-		storeStockRepo := StoreStockRepositoryImpl{Client: supabaseClient}
+		storeStockRepo := NewStoreStockRepositoryImpl(gormClient)
 
 		dummyItem := &model.Item{
 			ItemName:  "Test TestOrderItemRepository_PlaceOrderItem 1",
