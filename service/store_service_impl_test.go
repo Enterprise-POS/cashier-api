@@ -25,7 +25,7 @@ func TestStoreServiceImpl(t *testing.T) {
 				Id:        1,
 				Name:      "Test_Create_NormalCreate1",
 				IsActive:  true,
-				CreatedAt: &now,
+				CreatedAt: now,
 				TenantId:  tenantId,
 			}
 			storeRepository.Mock.On("Create", tenantId, expectedStore.Name).Return(expectedStore, nil)
@@ -73,14 +73,14 @@ func TestStoreServiceImpl(t *testing.T) {
 					Id:        1,
 					Name:      "Test_GetAll_NormalGetAll1",
 					IsActive:  true,
-					CreatedAt: &now,
+					CreatedAt: now,
 					TenantId:  tenantId,
 				},
 				{
 					Id:        2,
 					Name:      "Test_GetAll_NormalGetAll2",
 					IsActive:  true,
-					CreatedAt: &now,
+					CreatedAt: now,
 					TenantId:  tenantId,
 				},
 			}
@@ -166,7 +166,7 @@ func TestStoreServiceImpl(t *testing.T) {
 				Id:        1,
 				Name:      "Edited Store",
 				TenantId:  1,
-				CreatedAt: &now,
+				CreatedAt: now,
 				IsActive:  true,
 			}
 			storeRepository.Mock.On("Edit", editedStore).Return(expectedEditedStoreReturn, nil)

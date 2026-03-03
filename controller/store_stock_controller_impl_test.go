@@ -42,7 +42,7 @@ func TestStoreStockControllerImpl(t *testing.T) {
 	userService := service.NewUserServiceImpl(userRepository)
 	userController := NewUserControllerImpl(userService)
 
-	storeRepository := repository.NewStoreRepositoryImpl(supabaseClient)
+	storeRepository := repository.NewStoreRepositoryImpl(gormClient)
 	storeService := service.NewStoreServiceImpl(storeRepository)
 	storeController := NewStoreControllerImpl(storeService)
 

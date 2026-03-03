@@ -121,7 +121,7 @@ func main() {
 	apiV1.Delete("/categories/unregister/:tenantId", tenantRestriction, categoryController.Unregister)
 	apiV1.Delete("/categories/:tenantId", tenantRestriction, categoryController.Delete)
 
-	storeRepository := repository.NewStoreRepositoryImpl(supabaseClient)
+	storeRepository := repository.NewStoreRepositoryImpl(gormClient)
 	storeService := service.NewStoreServiceImpl(storeRepository)
 	storeController := controller.NewStoreControllerImpl(storeService)
 	apiV1.Post("/stores/:tenantId", tenantRestriction, storeController.Create)
