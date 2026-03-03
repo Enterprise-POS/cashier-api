@@ -41,10 +41,10 @@ type CategoryWithItem struct {
 }
 
 type CategoryMtmWarehouse struct {
-	Id         int        `json:"id,omitempty"`
-	CategoryId int        `json:"category_id"`
-	ItemId     int        `json:"item_id"`
-	CreatedAt  *time.Time `json:"created_at,omitempty"`
+	Id         int        `json:"id,omitempty" gorm:"primaryKey;autoIncrement;column:id"`
+	CategoryId int        `json:"category_id" gorm:"column:category_id"`
+	ItemId     int        `json:"item_id" gorm:"column:item_id"`
+	CreatedAt  *time.Time `json:"created_at,omitempty" gorm:"column:created_at;<-create"`
 }
 
 func (CategoryMtmWarehouse) TableName() string {
