@@ -46,7 +46,7 @@ func TestCategoryControllerImpl(t *testing.T) {
 	categoryService := service.NewCategoryServiceImpl(categoryRepository)
 	categoryController := NewCategoryControllerImpl(categoryService)
 
-	tenantRestriction := middleware.RestrictByTenant(supabase) // User only allowed to access associated tenant
+	tenantRestriction := middleware.RestrictByTenant(gormClient) // User only allowed to access associated tenant
 	app.Get("/categories/:tenantId", tenantRestriction, categoryController.Get)
 	app.Post("/categories/items_by_category_id/:tenantId", tenantRestriction, categoryController.GetItemsByCategoryId)
 	app.Post("/categories/category_with_items/:tenantId", tenantRestriction, categoryController.GetCategoryWithItems)

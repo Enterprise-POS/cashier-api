@@ -54,8 +54,8 @@ func TestWarehouseControllerImpl(t *testing.T) {
 	app.Post("/users/sign_in", userController.SignInWithEmailAndPassword)
 
 	// warehouse
-	app.Use(middleware.ProtectedRoute)                               // Must login
-	tenantRestriction := middleware.RestrictByTenant(supabaseClient) // User only allowed to access associated tenant
+	app.Use(middleware.ProtectedRoute)                           // Must login
+	tenantRestriction := middleware.RestrictByTenant(gormClient) // User only allowed to access associated tenant
 	app.Get("/warehouses/:tenantId", tenantRestriction, warehouseController.Get)
 	app.Get("/warehouses/active/:tenantId", tenantRestriction, warehouseController.GetActiveItem)
 	app.Post("/warehouses/create_item/:tenantId", tenantRestriction, warehouseController.CreateItem)

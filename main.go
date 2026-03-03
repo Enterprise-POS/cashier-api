@@ -91,7 +91,7 @@ func main() {
 	apiV1.Delete("/tenants/remove_user", tenantController.RemoveUserFromTenant)
 
 	// restrict by tenantId
-	tenantRestriction := middleware.RestrictByTenant(supabaseClient)
+	tenantRestriction := middleware.RestrictByTenant(gormClient)
 
 	warehouseRepository := repository.NewWarehouseRepositoryImpl(gormClient)
 	warehouseService := service.NewWarehouseServiceImpl(warehouseRepository)

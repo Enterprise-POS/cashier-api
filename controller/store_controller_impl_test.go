@@ -89,7 +89,7 @@ func TestStoreControllerImpl(t *testing.T) {
 	require.NotNil(t, enterprisePOSCookie)
 
 	//ROUTE//
-	tenantRestriction := middleware.RestrictByTenant(supabaseClient) // User only allowed to access associated tenant
+	tenantRestriction := middleware.RestrictByTenant(gormClient) // User only allowed to access associated tenant
 	app.Post("/stores/:tenantId", tenantRestriction, storeController.Create)
 	app.Get("/stores/:tenantId", tenantRestriction, storeController.GetAll)
 	app.Put("/stores/:tenantId", tenantRestriction, storeController.Edit)

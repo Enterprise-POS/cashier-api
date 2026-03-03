@@ -52,7 +52,7 @@ func TestOrderItemControllerImpl(t *testing.T) {
 
 	// These 2 protection are required
 	app.Use(middleware.ProtectedRoute)
-	tenantRestriction := middleware.RestrictByTenant(supabaseClient) // User only allowed to access associated tenant
+	tenantRestriction := middleware.RestrictByTenant(gormClient) // User only allowed to access associated tenant
 
 	orderItemServiceMock := service.NewOrderItemServiceMock(&mock.Mock{}).(*service.OrderItemServiceMock)
 	orderItemController := NewOrderItemControllerImpl(orderItemServiceMock)

@@ -57,7 +57,7 @@ func TestStoreStockControllerImpl(t *testing.T) {
 
 	// These 2 protection are required
 	app.Use(middleware.ProtectedRoute)
-	tenantRestriction := middleware.RestrictByTenant(supabaseClient) // User only allowed to access associated tenant
+	tenantRestriction := middleware.RestrictByTenant(gormClient) // User only allowed to access associated tenant
 
 	app.Get("/stores/:tenantId", tenantRestriction, storeController.GetAll)
 	app.Post("/stores/:tenantId", tenantRestriction, storeController.Create)
