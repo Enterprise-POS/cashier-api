@@ -20,12 +20,16 @@ const (
 )
 
 type Item struct {
-	ItemId    int        `json:"item_id,omitempty"`
-	ItemName  string     `json:"item_name"`
-	Stocks    int        `json:"stocks"`
-	StockType StockType  `json:"stock_type"`
-	BasePrice int        `json:"base_price"`
-	TenantId  int        `json:"tenant_id"`
-	IsActive  bool       `json:"is_active"`
-	CreatedAt *time.Time `json:"created_at,omitempty"`
+	ItemId    int       `json:"item_id,omitempty" gorm:"primaryKey;autoIncrement;column:item_id"`
+	ItemName  string    `json:"item_name" gorm:"column:item_name"`
+	Stocks    int       `json:"stocks" gorm:"column:stocks"`
+	StockType StockType `json:"stock_type" gorm:"column:stock_type"`
+	BasePrice int       `json:"base_price" gorm:"column:base_price"`
+	TenantId  int       `json:"tenant_id" gorm:"column:tenant_id"`
+	IsActive  bool      `json:"is_active" gorm:"column:is_active"`
+	CreatedAt time.Time `json:"created_at,omitempty" gorm:"column:created_at;<-:create"`
+}
+
+func (Item) TableName() string {
+	return "warehouse"
 }

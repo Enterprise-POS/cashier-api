@@ -24,7 +24,7 @@ func TestOrderItemRepository(t *testing.T) {
 	const TENANT_ID = 1
 	t.Run("_PlaceOrderItem", func(t *testing.T) {
 		// TEST: Normal insert
-		warehouseRepo := NewWarehouseRepositoryImpl(supabaseClient)
+		warehouseRepo := NewWarehouseRepositoryImpl(gormClient)
 		orderItemRepo := NewOrderItemRepositoryImpl(gormClient)
 		storeStockRepo := StoreStockRepositoryImpl{Client: supabaseClient}
 

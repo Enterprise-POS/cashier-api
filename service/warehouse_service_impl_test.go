@@ -28,7 +28,7 @@ func TestWarehouseServiceImpl(t *testing.T) {
 					Stocks:    10,
 					TenantId:  1,
 					IsActive:  true,
-					CreatedAt: &now,
+					CreatedAt: now,
 					StockType: model.StockTypeTracked,
 				},
 				{
@@ -37,7 +37,7 @@ func TestWarehouseServiceImpl(t *testing.T) {
 					Stocks:    10,
 					TenantId:  1,
 					IsActive:  true,
-					CreatedAt: &now,
+					CreatedAt: now,
 					StockType: model.StockTypeTracked,
 				},
 				{
@@ -46,7 +46,7 @@ func TestWarehouseServiceImpl(t *testing.T) {
 					Stocks:    10,
 					TenantId:  1,
 					IsActive:  true,
-					CreatedAt: &now,
+					CreatedAt: now,
 					StockType: model.StockTypeTracked,
 				},
 				{
@@ -55,7 +55,7 @@ func TestWarehouseServiceImpl(t *testing.T) {
 					Stocks:    10,
 					TenantId:  1,
 					IsActive:  true,
-					CreatedAt: &now,
+					CreatedAt: now,
 					StockType: model.StockTypeTracked,
 				},
 				{
@@ -64,7 +64,7 @@ func TestWarehouseServiceImpl(t *testing.T) {
 					Stocks:    10,
 					TenantId:  1,
 					IsActive:  true,
-					CreatedAt: &now,
+					CreatedAt: now,
 					StockType: model.StockTypeTracked,
 				},
 			}
@@ -113,7 +113,7 @@ func TestWarehouseServiceImpl(t *testing.T) {
 					Stocks:    10,
 					TenantId:  1,
 					IsActive:  true,
-					CreatedAt: &now,
+					CreatedAt: now,
 					StockType: model.StockTypeTracked,
 				},
 				{
@@ -122,7 +122,7 @@ func TestWarehouseServiceImpl(t *testing.T) {
 					Stocks:    10,
 					TenantId:  1,
 					IsActive:  true,
-					CreatedAt: &now,
+					CreatedAt: now,
 					StockType: model.StockTypeTracked,
 				},
 				{
@@ -131,7 +131,7 @@ func TestWarehouseServiceImpl(t *testing.T) {
 					Stocks:    10,
 					TenantId:  1,
 					IsActive:  true,
-					CreatedAt: &now,
+					CreatedAt: now,
 					StockType: model.StockTypeTracked,
 				},
 				{
@@ -140,7 +140,7 @@ func TestWarehouseServiceImpl(t *testing.T) {
 					Stocks:    10,
 					TenantId:  1,
 					IsActive:  true,
-					CreatedAt: &now,
+					CreatedAt: now,
 					StockType: model.StockTypeTracked,
 				},
 				{
@@ -149,7 +149,7 @@ func TestWarehouseServiceImpl(t *testing.T) {
 					Stocks:    10,
 					TenantId:  1,
 					IsActive:  true,
-					CreatedAt: &now,
+					CreatedAt: now,
 					StockType: model.StockTypeTracked,
 				},
 			}
@@ -220,7 +220,7 @@ func TestWarehouseServiceImpl(t *testing.T) {
 					TenantId:  1,
 					StockType: model.StockTypeTracked,
 					IsActive:  true,
-					CreatedAt: &now,
+					CreatedAt: now,
 				},
 				{
 					ItemId:    2,
@@ -229,7 +229,7 @@ func TestWarehouseServiceImpl(t *testing.T) {
 					TenantId:  1,
 					StockType: model.StockTypeTracked,
 					IsActive:  true,
-					CreatedAt: &now,
+					CreatedAt: now,
 				},
 				{
 					ItemId:    3,
@@ -238,7 +238,7 @@ func TestWarehouseServiceImpl(t *testing.T) {
 					TenantId:  1,
 					StockType: model.StockTypeTracked,
 					IsActive:  true,
-					CreatedAt: &now,
+					CreatedAt: now,
 				},
 			}
 
@@ -346,7 +346,7 @@ func TestWarehouseServiceImpl(t *testing.T) {
 				TenantId:  1,
 				StockType: model.StockTypeTracked,
 				IsActive:  true,
-				CreatedAt: &now,
+				CreatedAt: now,
 			}
 			warehouseRepo.Mock.On("FindById", expectedItem.ItemId, expectedItem.TenantId).Return(expectedItem, nil)
 			items, err := warehouseService.FindById(expectedItem.ItemId, expectedItem.TenantId)
@@ -386,7 +386,7 @@ func TestWarehouseServiceImpl(t *testing.T) {
 					Stocks:    10,
 					TenantId:  1,
 					IsActive:  true,
-					CreatedAt: &now,
+					CreatedAt: now,
 				}
 			*/
 			editedItem := &model.Item{
@@ -395,7 +395,7 @@ func TestWarehouseServiceImpl(t *testing.T) {
 				Stocks:    7,
 				TenantId:  1,
 				IsActive:  false,
-				CreatedAt: &now,
+				CreatedAt: now,
 				StockType: model.StockTypeTracked,
 			}
 			warehouseRepo.Mock.On("Edit", -3, editedItem).Return(nil)
@@ -410,7 +410,7 @@ func TestWarehouseServiceImpl(t *testing.T) {
 				Stocks:    7,
 				TenantId:  999,
 				IsActive:  false,
-				CreatedAt: &now,
+				CreatedAt: now,
 				StockType: model.StockTypeTracked,
 			}
 			warehouseRepo.Mock = mock.Mock{}
@@ -425,7 +425,7 @@ func TestWarehouseServiceImpl(t *testing.T) {
 				Stocks:    7,
 				TenantId:  1,
 				IsActive:  false,
-				CreatedAt: &now,
+				CreatedAt: now,
 				StockType: model.StockTypeTracked,
 			}
 			warehouseRepo.Mock = mock.Mock{}
@@ -442,7 +442,7 @@ func TestWarehouseServiceImpl(t *testing.T) {
 				Stocks:    7,
 				TenantId:  1,
 				IsActive:  false,
-				CreatedAt: &now,
+				CreatedAt: now,
 				StockType: model.StockTypeTracked,
 			}
 			err := warehouseService.Edit(-3, editedItem)
@@ -457,7 +457,7 @@ func TestWarehouseServiceImpl(t *testing.T) {
 				Stocks:    7,
 				TenantId:  1,
 				IsActive:  false,
-				CreatedAt: &now,
+				CreatedAt: now,
 				StockType: model.StockTypeTracked,
 			}
 			err := warehouseService.Edit(-3, editedItem)
@@ -472,7 +472,7 @@ func TestWarehouseServiceImpl(t *testing.T) {
 				Stocks:   7,
 				// TenantId:  1,
 				IsActive:  false,
-				CreatedAt: &now,
+				CreatedAt: now,
 				StockType: model.StockTypeTracked,
 			}
 			err := warehouseService.Edit(-3, editedItem)
@@ -487,7 +487,7 @@ func TestWarehouseServiceImpl(t *testing.T) {
 				Stocks:    7,
 				TenantId:  1,
 				IsActive:  false,
-				CreatedAt: &now,
+				CreatedAt: now,
 				StockType: model.StockTypeTracked,
 			}
 			err := warehouseService.Edit(-1000, editedItem)

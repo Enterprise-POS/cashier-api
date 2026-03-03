@@ -42,7 +42,7 @@ func TestWarehouseControllerImpl(t *testing.T) {
 	supabaseClient := client.CreateSupabaseClient()
 	gormClient := client.CreateGormClient()
 
-	warehouseRepo := repository.NewWarehouseRepositoryImpl(supabaseClient)
+	warehouseRepo := repository.NewWarehouseRepositoryImpl(gormClient)
 	warehouseService := service.NewWarehouseServiceImpl(warehouseRepo)
 	warehouseController := NewWarehouseControllerImpl(warehouseService)
 

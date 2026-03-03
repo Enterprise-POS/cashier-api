@@ -9,12 +9,14 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
+	"gorm.io/gorm"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/supabase-community/supabase-go"
 )
 
 func TestCategoryRepository(t *testing.T) {
+	var gormClient *gorm.DB = client.CreateGormClient()
 	var supabaseClient *supabase.Client = client.CreateSupabaseClient()
 
 	const (
@@ -300,7 +302,7 @@ func TestCategoryRepository(t *testing.T) {
 	t.Run("Register", func(t *testing.T) {
 		// This is special insert, because category is many to many into warehouse
 		categoryRepositoryImpl := NewCategoryRepositoryImpl(supabaseClient)
-		warehouseRepositoryImpl := WarehouseRepositoryImpl{Client: supabaseClient}
+		warehouseRepositoryImpl := NewWarehouseRepositoryImpl(gormClient)
 
 		t.Run("NormalRegister", func(t *testing.T) {
 			// Create warehouse item
@@ -408,7 +410,7 @@ func TestCategoryRepository(t *testing.T) {
 	t.Run("Unregister", func(t *testing.T) {
 		// This is special insert, because category is many to many into warehouse
 		categoryRepositoryImpl := NewCategoryRepositoryImpl(supabaseClient)
-		warehouseRepositoryImpl := WarehouseRepositoryImpl{Client: supabaseClient}
+		warehouseRepositoryImpl := NewWarehouseRepositoryImpl(gormClient)
 
 		t.Run("NormalUnregister", func(t *testing.T) {
 			// START:
@@ -490,7 +492,7 @@ func TestCategoryRepository(t *testing.T) {
 
 	t.Run("EditItemCategory", func(t *testing.T) {
 		categoryRepositoryImpl := NewCategoryRepositoryImpl(supabaseClient)
-		warehouseRepositoryImpl := NewWarehouseRepositoryImpl(supabaseClient)
+		warehouseRepositoryImpl := NewWarehouseRepositoryImpl(gormClient)
 
 		t.Run("NormalEditItemCategory", func(t *testing.T) {
 			// START:

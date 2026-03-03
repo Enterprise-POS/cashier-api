@@ -93,7 +93,7 @@ func main() {
 	// restrict by tenantId
 	tenantRestriction := middleware.RestrictByTenant(supabaseClient)
 
-	warehouseRepository := repository.NewWarehouseRepositoryImpl(supabaseClient)
+	warehouseRepository := repository.NewWarehouseRepositoryImpl(gormClient)
 	warehouseService := service.NewWarehouseServiceImpl(warehouseRepository)
 	warehouseController := controller.NewWarehouseControllerImpl(warehouseService)
 

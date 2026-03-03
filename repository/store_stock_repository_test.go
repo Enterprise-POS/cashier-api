@@ -15,6 +15,7 @@ import (
 )
 
 func TestStoreStockRepository(t *testing.T) {
+	gormClient := client.CreateGormClient()
 	var supabaseClient *supabase.Client = client.CreateSupabaseClient()
 	const WarehouseTable = "warehouse"
 	const StoreId = 1
@@ -60,7 +61,7 @@ func TestStoreStockRepository(t *testing.T) {
 
 	t.Run("Edit", func(t *testing.T) {
 		storeStockRepo := NewStoreStockRepositoryImpl(supabaseClient)
-		warehouseRepo := NewWarehouseRepositoryImpl(supabaseClient)
+		warehouseRepo := NewWarehouseRepositoryImpl(gormClient)
 
 		// Flow: warehouse -transfer-> store_stock
 		dummyItem := &model.Item{
@@ -156,7 +157,7 @@ func TestStoreStockRepository(t *testing.T) {
 
 	t.Run("_TransferStockToWarehouse", func(t *testing.T) {
 		storeStockRepo := NewStoreStockRepositoryImpl(supabaseClient)
-		warehouseRepo := NewWarehouseRepositoryImpl(supabaseClient)
+		warehouseRepo := NewWarehouseRepositoryImpl(gormClient)
 
 		// Flow: warehouse -> store_stock -> warehouse
 		dummyItem := &model.Item{
@@ -215,7 +216,7 @@ func TestStoreStockRepository(t *testing.T) {
 
 	t.Run("_TransferStockToStoreStock", func(t *testing.T) {
 		storeStockRepo := StoreStockRepositoryImpl{Client: supabaseClient}
-		warehouseRepo := WarehouseRepositoryImpl{Client: supabaseClient}
+		warehouseRepo := NewWarehouseRepositoryImpl(gormClient)
 
 		// Flow: warehouse -transfer-> store_stock
 		dummyItem := &model.Item{

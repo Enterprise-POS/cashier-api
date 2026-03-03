@@ -50,7 +50,7 @@ func TestStoreStockControllerImpl(t *testing.T) {
 	storeStockService := service.NewStoreStockServiceImpl(storeStockRepository)
 	storeStockController := NewStoreStockControllerImpl(storeStockService)
 
-	warehouseRepository := repository.NewWarehouseRepositoryImpl(supabaseClient)
+	warehouseRepository := repository.NewWarehouseRepositoryImpl(gormClient)
 
 	//ROUTE//
 	app.Post("/users/sign_in", userController.SignInWithEmailAndPassword)

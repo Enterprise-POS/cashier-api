@@ -13,13 +13,13 @@ import (
 
 func TestTenantRepositoryImpl(t *testing.T) {
 	supabaseClient := client.CreateSupabaseClient()
+	gormClient := client.CreateGormClient()
 
 	// This is test user id; Do not delete any accidentally
 	// delete may cause another test case throw panic
 	const UserId = 1
 
 	t.Run("GetByUserId", func(t *testing.T) {
-		gormClient := client.CreateGormClient()
 		tenantRepo := NewTenantRepositoryImpl(gormClient)
 
 		t.Run("NormalGetByUserId", func(t *testing.T) {
@@ -44,7 +44,6 @@ func TestTenantRepositoryImpl(t *testing.T) {
 	})
 
 	t.Run("Create", func(t *testing.T) {
-		gormClient := client.CreateGormClient()
 		tenantRepo := NewTenantRepositoryImpl(gormClient)
 
 		t.Run("NormalCreate", func(t *testing.T) {
@@ -67,7 +66,6 @@ func TestTenantRepositoryImpl(t *testing.T) {
 	})
 
 	t.Run("GetTenantWithUser", func(t *testing.T) {
-		gormClient := client.CreateGormClient()
 		tenantRepo := NewTenantRepositoryImpl(gormClient)
 
 		t.Run("NormalGet", func(t *testing.T) {
@@ -106,7 +104,6 @@ func TestTenantRepositoryImpl(t *testing.T) {
 	})
 
 	t.Run("NewTenant", func(t *testing.T) {
-		gormClient := client.CreateGormClient()
 		tenantRepo := NewTenantRepositoryImpl(gormClient)
 
 		t.Run("NormalInput", func(t *testing.T) {
@@ -145,7 +142,6 @@ func TestTenantRepositoryImpl(t *testing.T) {
 	})
 
 	t.Run("AddUserToTenant", func(t *testing.T) {
-		gormClient := client.CreateGormClient()
 		userRepo := NewUserRepositoryImpl(gormClient)
 		tenantRepo := NewTenantRepositoryImpl(gormClient)
 
@@ -246,7 +242,6 @@ func TestTenantRepositoryImpl(t *testing.T) {
 	})
 
 	t.Run("RemoveUserFromTenant", func(t *testing.T) {
-		gormClient := client.CreateGormClient()
 		userRepo := NewUserRepositoryImpl(gormClient)
 		tenantRepo := NewTenantRepositoryImpl(gormClient)
 
@@ -395,7 +390,6 @@ func TestTenantRepositoryImpl(t *testing.T) {
 	})
 
 	t.Run("GetTenantMembers", func(t *testing.T) {
-		gormClient := client.CreateGormClient()
 		userRepo := NewUserRepositoryImpl(gormClient)
 		tenantRepo := NewTenantRepositoryImpl(gormClient)
 
