@@ -38,7 +38,7 @@ func TestOrderItemServiceImpl(t *testing.T) {
 					TotalAmount:    1000,
 					DiscountAmount: 0,
 					Subtotal:       1000,
-					CreatedAt:      &now,
+					CreatedAt:      now,
 					StoreId:        STORE_ID,
 					TenantId:       TENANT_ID,
 				},
@@ -267,7 +267,7 @@ func TestOrderItemServiceImpl(t *testing.T) {
 				PurchasedPrice: 10000,
 				StoreId:        STORE_ID,
 				TenantId:       TENANT_ID,
-				CreatedAt:      &now,
+				CreatedAt:      now,
 			}
 
 			expectedPurchasedList := []*model.PurchasedItem{

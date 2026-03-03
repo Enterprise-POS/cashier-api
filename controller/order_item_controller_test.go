@@ -120,7 +120,7 @@ func TestOrderItemControllerImpl(t *testing.T) {
 						TotalAmount:    1000,
 						DiscountAmount: 0,
 						Subtotal:       1000,
-						CreatedAt:      &now,
+						CreatedAt:      now,
 						StoreId:        STORE_ID,
 						TenantId:       createdTestTenant.Id,
 					},
@@ -131,7 +131,7 @@ func TestOrderItemControllerImpl(t *testing.T) {
 						TotalAmount:    5000,
 						DiscountAmount: 0,
 						Subtotal:       5000,
-						CreatedAt:      &now,
+						CreatedAt:      now,
 						StoreId:        STORE_ID,
 						TenantId:       createdTestTenant.Id,
 					},
@@ -297,7 +297,7 @@ func TestOrderItemControllerImpl(t *testing.T) {
 				DiscountAmount: 1_300,
 				StoreId:        STORE_ID,
 				TenantId:       createdTestTenant.Id,
-				CreatedAt:      &now,
+				CreatedAt:      now,
 			}
 
 			expectedPurchasedItemList := []*model.PurchasedItem{

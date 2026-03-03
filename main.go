@@ -141,7 +141,7 @@ func main() {
 	apiV1.Put("/store_stocks/transfer_to_store_stock/:tenantId", tenantRestriction, storeStockController.TransferStockToStoreStock)
 	apiV1.Put("/store_stocks/transfer_to_warehouse/:tenantId", tenantRestriction, storeStockController.TransferStockToWarehouse)
 
-	orderItemRepository := repository.NewOrderItemRepositoryImpl(supabaseClient)
+	orderItemRepository := repository.NewOrderItemRepositoryImpl(gormClient)
 	orderItemService := service.NewOrderItemServiceImpl(orderItemRepository)
 	orderItemController := controller.NewOrderItemControllerImpl(orderItemService)
 

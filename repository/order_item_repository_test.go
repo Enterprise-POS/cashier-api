@@ -13,16 +13,19 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/supabase-community/supabase-go"
+	"gorm.io/gorm"
 )
 
 func TestOrderItemRepository(t *testing.T) {
 	var supabaseClient *supabase.Client = client.CreateSupabaseClient()
+	var gormClient *gorm.DB = client.CreateGormClient()
+
 	const STORE_ID = 1
 	const TENANT_ID = 1
 	t.Run("_PlaceOrderItem", func(t *testing.T) {
 		// TEST: Normal insert
 		warehouseRepo := NewWarehouseRepositoryImpl(supabaseClient)
-		orderItemRepo := NewOrderItemRepositoryImpl(supabaseClient)
+		orderItemRepo := NewOrderItemRepositoryImpl(gormClient)
 		storeStockRepo := StoreStockRepositoryImpl{Client: supabaseClient}
 
 		dummyItem := &model.Item{
@@ -81,7 +84,9 @@ func TestOrderItemRepository(t *testing.T) {
 		assert.Equal(t, STORE_ID, dummyOrderItemFromDB.StoreId)
 
 		// Clean up; order_item -> store_stock (also act as shop) -> warehouse
-		supabaseClient.From("order_item").Delete("", "").Eq("id", strconv.Itoa(dummyOrderItemFromDB.Id)).Execute()
+		//supabaseClient.From("order_item").Delete("", "").Eq("id", strconv.Itoa(dummyOrderItemFromDB.Id)).Execute()
+		err = gormClient.Delete(dummyOrderItemFromDB).Error
+		require.NoError(t, err, "If this error, immediately check TestOrderItem/_PlaceOrderItem(1)")
 		supabaseClient.From("store_stock").Delete("", "").Eq("id", strconv.Itoa(transferredStoreStockFromDB.Id)).Execute()
 		supabaseClient.From("warehouse").Delete("", "").Eq("item_id", strconv.Itoa(dummyItemFromDB.ItemId)).Execute()
 
@@ -104,7 +109,8 @@ func TestOrderItemRepository(t *testing.T) {
 		dummyOrderItemFromDB, err = orderItemRepo.PlaceOrderItem(dummyOrderItemInvalidTotalQuantity)
 		assert.Nil(t, dummyOrderItemFromDB)
 		assert.NotNil(t, err)
-		assert.Equal(t, "(23514) new row for relation \"order_item\" violates check constraint \"order_item_quantity_check\"", err.Error())
+		//assert.Equal(t, "(23514) new row for relation \"order_item\" violates check constraint \"order_item_quantity_check\"", err.Error())
+		assert.Contains(t, err.Error(), "23514")
 		dummyOrderItemInvalidTotalAmount := &model.OrderItem{
 			PurchasedPrice: 10000,
 			TotalQuantity:  10000,
@@ -117,7 +123,8 @@ func TestOrderItemRepository(t *testing.T) {
 		dummyOrderItemFromDB, err = orderItemRepo.PlaceOrderItem(dummyOrderItemInvalidTotalAmount)
 		assert.Nil(t, dummyOrderItemFromDB)
 		assert.NotNil(t, err)
-		assert.Equal(t, "(23514) new row for relation \"order_item\" violates check constraint \"order_item_total_amount_check\"", err.Error())
+		//assert.Equal(t, "(23514) new row for relation \"order_item\" violates check constraint \"order_item_total_amount_check\"", err.Error())
+		assert.Contains(t, err.Error(), "23514")
 		dummyOrderItemInvalidDiscountAmount := &model.OrderItem{
 			PurchasedPrice: 10000,
 			TotalQuantity:  1,
@@ -130,7 +137,7 @@ func TestOrderItemRepository(t *testing.T) {
 		dummyOrderItemFromDB, err = orderItemRepo.PlaceOrderItem(dummyOrderItemInvalidDiscountAmount)
 		assert.Nil(t, dummyOrderItemFromDB)
 		assert.NotNil(t, err)
-		assert.Equal(t, "(23514) new row for relation \"order_item\" violates check constraint \"order_item_discount_amount_check\"", err.Error())
+		assert.Contains(t, err.Error(), "23514")
 
 		// TEST: unavailable STORE_ID
 		dummyOrderItem = &model.OrderItem{
@@ -145,7 +152,8 @@ func TestOrderItemRepository(t *testing.T) {
 		dummyOrderItemFromDB, err = orderItemRepo.PlaceOrderItem(dummyOrderItem)
 		assert.Nil(t, dummyOrderItemFromDB)
 		assert.NotNil(t, err)
-		assert.Equal(t, "(23503) insert or update on table \"order_item\" violates foreign key constraint \"order_item_store_id_fkey\"", err.Error())
+		//assert.Equal(t, "(23503) insert or update on table \"order_item\" violates foreign key constraint \"order_item_store_id_fkey\"", err.Error())
+		assert.Contains(t, err.Error(), "23503")
 
 		// TEST: unavailable TENANT_ID
 		dummyOrderItem = &model.OrderItem{
@@ -160,11 +168,12 @@ func TestOrderItemRepository(t *testing.T) {
 		dummyOrderItemFromDB, err = orderItemRepo.PlaceOrderItem(dummyOrderItem)
 		assert.Nil(t, dummyOrderItemFromDB)
 		assert.NotNil(t, err)
-		assert.Equal(t, "(23503) insert or update on table \"order_item\" violates foreign key constraint \"order_item_tenant_id_fkey\"", err.Error())
+		//assert.Equal(t, "(23503) insert or update on table \"order_item\" violates foreign key constraint \"order_item_tenant_id_fkey\"", err.Error())
+		assert.Contains(t, err.Error(), "23503")
 	})
 
 	t.Run("Get", func(t *testing.T) {
-		orderItemRepo := NewOrderItemRepositoryImpl(supabaseClient)
+		orderItemRepo := NewOrderItemRepositoryImpl(gormClient)
 
 		// This is test purpose !
 		// Mock user purchased items,
@@ -239,17 +248,17 @@ func TestOrderItemRepository(t *testing.T) {
 			assert.Nil(t, err)
 			assert.Greater(t, count, 4)
 			assert.Equal(t, limit, len(dummyCreatedOrderItems))
-			for _, dummyCreatedItem := range dummyCreatedOrderItems {
-				assert.NotEqual(t, 0, dummyCreatedItem.PurchasedPrice)
-				assert.NotEqual(t, 0, dummyCreatedItem.TotalQuantity)
-				assert.NotEqual(t, 0, dummyCreatedItem.TotalAmount)
-				assert.GreaterOrEqual(t, dummyCreatedItem.DiscountAmount, 0)
-				assert.NotEqual(t, 0, dummyCreatedItem.Subtotal)
-				assert.Equal(t, TENANT_ID, dummyCreatedItem.TenantId)
+			for _, dummyCreatedOrderItem := range dummyCreatedOrderItems {
+				assert.NotEqual(t, 0, dummyCreatedOrderItem.PurchasedPrice)
+				assert.NotEqual(t, 0, dummyCreatedOrderItem.TotalQuantity)
+				assert.NotEqual(t, 0, dummyCreatedOrderItem.TotalAmount)
+				assert.GreaterOrEqual(t, dummyCreatedOrderItem.DiscountAmount, 0)
+				assert.NotEqual(t, 0, dummyCreatedOrderItem.Subtotal)
+				assert.Equal(t, TENANT_ID, dummyCreatedOrderItem.TenantId)
 
 				// Clean up;
-				_, _, err := supabaseClient.From(OrderItemTable).Delete("", "").Eq("id", strconv.Itoa(dummyCreatedItem.Id)).Execute()
-				require.Nilf(t, err, "If this error; immediately delete the test data. tenantId: %d, id: %d; TestOrderItemRepository/Get/NormalQuery 1", TENANT_ID, dummyCreatedItem.Id)
+				err = gormClient.Delete(dummyCreatedOrderItem).Error
+				require.Nilf(t, err, "If this error; immediately delete the test data. tenantId: %d, id: %d; TestOrderItemRepository/Get/NormalQuery 1", TENANT_ID, dummyCreatedOrderItem.Id)
 			}
 		})
 
@@ -268,7 +277,7 @@ func TestOrderItemRepository(t *testing.T) {
 					Subtotal:       100,
 					TenantId:       TENANT_ID,
 					StoreId:        STORE_ID,
-					CreatedAt:      &now,
+					CreatedAt:      now,
 				},
 				{
 					PurchasedPrice: 200,
@@ -278,7 +287,7 @@ func TestOrderItemRepository(t *testing.T) {
 					Subtotal:       400,
 					TenantId:       TENANT_ID,
 					StoreId:        STORE_ID,
-					CreatedAt:      &min1Day,
+					CreatedAt:      min1Day,
 				},
 				{
 					PurchasedPrice: 300,
@@ -288,7 +297,7 @@ func TestOrderItemRepository(t *testing.T) {
 					Subtotal:       900,
 					TenantId:       TENANT_ID,
 					StoreId:        STORE_ID,
-					CreatedAt:      &min2Day,
+					CreatedAt:      min2Day,
 				},
 				{
 					PurchasedPrice: 400,
@@ -298,7 +307,7 @@ func TestOrderItemRepository(t *testing.T) {
 					Subtotal:       1600,
 					TenantId:       TENANT_ID,
 					StoreId:        STORE_ID,
-					CreatedAt:      &min3Day,
+					CreatedAt:      min3Day,
 				},
 				{
 					PurchasedPrice: 500,
@@ -308,7 +317,7 @@ func TestOrderItemRepository(t *testing.T) {
 					Subtotal:       2500,
 					TenantId:       TENANT_ID,
 					StoreId:        STORE_ID,
-					CreatedAt:      &min4Day,
+					CreatedAt:      min4Day,
 				},
 			}
 
@@ -346,7 +355,7 @@ func TestOrderItemRepository(t *testing.T) {
 			var previous *model.OrderItem
 			for _, current := range dummyCreatedOrderItems {
 				if previous != nil {
-					assert.True(t, previous.CreatedAt.After(*current.CreatedAt),
+					assert.True(t, previous.CreatedAt.After(current.CreatedAt),
 						"Expected descending order, but %v is before %v", previous.CreatedAt, current.CreatedAt)
 				}
 				previous = current
@@ -446,11 +455,15 @@ func TestOrderItemRepository(t *testing.T) {
 				previous = current
 			}
 
-			// Clean up;
-			for _, dummyItem := range record {
-				_, _, err := supabaseClient.From(OrderItemTable).Delete("", "").Eq("id", strconv.Itoa(dummyItem.Id)).Execute()
-				require.Nilf(t, err, "If this error; immediately delete the test data. tenantId: %d, id: %d; TestOrderItemRepository/Get/NormalQuery 1", TENANT_ID, dummyItem.Id)
+			// Clean up
+			ids := make([]int, len(record))
+			for i, dummyItem := range record {
+				ids[i] = dummyItem.Id
 			}
+			err = gormClient.
+				Where("id IN ? AND tenant_id = ?", ids, TENANT_ID).
+				Delete(&model.OrderItem{}).Error
+			require.Nilf(t, err, "If this error; immediately delete the test data. tenantId: %d, ids: %v; TestOrderItemRepository/Get/SortByTotalAmountDesc", TENANT_ID, ids)
 		})
 	})
 

@@ -11,10 +11,12 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/supabase-community/supabase-go"
+	"gorm.io/gorm"
 )
 
 func TestPurchasedItem(t *testing.T) {
 	var supabaseClient *supabase.Client = client.CreateSupabaseClient()
+	var gormClient *gorm.DB = client.CreateGormClient()
 
 	const (
 		TENANT_ID int = 1
@@ -28,7 +30,7 @@ func TestPurchasedItem(t *testing.T) {
 	)
 
 	t.Run("CreateList", func(t *testing.T) {
-		orderItemRepo := NewOrderItemRepositoryImpl(supabaseClient)
+		orderItemRepo := NewOrderItemRepositoryImpl(gormClient)
 		purchasedItemListRepo := NewPurchasedItemRepositoryImpl(supabaseClient)
 
 		// The dummy data
@@ -124,7 +126,7 @@ func TestPurchasedItem(t *testing.T) {
 	})
 
 	t.Run("GetByOrderItemId", func(t *testing.T) {
-		orderItemRepo := NewOrderItemRepositoryImpl(supabaseClient)
+		orderItemRepo := NewOrderItemRepositoryImpl(gormClient)
 		purchasedItemListRepo := NewPurchasedItemRepositoryImpl(supabaseClient)
 
 		t.Run("NormalGet", func(t *testing.T) {

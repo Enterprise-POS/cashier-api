@@ -38,7 +38,7 @@ func (repository *UserRepositoryImpl) CreateWithEmailAndPassword(newUser model.U
 func (repository *UserRepositoryImpl) GetByEmail(email string) (*model.User, error) {
 	var user model.User
 
-	result := repository.Client.Where("email = ?", email).First(&user)
+	result := repository.Client.Take(&user, "email = ?", email)
 	if result.Error != nil {
 		return nil, result.Error
 	}
