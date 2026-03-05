@@ -4,19 +4,16 @@ import (
 	"cashier-api/helper/client"
 	"cashier-api/model"
 	"reflect"
-	"strconv"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/supabase-community/supabase-go"
 	"gorm.io/gorm"
 )
 
 func TestWarehouseRepository(t *testing.T) {
 	var gormClient *gorm.DB = client.CreateGormClient()
-	var supabaseClient *supabase.Client = client.CreateSupabaseClient()
 
 	warehouseRepo := NewWarehouseRepositoryImpl(gormClient)
 
@@ -57,13 +54,11 @@ func TestWarehouseRepository(t *testing.T) {
 
 		// Clean up
 		// Delete the dummy data
-		_, _, err = supabaseClient.From("warehouse").
-			Delete("", "").
-			Eq("tenant_id", strconv.Itoa(dummyItemFromDB.TenantId)).
-			Eq("item_name", dummyItemFromDB.ItemName).Execute()
-		if err != nil {
-			t.Fatal("unexpected error while testing to delete dummy data _CreateItem")
-		}
+		err = gormClient.
+			Where("tenant_id", dummyItemFromDB.TenantId).
+			Where("item_name", dummyItemFromDB.ItemName).
+			Delete(&dummyItemFromDB).Error
+		require.NoError(t, err, "Unexpected error while testing to delete dummy data _FindById")
 	})
 
 	t.Run("TestWarehouseRepository_CreateItem", func(t *testing.T) {
@@ -96,13 +91,11 @@ func TestWarehouseRepository(t *testing.T) {
 		assert.Nil(t, dataNil)
 
 		// Delete the dummy data
-		_, _, err = supabaseClient.From("warehouse").
-			Delete("", "").
-			Eq("item_id", strconv.Itoa(dummyItemFromDB.ItemId)).
-			Eq("tenant_id", strconv.Itoa(dummyItemFromDB.TenantId)).Execute()
-		if err != nil {
-			t.Fatal("unexpected error while testing to delete dummy data _CreateItem")
-		}
+		err = gormClient.
+			Where("item_id", dummyItemFromDB.ItemId).
+			Where("tenant_id", dummyItemFromDB.TenantId).
+			Delete(&dummyItemFromDB).Error
+		require.NoError(t, err, "Unexpected error while testing to delete dummy data _CreateItem")
 	})
 
 	t.Run("TestWarehouseRepository_Edit", func(t *testing.T) {
@@ -425,8 +418,9 @@ func TestWarehouseRepository(t *testing.T) {
 		assert.NotNil(t, items)
 		assert.Equal(t, 0, len(items))
 
+		// Delete warehouse items
 		for _, dummy := range dummies {
-			supabaseClient.From("warehouse").Delete("", "").Eq("item_name", dummy.ItemName).Execute()
+			gormClient.Where("item_name", dummy.ItemName).Delete(&dummy)
 		}
 	})
 }

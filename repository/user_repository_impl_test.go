@@ -3,7 +3,6 @@ package repository
 import (
 	"cashier-api/helper/client"
 	"cashier-api/model"
-	"strconv"
 	"testing"
 
 	"github.com/google/uuid"
@@ -12,7 +11,6 @@ import (
 )
 
 func TestUserRepositoryImpl(t *testing.T) {
-	var supabaseClient = client.CreateSupabaseClient()
 	var gormClient = client.CreateGormClient()
 
 	t.Run("CreateWithEmailAndPassword", func(t *testing.T) {
@@ -34,7 +32,7 @@ func TestUserRepositoryImpl(t *testing.T) {
 
 			// Clean up
 			// DB
-			_, _, err = supabaseClient.From(UserTable).Delete("", "").Eq("id", strconv.Itoa(newCreatedTestUser.Id)).Execute()
+			err = gormClient.Delete(&newCreatedTestUser).Error
 			require.Nil(t, err)
 
 			// Supabase Auth
@@ -68,7 +66,7 @@ func TestUserRepositoryImpl(t *testing.T) {
 			assert.Contains(t, err.Error(), "23505")
 
 			// Only delete the first test user, because the second user should not be created
-			_, _, err = supabaseClient.From(UserTable).Delete("", "").Eq("id", strconv.Itoa(newCreatedTestUser.Id)).Execute()
+			err = gormClient.Delete(&newCreatedTestUser).Error
 			require.Nil(t, err)
 		})
 
@@ -100,7 +98,7 @@ func TestUserRepositoryImpl(t *testing.T) {
 			assert.Contains(t, err.Error(), "23505")
 
 			// Only delete the first test user, because the second user should not be created
-			_, _, err = supabaseClient.From(UserTable).Delete("", "").Eq("id", strconv.Itoa(newCreatedTestUser.Id)).Execute()
+			err = gormClient.Delete(&newCreatedTestUser).Error
 			require.Nil(t, err)
 		})
 	})
@@ -130,7 +128,7 @@ func TestUserRepositoryImpl(t *testing.T) {
 			assert.Equal(t, dummyUser.UserUuid, testDummyUser.UserUuid)
 			assert.NotNil(t, dummyUser.CreatedAt, testDummyUser.CreatedAt)
 
-			_, _, err = supabaseClient.From(UserTable).Delete("", "").Eq("id", strconv.Itoa(testDummyUser.Id)).Execute()
+			err = gormClient.Delete(&testDummyUser).Error
 			require.Nil(t, err)
 		})
 	})
