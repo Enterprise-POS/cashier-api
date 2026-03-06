@@ -10,12 +10,10 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/supabase-community/supabase-go"
 	"gorm.io/gorm"
 )
 
 func TestStoreRepositoryImpl(t *testing.T) {
-	var supabaseClient *supabase.Client = client.CreateSupabaseClient()
 	var gormClient *gorm.DB = client.CreateGormClient()
 	storeRepository := NewStoreRepositoryImpl(gormClient)
 
@@ -38,11 +36,9 @@ func TestStoreRepositoryImpl(t *testing.T) {
 	require.NoError(t, err)
 	// Get tenant id
 	var testTenant model.Tenant
-	_, err = supabaseClient.From(TenantTable).
-		Select("*", "", false).
-		Eq("owner_user_id", fmt.Sprint(testUser.Id)).
-		Single().
-		ExecuteTo(&testTenant)
+	err = gormClient.
+		Where("owner_user_id", testUser.Id).
+		Take(&testTenant).Error
 	require.NoError(t, err)
 
 	t.Run("Create", func(t *testing.T) {

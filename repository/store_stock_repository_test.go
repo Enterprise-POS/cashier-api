@@ -85,7 +85,7 @@ func TestStoreStockRepository(t *testing.T) {
 			Where("item_id", dummyItemFromDB.ItemId).
 			Where("tenant_id", dummyItemFromDB.TenantId).
 			Where("store_id", StoreId).
-			First(&storeStockDummyFromDB).Error
+			Take(&storeStockDummyFromDB).Error
 		require.Nil(t, err)
 
 		require.Equal(t, 0, storeStockDummyFromDB.Price)
@@ -204,7 +204,8 @@ func TestStoreStockRepository(t *testing.T) {
 
 		// store_stock
 		err = gormClient.
-			Where("item_id = ? AND store_id = ?", transferredItemFromDB.ItemId, StoreId).
+			Where("item_id", transferredItemFromDB.ItemId).
+			Where("store_id", StoreId).
 			Delete(&model.StoreStock{}).Error
 		require.Nil(t, err)
 

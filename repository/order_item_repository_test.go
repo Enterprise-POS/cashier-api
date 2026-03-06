@@ -4,466 +4,320 @@ import (
 	"cashier-api/helper/client"
 	"cashier-api/helper/query"
 	"cashier-api/model"
-	"encoding/json"
-	"fmt"
-	"strconv"
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/supabase-community/supabase-go"
 	"gorm.io/gorm"
 )
 
 func TestOrderItemRepository(t *testing.T) {
-	var supabaseClient *supabase.Client = client.CreateSupabaseClient()
 	var gormClient *gorm.DB = client.CreateGormClient()
 
 	const STORE_ID = 1
 	const TENANT_ID = 1
 	t.Run("_PlaceOrderItem", func(t *testing.T) {
-		// TEST: Normal insert
-		warehouseRepo := NewWarehouseRepositoryImpl(gormClient)
-		orderItemRepo := NewOrderItemRepositoryImpl(gormClient)
-		storeStockRepo := NewStoreStockRepositoryImpl(gormClient)
+		t.Run("SuccessCase", func(t *testing.T) {
+			tx := gormClient.Begin()
+			defer tx.Rollback()
 
-		dummyItem := &model.Item{
-			ItemName:  "Test TestOrderItemRepository_PlaceOrderItem 1",
-			Stocks:    100,
-			StockType: model.StockTypeTracked,
-			TenantId:  TENANT_ID,
-		}
+			warehouseRepo := NewWarehouseRepositoryImpl(tx)
+			orderItemRepo := NewOrderItemRepositoryImpl(tx)
+			storeStockRepo := NewStoreStockRepositoryImpl(tx)
 
-		_dummyItemFromDB, err := warehouseRepo.CreateItem([]*model.Item{dummyItem})
-		require.Nil(t, err)
-		require.NotNil(t, _dummyItemFromDB)
-		require.Greater(t, len(_dummyItemFromDB), 0)
+			dummyItem := &model.Item{
+				ItemName:  "Test PlaceOrderItem Success",
+				Stocks:    100,
+				StockType: model.StockTypeTracked,
+				TenantId:  TENANT_ID,
+			}
 
-		var dummyItemFromDB *model.Item = _dummyItemFromDB[0]
-		dummyItemFromDB.Stocks -= 10 // current: 90 | created store_stock: 10
+			items, err := warehouseRepo.CreateItem([]*model.Item{dummyItem})
+			require.NoError(t, err)
+			require.NotEmpty(t, items)
 
-		err = storeStockRepo.TransferStockToStoreStock(5, dummyItemFromDB.ItemId, STORE_ID, TENANT_ID)
-		require.Nil(t, err)
+			item := items[0]
 
-		rStoreStockData, _, err := supabaseClient.From("store_stock").
-			Select("*", "", false).
-			Eq("item_id", fmt.Sprint(dummyItemFromDB.ItemId)).
-			Eq("tenant_id", strconv.Itoa(TENANT_ID)).
-			Eq("store_id", strconv.Itoa(STORE_ID)).
-			Single().Execute()
-		require.Nil(t, err)
+			err = storeStockRepo.TransferStockToStoreStock(
+				5,
+				item.ItemId,
+				STORE_ID,
+				TENANT_ID,
+			)
+			require.NoError(t, err)
 
-		var transferredStoreStockFromDB = new(model.StoreStock)
-		err = json.Unmarshal(rStoreStockData, transferredStoreStockFromDB)
-		require.Nil(t, err)
+			input := &model.OrderItem{
+				PurchasedPrice: 10000,
+				TotalQuantity:  1,
+				TotalAmount:    10000,
+				DiscountAmount: 0,
+				Subtotal:       10000,
+				TenantId:       TENANT_ID,
+				StoreId:        STORE_ID,
+			}
 
-		// This is only test so any purchased amount will not synchronized
-		// dummy store_stock data price is 0, but here 10000
-		dummyOrderItem := &model.OrderItem{
-			PurchasedPrice: 10000,
-			TotalQuantity:  1,
-			TotalAmount:    10000,
-			DiscountAmount: 0,
-			Subtotal:       10000,
-			TenantId:       TENANT_ID,
-			StoreId:        STORE_ID,
-		}
+			result, err := orderItemRepo.PlaceOrderItem(input)
 
-		dummyOrderItemFromDB, err := orderItemRepo.PlaceOrderItem(dummyOrderItem)
-		assert.Nil(t, err)
-		assert.NotNil(t, dummyOrderItemFromDB)
-		assert.NotNil(t, dummyOrderItemFromDB.Id)
-		assert.NotEqual(t, 0, dummyOrderItemFromDB.Id)
-		assert.Equal(t, dummyOrderItem.PurchasedPrice, dummyOrderItemFromDB.PurchasedPrice)
-		assert.Equal(t, dummyOrderItem.TotalQuantity, dummyOrderItemFromDB.TotalQuantity)
-		assert.Equal(t, dummyOrderItem.TotalAmount, dummyOrderItemFromDB.TotalAmount)
-		assert.Equal(t, dummyOrderItem.DiscountAmount, dummyOrderItemFromDB.DiscountAmount)
-		assert.Equal(t, dummyOrderItem.Subtotal, dummyOrderItemFromDB.Subtotal)
-		assert.Equal(t, TENANT_ID, dummyOrderItemFromDB.TenantId)
-		assert.Equal(t, STORE_ID, dummyOrderItemFromDB.StoreId)
+			require.NoError(t, err)
+			require.NotNil(t, result)
+			require.NotZero(t, result.Id)
+		})
 
-		// Clean up; order_item -> store_stock (also act as shop) -> warehouse
-		//supabaseClient.From("order_item").Delete("", "").Eq("id", strconv.Itoa(dummyOrderItemFromDB.Id)).Execute()
-		err = gormClient.Delete(dummyOrderItemFromDB).Error
-		require.NoError(t, err, "If this error, immediately check TestOrderItem/_PlaceOrderItem(1)")
-		supabaseClient.From("store_stock").Delete("", "").Eq("id", strconv.Itoa(transferredStoreStockFromDB.Id)).Execute()
-		supabaseClient.From("warehouse").Delete("", "").Eq("item_id", strconv.Itoa(dummyItemFromDB.ItemId)).Execute()
+		t.Run("InvalidTotalQuantity", func(t *testing.T) {
+			tx := gormClient.Begin()
+			defer tx.Rollback()
 
-		/*
-			TEST: invalid value
-				total_quantity > 0
-				total_amount >= 0
-				discount_amount >= 0
-				subtotal >= 0
-		*/
-		dummyOrderItemInvalidTotalQuantity := &model.OrderItem{
-			PurchasedPrice: 10000,
-			TotalQuantity:  0,
-			TotalAmount:    10000,
-			DiscountAmount: 0,
-			Subtotal:       10000,
-			TenantId:       TENANT_ID,
-			StoreId:        STORE_ID,
-		}
-		dummyOrderItemFromDB, err = orderItemRepo.PlaceOrderItem(dummyOrderItemInvalidTotalQuantity)
-		assert.Nil(t, dummyOrderItemFromDB)
-		assert.NotNil(t, err)
-		//assert.Equal(t, "(23514) new row for relation \"order_item\" violates check constraint \"order_item_quantity_check\"", err.Error())
-		assert.Contains(t, err.Error(), "23514")
-		dummyOrderItemInvalidTotalAmount := &model.OrderItem{
-			PurchasedPrice: 10000,
-			TotalQuantity:  10000,
-			TotalAmount:    -1,
-			DiscountAmount: 0,
-			Subtotal:       10000,
-			TenantId:       TENANT_ID,
-			StoreId:        STORE_ID,
-		}
-		dummyOrderItemFromDB, err = orderItemRepo.PlaceOrderItem(dummyOrderItemInvalidTotalAmount)
-		assert.Nil(t, dummyOrderItemFromDB)
-		assert.NotNil(t, err)
-		//assert.Equal(t, "(23514) new row for relation \"order_item\" violates check constraint \"order_item_total_amount_check\"", err.Error())
-		assert.Contains(t, err.Error(), "23514")
-		dummyOrderItemInvalidDiscountAmount := &model.OrderItem{
-			PurchasedPrice: 10000,
-			TotalQuantity:  1,
-			TotalAmount:    10000,
-			DiscountAmount: -1,
-			Subtotal:       10000,
-			TenantId:       TENANT_ID,
-			StoreId:        STORE_ID,
-		}
-		dummyOrderItemFromDB, err = orderItemRepo.PlaceOrderItem(dummyOrderItemInvalidDiscountAmount)
-		assert.Nil(t, dummyOrderItemFromDB)
-		assert.NotNil(t, err)
-		assert.Contains(t, err.Error(), "23514")
+			repo := NewOrderItemRepositoryImpl(tx)
 
-		// TEST: unavailable STORE_ID
-		dummyOrderItem = &model.OrderItem{
-			PurchasedPrice: 9999,
-			TotalQuantity:  90,
-			TotalAmount:    9999,
-			DiscountAmount: 0,
-			Subtotal:       9999,
-			TenantId:       TENANT_ID,
-			StoreId:        0, // -> will not valid
-		}
-		dummyOrderItemFromDB, err = orderItemRepo.PlaceOrderItem(dummyOrderItem)
-		assert.Nil(t, dummyOrderItemFromDB)
-		assert.NotNil(t, err)
-		//assert.Equal(t, "(23503) insert or update on table \"order_item\" violates foreign key constraint \"order_item_store_id_fkey\"", err.Error())
-		assert.Contains(t, err.Error(), "23503")
+			input := &model.OrderItem{
+				PurchasedPrice: 10000,
+				TotalQuantity:  0,
+				TotalAmount:    10000,
+				DiscountAmount: 0,
+				Subtotal:       10000,
+				TenantId:       TENANT_ID,
+				StoreId:        STORE_ID,
+			}
 
-		// TEST: unavailable TENANT_ID
-		dummyOrderItem = &model.OrderItem{
-			PurchasedPrice: 9999,
-			TotalQuantity:  90,
-			TotalAmount:    9999,
-			DiscountAmount: 0,
-			Subtotal:       9999,
-			TenantId:       0, // -> will not valid
-			StoreId:        STORE_ID,
-		}
-		dummyOrderItemFromDB, err = orderItemRepo.PlaceOrderItem(dummyOrderItem)
-		assert.Nil(t, dummyOrderItemFromDB)
-		assert.NotNil(t, err)
-		//assert.Equal(t, "(23503) insert or update on table \"order_item\" violates foreign key constraint \"order_item_tenant_id_fkey\"", err.Error())
-		assert.Contains(t, err.Error(), "23503")
+			result, err := repo.PlaceOrderItem(input)
+
+			require.Nil(t, result)
+			require.Error(t, err)
+
+			pgErr, ok := err.(*pgconn.PgError)
+			require.True(t, ok)
+			assert.Equal(t, "23514", pgErr.Code)
+		})
+
+		t.Run("InvalidTotalAmount", func(t *testing.T) {
+			tx := gormClient.Begin()
+			defer tx.Rollback()
+
+			repo := NewOrderItemRepositoryImpl(tx)
+
+			input := &model.OrderItem{
+				PurchasedPrice: 10000,
+				TotalQuantity:  1,
+				TotalAmount:    -1,
+				DiscountAmount: 0,
+				Subtotal:       10000,
+				TenantId:       TENANT_ID,
+				StoreId:        STORE_ID,
+			}
+
+			result, err := repo.PlaceOrderItem(input)
+
+			require.Nil(t, result)
+			require.Error(t, err)
+
+			pgErr, ok := err.(*pgconn.PgError)
+			require.True(t, ok)
+			assert.Equal(t, "23514", pgErr.Code)
+		})
+
+		t.Run("InvalidDiscountAmount", func(t *testing.T) {
+			tx := gormClient.Begin()
+			defer tx.Rollback()
+
+			repo := NewOrderItemRepositoryImpl(tx)
+
+			input := &model.OrderItem{
+				PurchasedPrice: 10000,
+				TotalQuantity:  1,
+				TotalAmount:    10000,
+				DiscountAmount: -1,
+				Subtotal:       10000,
+				TenantId:       TENANT_ID,
+				StoreId:        STORE_ID,
+			}
+
+			result, err := repo.PlaceOrderItem(input)
+
+			require.Nil(t, result)
+			require.Error(t, err)
+
+			pgErr, ok := err.(*pgconn.PgError)
+			require.True(t, ok)
+			assert.Equal(t, "23514", pgErr.Code)
+		})
+
+		t.Run("InvalidStoreForeignKey", func(t *testing.T) {
+			tx := gormClient.Begin()
+			defer tx.Rollback()
+
+			repo := NewOrderItemRepositoryImpl(tx)
+
+			input := &model.OrderItem{
+				PurchasedPrice: 9999,
+				TotalQuantity:  1,
+				TotalAmount:    9999,
+				DiscountAmount: 0,
+				Subtotal:       9999,
+				TenantId:       TENANT_ID,
+				StoreId:        0,
+			}
+
+			result, err := repo.PlaceOrderItem(input)
+
+			require.Nil(t, result)
+			require.Error(t, err)
+
+			pgErr, ok := err.(*pgconn.PgError)
+			require.True(t, ok)
+			assert.Equal(t, "23503", pgErr.Code)
+		})
+
+		t.Run("InvalidTenantForeignKey", func(t *testing.T) {
+			tx := gormClient.Begin()
+			defer tx.Rollback()
+
+			repo := NewOrderItemRepositoryImpl(tx)
+
+			input := &model.OrderItem{
+				PurchasedPrice: 9999,
+				TotalQuantity:  1,
+				TotalAmount:    9999,
+				DiscountAmount: 0,
+				Subtotal:       9999,
+				TenantId:       0,
+				StoreId:        STORE_ID,
+			}
+
+			result, err := repo.PlaceOrderItem(input)
+
+			require.Nil(t, result)
+			require.Error(t, err)
+
+			pgErr, ok := err.(*pgconn.PgError)
+			require.True(t, ok)
+			assert.Equal(t, "23503", pgErr.Code)
+		})
 	})
 
 	t.Run("Get", func(t *testing.T) {
-		orderItemRepo := NewOrderItemRepositoryImpl(gormClient)
-
-		// This is test purpose !
-		// Mock user purchased items,
-		// in this test we don't need the purchased_item_list
 		t.Run("NormalQuery", func(t *testing.T) {
+			tx := gormClient.Begin()
+			defer tx.Rollback()
+
+			orderItemRepo := NewOrderItemRepositoryImpl(tx)
+
 			dummyOrderItems := []*model.OrderItem{
-				{
-					PurchasedPrice: 10000,
-					TotalQuantity:  1,
-					TotalAmount:    10000,
-					DiscountAmount: 0,
-					Subtotal:       10000,
-					TenantId:       TENANT_ID,
-					StoreId:        STORE_ID,
-				},
-				{
-					PurchasedPrice: 20000,
-					TotalQuantity:  2,
-					TotalAmount:    40000,
-					DiscountAmount: 0,
-					Subtotal:       40000,
-					TenantId:       TENANT_ID,
-					StoreId:        STORE_ID,
-				},
-				{
-					PurchasedPrice: 30000,
-					TotalQuantity:  3,
-					TotalAmount:    90000,
-					DiscountAmount: 0,
-					Subtotal:       90000,
-					TenantId:       TENANT_ID,
-					StoreId:        STORE_ID,
-				},
-				{
-					PurchasedPrice: 40000,
-					TotalQuantity:  4,
-					TotalAmount:    100_000,
-					DiscountAmount: 60000,
-					Subtotal:       160_000,
-					TenantId:       TENANT_ID,
-					StoreId:        STORE_ID,
-				},
-				{
-					PurchasedPrice: 50000,
-					TotalQuantity:  5,
-					TotalAmount:    250_000,
-					DiscountAmount: 0,
-					Subtotal:       250_000,
-					TenantId:       TENANT_ID,
-					StoreId:        STORE_ID,
-				},
+				{PurchasedPrice: 10000, TotalQuantity: 1, TotalAmount: 10000, DiscountAmount: 0, Subtotal: 10000, TenantId: TENANT_ID, StoreId: STORE_ID},
+				{PurchasedPrice: 20000, TotalQuantity: 2, TotalAmount: 40000, DiscountAmount: 0, Subtotal: 40000, TenantId: TENANT_ID, StoreId: STORE_ID},
+				{PurchasedPrice: 30000, TotalQuantity: 3, TotalAmount: 90000, DiscountAmount: 0, Subtotal: 90000, TenantId: TENANT_ID, StoreId: STORE_ID},
+				{PurchasedPrice: 40000, TotalQuantity: 4, TotalAmount: 100000, DiscountAmount: 60000, Subtotal: 160000, TenantId: TENANT_ID, StoreId: STORE_ID},
+				{PurchasedPrice: 50000, TotalQuantity: 5, TotalAmount: 250000, DiscountAmount: 0, Subtotal: 250000, TenantId: TENANT_ID, StoreId: STORE_ID},
 			}
-			for i, dummyOrderItem := range dummyOrderItems {
-				dummyOrderItemFromDB, err := orderItemRepo.PlaceOrderItem(dummyOrderItem)
 
+			for _, item := range dummyOrderItems {
+				result, err := orderItemRepo.PlaceOrderItem(item)
 				require.Nil(t, err)
-				require.NotNil(t, dummyOrderItemFromDB)
-				require.NotNil(t, dummyOrderItemFromDB.Id)
-				require.NotEqual(t, 0, dummyOrderItemFromDB.Id)
-				require.Equal(t, dummyOrderItems[i].PurchasedPrice, dummyOrderItemFromDB.PurchasedPrice)
-				require.Equal(t, dummyOrderItems[i].TotalQuantity, dummyOrderItemFromDB.TotalQuantity)
-				require.Equal(t, dummyOrderItems[i].TotalAmount, dummyOrderItemFromDB.TotalAmount)
-				require.Equal(t, dummyOrderItems[i].DiscountAmount, dummyOrderItemFromDB.DiscountAmount)
-				require.Equal(t, dummyOrderItems[i].Subtotal, dummyOrderItemFromDB.Subtotal)
-				require.Equal(t, TENANT_ID, dummyOrderItemFromDB.TenantId)
-				require.Equal(t, STORE_ID, dummyOrderItemFromDB.StoreId)
+				require.NotZero(t, result.Id)
 			}
 
-			page := 1
-			limit := 5
-			dummyCreatedOrderItems, count, err := orderItemRepo.Get(TENANT_ID, 0, limit, page-1, nil, nil)
-			assert.Nil(t, err)
-			assert.Greater(t, count, 4)
-			assert.Equal(t, limit, len(dummyCreatedOrderItems))
-			for _, dummyCreatedOrderItem := range dummyCreatedOrderItems {
-				assert.NotEqual(t, 0, dummyCreatedOrderItem.PurchasedPrice)
-				assert.NotEqual(t, 0, dummyCreatedOrderItem.TotalQuantity)
-				assert.NotEqual(t, 0, dummyCreatedOrderItem.TotalAmount)
-				assert.GreaterOrEqual(t, dummyCreatedOrderItem.DiscountAmount, 0)
-				assert.NotEqual(t, 0, dummyCreatedOrderItem.Subtotal)
-				assert.Equal(t, TENANT_ID, dummyCreatedOrderItem.TenantId)
+			results, count, err := orderItemRepo.Get(TENANT_ID, 0, 5, 0, nil, nil)
 
-				// Clean up;
-				err = gormClient.Delete(dummyCreatedOrderItem).Error
-				require.Nilf(t, err, "If this error; immediately delete the test data. tenantId: %d, id: %d; TestOrderItemRepository/Get/NormalQuery 1", TENANT_ID, dummyCreatedOrderItem.Id)
+			require.Nil(t, err)
+			require.Equal(t, 5, count)
+			require.Len(t, results, 5)
+
+			for _, r := range results {
+				assert.Equal(t, TENANT_ID, r.TenantId)
+				assert.NotZero(t, r.TotalAmount)
 			}
 		})
 
 		t.Run("DateSortByDesc", func(t *testing.T) {
-			now := time.Now()
-			min1Day := now.AddDate(0, 0, -1)
-			min2Day := now.AddDate(0, 0, -2)
-			min3Day := now.AddDate(0, 0, -3)
-			min4Day := now.AddDate(0, 0, -4)
-			dummyOrderItems := []*model.OrderItem{
-				{
-					PurchasedPrice: 100,
+			tx := gormClient.Begin()
+			defer tx.Rollback()
+
+			orderItemRepo := NewOrderItemRepositoryImpl(tx)
+
+			base := time.Date(2025, 1, 10, 10, 0, 0, 0, time.UTC)
+
+			dates := []time.Time{
+				base,
+				base.AddDate(0, 0, -1),
+				base.AddDate(0, 0, -2),
+				base.AddDate(0, 0, -3),
+				base.AddDate(0, 0, -4),
+			}
+
+			for i := 0; i < 5; i++ {
+				_, err := orderItemRepo.PlaceOrderItem(&model.OrderItem{
+					PurchasedPrice: 100 * (i + 1),
 					TotalQuantity:  1,
-					TotalAmount:    100,
+					TotalAmount:    100 * (i + 1),
 					DiscountAmount: 0,
-					Subtotal:       100,
+					Subtotal:       100 * (i + 1),
 					TenantId:       TENANT_ID,
 					StoreId:        STORE_ID,
-					CreatedAt:      now,
-				},
-				{
-					PurchasedPrice: 200,
-					TotalQuantity:  2,
-					TotalAmount:    400,
-					DiscountAmount: 0,
-					Subtotal:       400,
-					TenantId:       TENANT_ID,
-					StoreId:        STORE_ID,
-					CreatedAt:      min1Day,
-				},
-				{
-					PurchasedPrice: 300,
-					TotalQuantity:  3,
-					TotalAmount:    900,
-					DiscountAmount: 0,
-					Subtotal:       900,
-					TenantId:       TENANT_ID,
-					StoreId:        STORE_ID,
-					CreatedAt:      min2Day,
-				},
-				{
-					PurchasedPrice: 400,
-					TotalQuantity:  4,
-					TotalAmount:    1000,
-					DiscountAmount: 600,
-					Subtotal:       1600,
-					TenantId:       TENANT_ID,
-					StoreId:        STORE_ID,
-					CreatedAt:      min3Day,
-				},
-				{
-					PurchasedPrice: 500,
-					TotalQuantity:  5,
-					TotalAmount:    2500,
-					DiscountAmount: 0,
-					Subtotal:       2500,
-					TenantId:       TENANT_ID,
-					StoreId:        STORE_ID,
-					CreatedAt:      min4Day,
-				},
-			}
-
-			record := []*model.OrderItem{}
-			for i, dummyOrderItem := range dummyOrderItems {
-				dummyOrderItemFromDB, err := orderItemRepo.PlaceOrderItem(dummyOrderItem)
-
+					CreatedAt:      dates[i],
+				})
 				require.Nil(t, err)
-				require.NotNil(t, dummyOrderItemFromDB)
-				require.NotNil(t, dummyOrderItemFromDB.Id)
-				require.NotEqual(t, 0, dummyOrderItemFromDB.Id)
-				require.Equal(t, dummyOrderItems[i].PurchasedPrice, dummyOrderItemFromDB.PurchasedPrice)
-				require.Equal(t, dummyOrderItems[i].TotalQuantity, dummyOrderItemFromDB.TotalQuantity)
-				require.Equal(t, dummyOrderItems[i].TotalAmount, dummyOrderItemFromDB.TotalAmount)
-				require.Equal(t, dummyOrderItems[i].DiscountAmount, dummyOrderItemFromDB.DiscountAmount)
-				require.Equal(t, dummyOrderItems[i].Subtotal, dummyOrderItemFromDB.Subtotal)
-				require.Equal(t, TENANT_ID, dummyOrderItemFromDB.TenantId)
-				require.Equal(t, STORE_ID, dummyOrderItemFromDB.StoreId)
-
-				record = append(record, dummyOrderItemFromDB)
 			}
 
-			page := 1
-			limit := 5
-			dummyCreatedOrderItems, count, err := orderItemRepo.Get(TENANT_ID, 0, limit, page-1, []*query.QueryFilter{
-				{
-					Column:    query.CreatedAtColumn,
-					Ascending: false,
+			results, count, err := orderItemRepo.Get(
+				TENANT_ID,
+				0,
+				5,
+				0,
+				[]*query.QueryFilter{
+					{Column: query.CreatedAtColumn, Ascending: false},
 				},
-			}, nil)
-			assert.Nil(t, err)
-			assert.GreaterOrEqual(t, count, 5)
-			assert.Equal(t, limit, len(dummyCreatedOrderItems))
+				nil,
+			)
 
-			var previous *model.OrderItem
-			for _, current := range dummyCreatedOrderItems {
-				if previous != nil {
-					assert.True(t, previous.CreatedAt.After(current.CreatedAt),
-						"Expected descending order, but %v is before %v", previous.CreatedAt, current.CreatedAt)
-				}
-				previous = current
-			}
+			require.Nil(t, err)
+			require.Equal(t, 5, count)
+			require.Len(t, results, 5)
 
-			// Clean up;
-			for _, dummyItem := range record {
-				_, _, err := supabaseClient.From(OrderItemTable).Delete("", "").Eq("id", strconv.Itoa(dummyItem.Id)).Execute()
-				require.Nilf(t, err, "If this error; immediately delete the test data. tenantId: %d, id: %d; TestOrderItemRepository/Get/NormalQuery 1", TENANT_ID, dummyItem.Id)
+			for i := 1; i < len(results); i++ {
+				require.False(t, results[i].CreatedAt.After(results[i-1].CreatedAt))
 			}
 		})
 
 		t.Run("SortByTotalAmountDesc", func(t *testing.T) {
-			dummyOrderItems := []*model.OrderItem{
-				{
-					PurchasedPrice: 10000,
+			tx := gormClient.Begin()
+			defer tx.Rollback()
+
+			orderItemRepo := NewOrderItemRepositoryImpl(tx)
+
+			amounts := []int{10000, 40000, 90000, 100000, 250000}
+
+			for _, amt := range amounts {
+				_, err := orderItemRepo.PlaceOrderItem(&model.OrderItem{
+					PurchasedPrice: amt,
 					TotalQuantity:  1,
-					TotalAmount:    10000,
+					TotalAmount:    amt,
 					DiscountAmount: 0,
-					Subtotal:       10000,
+					Subtotal:       amt,
 					TenantId:       TENANT_ID,
 					StoreId:        STORE_ID,
-				},
-				{
-					PurchasedPrice: 20000,
-					TotalQuantity:  2,
-					TotalAmount:    40000,
-					DiscountAmount: 0,
-					Subtotal:       40000,
-					TenantId:       TENANT_ID,
-					StoreId:        STORE_ID,
-				},
-				{
-					PurchasedPrice: 30000,
-					TotalQuantity:  3,
-					TotalAmount:    90000,
-					DiscountAmount: 0,
-					Subtotal:       90000,
-					TenantId:       TENANT_ID,
-					StoreId:        STORE_ID,
-				},
-				{
-					PurchasedPrice: 40000,
-					TotalQuantity:  4,
-					TotalAmount:    100_000,
-					DiscountAmount: 60000,
-					Subtotal:       160_000,
-					TenantId:       TENANT_ID,
-					StoreId:        STORE_ID,
-				},
-				{
-					PurchasedPrice: 50000,
-					TotalQuantity:  5,
-					TotalAmount:    250_000,
-					DiscountAmount: 0,
-					Subtotal:       250_000,
-					TenantId:       TENANT_ID,
-					StoreId:        STORE_ID,
-				},
-			}
-
-			record := []*model.OrderItem{}
-			for i, dummyOrderItem := range dummyOrderItems {
-				dummyOrderItemFromDB, err := orderItemRepo.PlaceOrderItem(dummyOrderItem)
-
+				})
 				require.Nil(t, err)
-				require.NotNil(t, dummyOrderItemFromDB)
-				require.NotNil(t, dummyOrderItemFromDB.Id)
-				require.NotEqual(t, 0, dummyOrderItemFromDB.Id)
-				require.Equal(t, dummyOrderItems[i].PurchasedPrice, dummyOrderItemFromDB.PurchasedPrice)
-				require.Equal(t, dummyOrderItems[i].TotalQuantity, dummyOrderItemFromDB.TotalQuantity)
-				require.Equal(t, dummyOrderItems[i].TotalAmount, dummyOrderItemFromDB.TotalAmount)
-				require.Equal(t, dummyOrderItems[i].DiscountAmount, dummyOrderItemFromDB.DiscountAmount)
-				require.Equal(t, dummyOrderItems[i].Subtotal, dummyOrderItemFromDB.Subtotal)
-				require.Equal(t, TENANT_ID, dummyOrderItemFromDB.TenantId)
-				require.Equal(t, STORE_ID, dummyOrderItemFromDB.StoreId)
-
-				record = append(record, dummyOrderItemFromDB)
 			}
 
-			page := 1
-			limit := 5
-			dummyCreatedOrderItems, count, err := orderItemRepo.Get(TENANT_ID, 0, limit, page-1, []*query.QueryFilter{
-				{
-					Column:    query.TotalAmountColumn,
-					Ascending: false,
+			results, count, err := orderItemRepo.Get(
+				TENANT_ID,
+				0,
+				5,
+				0,
+				[]*query.QueryFilter{
+					{Column: query.TotalAmountColumn, Ascending: false},
 				},
-			}, nil)
-			assert.Nil(t, err)
-			assert.GreaterOrEqual(t, count, 5)
-			assert.Equal(t, limit, len(dummyCreatedOrderItems))
-			var previous *model.OrderItem
-			for _, current := range dummyCreatedOrderItems {
-				if previous != nil {
-					assert.Less(t, current.TotalAmount, previous.TotalAmount)
-				}
-				previous = current
-			}
+				nil,
+			)
 
-			// Clean up
-			ids := make([]int, len(record))
-			for i, dummyItem := range record {
-				ids[i] = dummyItem.Id
+			require.Nil(t, err)
+			require.Equal(t, 5, count)
+			require.Len(t, results, 5)
+
+			for i := 1; i < len(results); i++ {
+				require.LessOrEqual(t, results[i].TotalAmount, results[i-1].TotalAmount)
 			}
-			err = gormClient.
-				Where("id IN ? AND tenant_id = ?", ids, TENANT_ID).
-				Delete(&model.OrderItem{}).Error
-			require.Nilf(t, err, "If this error; immediately delete the test data. tenantId: %d, ids: %v; TestOrderItemRepository/Get/SortByTotalAmountDesc", TENANT_ID, ids)
 		})
 	})
 
