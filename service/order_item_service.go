@@ -36,4 +36,10 @@ type OrderItemService interface {
 		Using aggregate function from SQL to get report
 	*/
 	GetSalesReport(tenantId int, storeId int, dateFilter *query.DateFilter) (*repository.SalesReport, error)
+
+	/*
+		Build an Excel workbook with per-item profit breakdown and a summary sheet.
+		Returns the raw .xlsx bytes.
+	*/
+	ExportProfitExcel(tenantId int, storeId int, dateFilter *query.DateFilter) ([]byte, error)
 }

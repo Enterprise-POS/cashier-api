@@ -149,6 +149,7 @@ func main() {
 	apiV1.Post("/order_items/search/:tenantId", tenantRestriction, orderItemController.Get)
 	apiV1.Post("/order_items/transactions/:tenantId", tenantRestriction, orderItemController.Transactions)
 	apiV1.Post("/order_items/sales_report/:tenantId", tenantRestriction, orderItemController.GetSalesReport)
+	apiV1.Post("/order_items/export_profit/:tenantId", tenantRestriction, orderItemController.ExportProfitExcel)
 
 	// Handle route not found (404)
 	app.All("*", func(ctx *fiber.Ctx) error {

@@ -7,6 +7,9 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"time"
+
+	"github.com/xuri/excelize/v2"
 )
 
 type OrderItemServiceImpl struct {
@@ -248,4 +251,318 @@ func (service *OrderItemServiceImpl) GetSalesReport(tenantId int, storeId int, d
 	}
 
 	return salesReport, nil
+}
+
+// ExportProfitExcel implements OrderItemService.
+func (service *OrderItemServiceImpl) ExportProfitExcel(tenantId int, storeId int, dateFilter *query.DateFilter) ([]byte, error) {
+	if tenantId <= 0 {
+		return nil, errors.New("tenant id is required")
+	}
+	if storeId < 0 {
+		return nil, fmt.Errorf("invalid store id: %d", storeId)
+	}
+
+	tenantName, storeName, err := service.Repository.GetTenantAndStoreName(tenantId, storeId)
+	if err != nil {
+		return nil, err
+	}
+
+	rows, err := service.Repository.GetProfitReport(tenantId, storeId, dateFilter)
+	if err != nil {
+		return nil, err
+	}
+
+	f := excelize.NewFile()
+	defer f.Close()
+
+	// ── Sheet 1: Per-Item Profit ──────────────────────────────────────────────
+	itemSheet := "Profit Per Item"
+	f.SetSheetName("Sheet1", itemSheet)
+
+	// Header style: bold + center
+	headerStyle, _ := f.NewStyle(&excelize.Style{
+		Font:      &excelize.Font{Bold: true, Color: "FFFFFF"},
+		Fill:      excelize.Fill{Type: "pattern", Color: []string{"4472C4"}, Pattern: 1},
+		Alignment: &excelize.Alignment{Horizontal: "center", Vertical: "center"},
+		Border: []excelize.Border{
+			{Type: "left", Color: "000000", Style: 1},
+			{Type: "right", Color: "000000", Style: 1},
+			{Type: "top", Color: "000000", Style: 1},
+			{Type: "bottom", Color: "000000", Style: 1},
+		},
+	})
+
+	// Currency style (IDR, no decimal)
+	currencyStyle, _ := f.NewStyle(&excelize.Style{
+		NumFmt: 3, // #,##0
+		Border: []excelize.Border{
+			{Type: "left", Color: "CCCCCC", Style: 1},
+			{Type: "right", Color: "CCCCCC", Style: 1},
+			{Type: "top", Color: "CCCCCC", Style: 1},
+			{Type: "bottom", Color: "CCCCCC", Style: 1},
+		},
+	})
+
+	// Profit column style with green/red conditional logic skipped for simplicity — use currency
+	profitStyle, _ := f.NewStyle(&excelize.Style{
+		NumFmt: 3,
+		Font:   &excelize.Font{Bold: true},
+		Border: []excelize.Border{
+			{Type: "left", Color: "CCCCCC", Style: 1},
+			{Type: "right", Color: "CCCCCC", Style: 1},
+			{Type: "top", Color: "CCCCCC", Style: 1},
+			{Type: "bottom", Color: "CCCCCC", Style: 1},
+		},
+	})
+
+	marginStyle, _ := f.NewStyle(&excelize.Style{
+		NumFmt: 2, // 0.00
+		Border: []excelize.Border{
+			{Type: "left", Color: "CCCCCC", Style: 1},
+			{Type: "right", Color: "CCCCCC", Style: 1},
+			{Type: "top", Color: "CCCCCC", Style: 1},
+			{Type: "bottom", Color: "CCCCCC", Style: 1},
+		},
+	})
+
+	headers := []string{"#", "Item Name", "Qty Sold", "Revenue (Rp)", "COGS (Rp)", "Discount (Rp)", "Profit (Rp)", "Margin (%)"}
+	colWidths := []float64{5, 35, 12, 18, 18, 18, 18, 14}
+
+	for i, h := range headers {
+		col, _ := excelize.ColumnNumberToName(i + 1)
+		cell := fmt.Sprintf("%s1", col)
+		f.SetCellValue(itemSheet, cell, h)
+		f.SetCellStyle(itemSheet, cell, cell, headerStyle)
+		f.SetColWidth(itemSheet, col, col, colWidths[i])
+	}
+	f.SetRowHeight(itemSheet, 1, 20)
+
+	var (
+		grandRevenue  int
+		grandCogs     int
+		grandDiscount int
+		grandProfit   int
+		grandQty      int
+	)
+
+	for i, row := range rows {
+		excelRow := i + 2
+		margin := 0.0
+		if row.TotalRevenue > 0 {
+			margin = float64(row.TotalProfit) / float64(row.TotalRevenue) * 100
+		}
+
+		cells := []interface{}{i + 1, row.ItemName, row.TotalQuantity, row.TotalRevenue, row.TotalCogs, row.TotalDiscount, row.TotalProfit, margin}
+		for j, val := range cells {
+			col, _ := excelize.ColumnNumberToName(j + 1)
+			cell := fmt.Sprintf("%s%d", col, excelRow)
+			f.SetCellValue(itemSheet, cell, val)
+			switch j {
+			case 3, 4, 5: // Revenue, COGS, Discount
+				f.SetCellStyle(itemSheet, cell, cell, currencyStyle)
+			case 6: // Profit
+				f.SetCellStyle(itemSheet, cell, cell, profitStyle)
+			case 7: // Margin
+				f.SetCellStyle(itemSheet, cell, cell, marginStyle)
+			}
+		}
+
+		grandRevenue += row.TotalRevenue
+		grandCogs += row.TotalCogs
+		grandDiscount += row.TotalDiscount
+		grandProfit += row.TotalProfit
+		grandQty += row.TotalQuantity
+	}
+
+	// Total row
+	totalRow := len(rows) + 2
+	totalStyle, _ := f.NewStyle(&excelize.Style{
+		Font:   &excelize.Font{Bold: true},
+		NumFmt: 3,
+		Fill:   excelize.Fill{Type: "pattern", Color: []string{"D9E1F2"}, Pattern: 1},
+		Border: []excelize.Border{
+			{Type: "left", Color: "000000", Style: 2},
+			{Type: "right", Color: "000000", Style: 2},
+			{Type: "top", Color: "000000", Style: 2},
+			{Type: "bottom", Color: "000000", Style: 2},
+		},
+	})
+
+	totalCells := map[string]interface{}{
+		"A": "TOTAL", "B": "", "C": grandQty,
+		"D": grandRevenue, "E": grandCogs, "F": grandDiscount, "G": grandProfit,
+	}
+	for col, val := range totalCells {
+		cell := fmt.Sprintf("%s%d", col, totalRow)
+		f.SetCellValue(itemSheet, cell, val)
+		f.SetCellStyle(itemSheet, cell, cell, totalStyle)
+	}
+	grandMargin := 0.0
+	if grandRevenue > 0 {
+		grandMargin = float64(grandProfit) / float64(grandRevenue) * 100
+	}
+	marginTotalStyle, _ := f.NewStyle(&excelize.Style{
+		Font:   &excelize.Font{Bold: true},
+		NumFmt: 2,
+		Fill:   excelize.Fill{Type: "pattern", Color: []string{"D9E1F2"}, Pattern: 1},
+		Border: []excelize.Border{
+			{Type: "left", Color: "000000", Style: 2},
+			{Type: "right", Color: "000000", Style: 2},
+			{Type: "top", Color: "000000", Style: 2},
+			{Type: "bottom", Color: "000000", Style: 2},
+		},
+	})
+	f.SetCellValue(itemSheet, fmt.Sprintf("H%d", totalRow), grandMargin)
+	f.SetCellStyle(itemSheet, fmt.Sprintf("H%d", totalRow), fmt.Sprintf("H%d", totalRow), marginTotalStyle)
+
+	// ── Sheet 2: Summary ──────────────────────────────────────────────────────
+	summarySheet := "Summary"
+	f.NewSheet(summarySheet)
+
+	labelStyle, _ := f.NewStyle(&excelize.Style{
+		Font:  &excelize.Font{Bold: true},
+		Fill:  excelize.Fill{Type: "pattern", Color: []string{"EBF0FA"}, Pattern: 1},
+		Alignment: &excelize.Alignment{Horizontal: "left"},
+	})
+	valueStyle, _ := f.NewStyle(&excelize.Style{
+		NumFmt:    3,
+		Alignment: &excelize.Alignment{Horizontal: "right"},
+	})
+	valueTextStyle, _ := f.NewStyle(&excelize.Style{
+		Alignment: &excelize.Alignment{Horizontal: "right"},
+	})
+	titleStyle, _ := f.NewStyle(&excelize.Style{
+		Font:      &excelize.Font{Bold: true, Size: 14, Color: "1F3864"},
+		Alignment: &excelize.Alignment{Horizontal: "left"},
+	})
+
+	f.SetColWidth(summarySheet, "A", "A", 28)
+	f.SetColWidth(summarySheet, "B", "B", 22)
+
+	f.SetCellValue(summarySheet, "A1", "Profit Report")
+	f.SetCellStyle(summarySheet, "A1", "A1", titleStyle)
+	f.MergeCell(summarySheet, "A1", "B1")
+
+	generatedAt := time.Now().Format("02 Jan 2006 15:04:05")
+	summaryRows := [][]interface{}{
+		{"Generated At", generatedAt},
+		{"Tenant", tenantName},
+		{"Store", storeName},
+		{},
+		{"Total Items Sold", grandQty},
+		{"Total Revenue (Rp)", grandRevenue},
+		{"Total COGS (Rp)", grandCogs},
+		{"Total Discount (Rp)", grandDiscount},
+		{"Gross Profit (Rp)", grandProfit},
+		{"Profit Margin (%)", fmt.Sprintf("%.2f%%", grandMargin)},
+	}
+
+	for i, sr := range summaryRows {
+		row := i + 3
+		if len(sr) == 0 {
+			continue
+		}
+		labelCell := fmt.Sprintf("A%d", row)
+		valueCell := fmt.Sprintf("B%d", row)
+		f.SetCellValue(summarySheet, labelCell, sr[0])
+		f.SetCellStyle(summarySheet, labelCell, labelCell, labelStyle)
+		f.SetCellValue(summarySheet, valueCell, sr[1])
+		if _, ok := sr[1].(int); ok {
+			f.SetCellStyle(summarySheet, valueCell, valueCell, valueStyle)
+		} else {
+			f.SetCellStyle(summarySheet, valueCell, valueCell, valueTextStyle)
+		}
+	}
+
+	// ── Chart 1: Clustered Column on "Profit Per Item" ───────────────────────
+	if len(rows) > 0 {
+		lastDataRow := len(rows) + 1 // row 1 = header, rows 2..N = data
+		cat := fmt.Sprintf("'%s'!$B$2:$B$%d", itemSheet, lastDataRow)
+		f.AddChart(itemSheet, "J1", &excelize.Chart{
+			Type: excelize.Col,
+			Series: []excelize.ChartSeries{
+				{
+					Name:       fmt.Sprintf("'%s'!$D$1", itemSheet),
+					Categories: cat,
+					Values:     fmt.Sprintf("'%s'!$D$2:$D$%d", itemSheet, lastDataRow),
+					Fill:       excelize.Fill{Type: "pattern", Color: []string{"4472C4"}, Pattern: 1}, // blue
+				},
+				{
+					Name:       fmt.Sprintf("'%s'!$E$1", itemSheet),
+					Categories: cat,
+					Values:     fmt.Sprintf("'%s'!$E$2:$E$%d", itemSheet, lastDataRow),
+					Fill:       excelize.Fill{Type: "pattern", Color: []string{"ED7D31"}, Pattern: 1}, // orange
+				},
+				{
+					Name:       fmt.Sprintf("'%s'!$G$1", itemSheet),
+					Categories: cat,
+					Values:     fmt.Sprintf("'%s'!$G$2:$G$%d", itemSheet, lastDataRow),
+					Fill:       excelize.Fill{Type: "pattern", Color: []string{"70AD47"}, Pattern: 1}, // green
+				},
+			},
+			Title:     []excelize.RichTextRun{{Text: "Revenue vs COGS vs Profit per Item"}},
+			Legend:    excelize.ChartLegend{Position: "bottom"},
+			Dimension: excelize.ChartDimension{Width: 640, Height: 360},
+		})
+	}
+
+	// ── Chart 2: Pie on "Summary" (revenue breakdown) ────────────────────────
+	// Write a small helper table in columns D/E for the pie series.
+	f.SetColWidth(summarySheet, "D", "D", 18)
+	f.SetColWidth(summarySheet, "E", "E", 18)
+
+	pieHeaderStyle, _ := f.NewStyle(&excelize.Style{
+		Font:      &excelize.Font{Bold: true, Color: "FFFFFF"},
+		Fill:      excelize.Fill{Type: "pattern", Color: []string{"4472C4"}, Pattern: 1},
+		Alignment: &excelize.Alignment{Horizontal: "center"},
+	})
+	f.SetCellValue(summarySheet, "D2", "Component")
+	f.SetCellValue(summarySheet, "E2", "Amount (Rp)")
+	f.SetCellStyle(summarySheet, "D2", "E2", pieHeaderStyle)
+
+	pieData := [][]interface{}{
+		{"COGS", grandCogs},
+		{"Discount", grandDiscount},
+		{"Net Profit", grandProfit},
+	}
+	pieCurrencyStyle, _ := f.NewStyle(&excelize.Style{
+		NumFmt: 3, // #,##0
+	})
+	for i, pd := range pieData {
+		row := i + 3
+		f.SetCellValue(summarySheet, fmt.Sprintf("D%d", row), pd[0])
+		f.SetCellValue(summarySheet, fmt.Sprintf("E%d", row), pd[1])
+		f.SetCellStyle(summarySheet, fmt.Sprintf("E%d", row), fmt.Sprintf("E%d", row), pieCurrencyStyle)
+	}
+
+	f.AddChart(summarySheet, "D7", &excelize.Chart{
+		Type: excelize.Bar,
+		Series: []excelize.ChartSeries{
+			{
+				Name:   fmt.Sprintf("'%s'!$D$3", summarySheet),
+				Values: fmt.Sprintf("'%s'!$E$3", summarySheet),
+				Fill:   excelize.Fill{Type: "pattern", Color: []string{"4472C4"}, Pattern: 1}, // blue  - COGS
+			},
+			{
+				Name:   fmt.Sprintf("'%s'!$D$4", summarySheet),
+				Values: fmt.Sprintf("'%s'!$E$4", summarySheet),
+				Fill:   excelize.Fill{Type: "pattern", Color: []string{"ED7D31"}, Pattern: 1}, // orange - Discount
+			},
+			{
+				Name:   fmt.Sprintf("'%s'!$D$5", summarySheet),
+				Values: fmt.Sprintf("'%s'!$E$5", summarySheet),
+				Fill:   excelize.Fill{Type: "pattern", Color: []string{"70AD47"}, Pattern: 1}, // green  - Net Profit
+			},
+		},
+		Title:     []excelize.RichTextRun{{Text: "Revenue Breakdown"}},
+		Legend:    excelize.ChartLegend{Position: "bottom"},
+		Dimension: excelize.ChartDimension{Width: 400, Height: 300},
+	})
+
+	buf, err := f.WriteToBuffer()
+	if err != nil {
+		return nil, fmt.Errorf("failed to write excel buffer: %w", err)
+	}
+
+	return buf.Bytes(), nil
 }
