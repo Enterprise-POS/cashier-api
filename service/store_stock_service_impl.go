@@ -58,6 +58,7 @@ func (service *StoreStockServiceImpl) GetV2(
 	limit int,
 	page int,
 	nameQuery string,
+	categoryId int,
 ) ([]*model.StoreStockV2, int, error) {
 	if limit < 1 {
 		return nil, 0, fmt.Errorf("Limit could not less then 1 (limit >= 1). Given limit %d", limit)
@@ -78,7 +79,11 @@ func (service *StoreStockServiceImpl) GetV2(
 		}
 	}
 
-	storeStocksV2, count, err := service.Repository.GetV2(tenantId, storeId, limit, page-1, nameQuery)
+	if categoryId < 0 {
+		return nil, 0, errors.New("Tenant id could not be less than 0")
+	}
+
+	storeStocksV2, count, err := service.Repository.GetV2(tenantId, storeId, limit, page-1, nameQuery, categoryId)
 	if err != nil {
 		return nil, 0, err
 	}

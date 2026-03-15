@@ -60,4 +60,5 @@ type SalesReport struct {
 	SumDiscountAmount int `json:"sum_discount_amount"`
 	SumSubtotal       int `json:"sum_subtotal"`
 	SumTransactions   int `json:"sum_transactions"`
+	SumProfit         int `json:"sum_profit"`
 }
