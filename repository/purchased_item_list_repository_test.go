@@ -2,199 +2,293 @@ package repository
 
 import (
 	"cashier-api/helper/client"
-	"cashier-api/helper/query"
 	"cashier-api/model"
-	"fmt"
-	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/supabase-community/supabase-go"
 	"gorm.io/gorm"
 )
 
 func TestPurchasedItem(t *testing.T) {
-	var supabaseClient *supabase.Client = client.CreateSupabaseClient()
 	var gormClient *gorm.DB = client.CreateGormClient()
 
 	const (
-		TENANT_ID int = 1
-		STORE_ID  int = 1
-
-		// just for faster testing
-		APPLE_ID    int = 1
-		PEACH_ID    int = 2
 		APPLE_PRICE int = 10000
 		PEACH_PRICE int = 20000
 	)
 
-	t.Run("CreateList", func(t *testing.T) {
-		orderItemRepo := NewOrderItemRepositoryImpl(gormClient)
-		purchasedItemListRepo := NewPurchasedItemRepositoryImpl(supabaseClient)
+	// seedPurchasedItemDependencies creates user→tenant→store→item(apple)→item(peach)
+	// and an order_item within the given transaction.
+	// All rows roll back automatically after each test.
+	seedPurchasedItemDependencies := func(t *testing.T, tx *gorm.DB) (appleId int, peachId int, orderItemId int) {
+		t.Helper()
 
-		// The dummy data
-		dummyOrderItem := &model.OrderItem{
+		tenantId, storeId := seedOrderItemTestDependencies(t, tx)
+
+		apple := &model.Item{
+			ItemName:  "Apple",
+			Stocks:    100,
+			StockType: model.StockTypeTracked,
+			BasePrice: APPLE_PRICE,
+			TenantId:  tenantId,
+			IsActive:  true,
+		}
+		require.NoError(t, tx.Create(apple).Error)
+		require.NotZero(t, apple.ItemId)
+
+		peach := &model.Item{
+			ItemName:  "Peach",
+			Stocks:    100,
+			StockType: model.StockTypeTracked,
+			BasePrice: PEACH_PRICE,
+			TenantId:  tenantId,
+			IsActive:  true,
+		}
+		require.NoError(t, tx.Create(peach).Error)
+		require.NotZero(t, peach.ItemId)
+
+		orderItem := &model.OrderItem{
 			PurchasedPrice: 40000,
 			TotalQuantity:  4,
 			DiscountAmount: 0,
 			TotalAmount:    40000,
 			Subtotal:       40000,
-			StoreId:        STORE_ID,
-			TenantId:       TENANT_ID,
+			StoreId:        storeId,
+			TenantId:       tenantId,
 		}
-		dummyOrderItemFromDB, err := orderItemRepo.PlaceOrderItem(dummyOrderItem)
-		require.Nil(t, err)
-		require.NotNil(t, dummyOrderItemFromDB)
+		require.NoError(t, tx.Create(orderItem).Error)
+		require.NotZero(t, orderItem.Id)
 
-		dummyPurchasedItem1 := &model.PurchasedItem{
-			ItemId:             APPLE_ID,
-			OrderItemId:        dummyOrderItemFromDB.Id,
-			Quantity:           2,
-			StorePriceSnapshot: APPLE_PRICE,
-			DiscountAmount:     0,
-			TotalAmount:        2 * APPLE_PRICE,
-			ItemNameSnapshot:   "Item Name Snapshot 1",
-			BasePriceSnapshot:  100,
-		}
-		dummyPurchasedItem2 := &model.PurchasedItem{
-			ItemId:             PEACH_ID,
-			OrderItemId:        dummyOrderItemFromDB.Id,
-			Quantity:           1,
-			StorePriceSnapshot: PEACH_PRICE,
-			DiscountAmount:     0,
-			TotalAmount:        1 * PEACH_PRICE,
-			ItemNameSnapshot:   "Item Name Snapshot 2",
-			BasePriceSnapshot:  100,
-		}
+		return apple.ItemId, peach.ItemId, orderItem.Id
+	}
 
-		// TEST: No error and no return data
-		returnedData, err := purchasedItemListRepo.CreateList([]*model.PurchasedItem{dummyPurchasedItem1, dummyPurchasedItem2}, false)
-		assert.Nil(t, returnedData)
-		assert.Nil(t, err)
+	t.Run("CreateList", func(t *testing.T) {
+		t.Run("NoReturnData", func(t *testing.T) {
+			tx := gormClient.Begin()
+			defer tx.Rollback()
 
-		// TEST: No error with return inserted data
-		returnedData, err = purchasedItemListRepo.CreateList([]*model.PurchasedItem{dummyPurchasedItem1, dummyPurchasedItem2}, true)
-		assert.NotNil(t, returnedData)
-		assert.Nil(t, err)
-		assert.Equal(t, 2, len(returnedData))
+			appleId, peachId, orderItemId := seedPurchasedItemDependencies(t, tx)
+			repo := NewPurchasedItemRepositoryImpl(tx)
 
-		// Will clean up first 2 unreturned data and clean 2 returned data
-		// TODO: use return data to for deleting
-		supabaseClient.
-			From(query.PurchasedItemTable).
-			Delete("", "").
-			Filter("item_id", "in", fmt.Sprintf("(%d, %d)", APPLE_ID, PEACH_ID)).
-			Execute()
+			data := []*model.PurchasedItem{
+				{
+					ItemId:             appleId,
+					OrderItemId:        orderItemId,
+					Quantity:           2,
+					StorePriceSnapshot: APPLE_PRICE,
+					DiscountAmount:     0,
+					TotalAmount:        2 * APPLE_PRICE,
+					ItemNameSnapshot:   "Apple Snapshot",
+					BasePriceSnapshot:  100,
+				},
+				{
+					ItemId:             peachId,
+					OrderItemId:        orderItemId,
+					Quantity:           1,
+					StorePriceSnapshot: PEACH_PRICE,
+					DiscountAmount:     0,
+					TotalAmount:        1 * PEACH_PRICE,
+					ItemNameSnapshot:   "Peach Snapshot",
+					BasePriceSnapshot:  100,
+				},
+			}
 
-		// TEST: Error with un-exist foreign key
-		// item_id
-		// order_item_id
-		dummyPurchasedItem3 := &model.PurchasedItem{
-			ItemId:             -1,
-			OrderItemId:        dummyOrderItemFromDB.Id,
-			Quantity:           1,
-			StorePriceSnapshot: PEACH_PRICE,
-			DiscountAmount:     0,
-			TotalAmount:        1 * PEACH_PRICE,
-			ItemNameSnapshot:   "Item Name Snapshot",
-			BasePriceSnapshot:  100,
-		}
-		_, err = purchasedItemListRepo.CreateList([]*model.PurchasedItem{dummyPurchasedItem3}, false)
-		assert.NotNil(t, err)
-		assert.Equal(t, "(23503) insert or update on table \"purchased_item_list\" violates foreign key constraint \"purchased_item_list_item_id_fkey\"", err.Error())
-		dummyPurchasedItem4 := &model.PurchasedItem{
-			ItemId:             PEACH_ID,
-			OrderItemId:        -1,
-			Quantity:           1,
-			StorePriceSnapshot: PEACH_PRICE,
-			DiscountAmount:     0,
-			TotalAmount:        1 * PEACH_PRICE,
-			ItemNameSnapshot:   "Item Name Snapshot",
-			BasePriceSnapshot:  100,
-		}
-		_, err = purchasedItemListRepo.CreateList([]*model.PurchasedItem{dummyPurchasedItem4}, false)
-		assert.NotNil(t, err)
-		assert.Equal(t, "(23503) insert or update on table \"purchased_item_list\" violates foreign key constraint \"purchased_item_list_order_item_id_fkey\"", err.Error())
+			returnedData, err := repo.CreateList(data, false)
+			assert.Nil(t, returnedData)
+			assert.Nil(t, err)
+		})
 
-		// TEST: 1 of the rows is invalid
-		_, err = purchasedItemListRepo.CreateList([]*model.PurchasedItem{dummyPurchasedItem1, dummyPurchasedItem2, dummyPurchasedItem4}, false)
-		assert.NotNil(t, err)
+		t.Run("WithReturnData", func(t *testing.T) {
+			tx := gormClient.Begin()
+			defer tx.Rollback()
 
-		// Clean up order_item
-		supabaseClient.From("order_item").Delete("", "").Eq("tenant_id", "1").Eq("store_id", "1").Execute()
+			appleId, peachId, orderItemId := seedPurchasedItemDependencies(t, tx)
+			repo := NewPurchasedItemRepositoryImpl(tx)
+
+			data := []*model.PurchasedItem{
+				{
+					ItemId:             appleId,
+					OrderItemId:        orderItemId,
+					Quantity:           2,
+					StorePriceSnapshot: APPLE_PRICE,
+					DiscountAmount:     0,
+					TotalAmount:        2 * APPLE_PRICE,
+					ItemNameSnapshot:   "Apple Snapshot",
+					BasePriceSnapshot:  100,
+				},
+				{
+					ItemId:             peachId,
+					OrderItemId:        orderItemId,
+					Quantity:           1,
+					StorePriceSnapshot: PEACH_PRICE,
+					DiscountAmount:     0,
+					TotalAmount:        1 * PEACH_PRICE,
+					ItemNameSnapshot:   "Peach Snapshot",
+					BasePriceSnapshot:  100,
+				},
+			}
+
+			returnedData, err := repo.CreateList(data, true)
+			assert.Nil(t, err)
+			assert.NotNil(t, returnedData)
+			assert.Equal(t, 2, len(returnedData))
+			for _, item := range returnedData {
+				assert.NotZero(t, item.Id)
+			}
+		})
+
+		t.Run("InvalidItemIdForeignKey", func(t *testing.T) {
+			tx := gormClient.Begin()
+			defer tx.Rollback()
+
+			_, _, orderItemId := seedPurchasedItemDependencies(t, tx)
+			repo := NewPurchasedItemRepositoryImpl(tx)
+
+			data := []*model.PurchasedItem{
+				{
+					ItemId:             -1, // Invalid: FK violation expected
+					OrderItemId:        orderItemId,
+					Quantity:           1,
+					StorePriceSnapshot: PEACH_PRICE,
+					DiscountAmount:     0,
+					TotalAmount:        1 * PEACH_PRICE,
+					ItemNameSnapshot:   "Snapshot",
+					BasePriceSnapshot:  100,
+				},
+			}
+
+			_, err := repo.CreateList(data, false)
+			assert.NotNil(t, err)
+			assert.Contains(t, err.Error(), "23503")
+		})
+
+		t.Run("InvalidOrderItemIdForeignKey", func(t *testing.T) {
+			tx := gormClient.Begin()
+			defer tx.Rollback()
+
+			_, peachId, _ := seedPurchasedItemDependencies(t, tx)
+			repo := NewPurchasedItemRepositoryImpl(tx)
+
+			data := []*model.PurchasedItem{
+				{
+					ItemId:             peachId,
+					OrderItemId:        -1, // Invalid: FK violation expected
+					Quantity:           1,
+					StorePriceSnapshot: PEACH_PRICE,
+					DiscountAmount:     0,
+					TotalAmount:        1 * PEACH_PRICE,
+					ItemNameSnapshot:   "Snapshot",
+					BasePriceSnapshot:  100,
+				},
+			}
+
+			_, err := repo.CreateList(data, false)
+			assert.NotNil(t, err)
+			assert.Contains(t, err.Error(), "23503")
+		})
+
+		t.Run("OneInvalidRowFailsAll", func(t *testing.T) {
+			tx := gormClient.Begin()
+			defer tx.Rollback()
+
+			appleId, peachId, orderItemId := seedPurchasedItemDependencies(t, tx)
+			repo := NewPurchasedItemRepositoryImpl(tx)
+
+			data := []*model.PurchasedItem{
+				{
+					ItemId:             appleId,
+					OrderItemId:        orderItemId,
+					Quantity:           2,
+					StorePriceSnapshot: APPLE_PRICE,
+					DiscountAmount:     0,
+					TotalAmount:        2 * APPLE_PRICE,
+					ItemNameSnapshot:   "Apple Snapshot",
+					BasePriceSnapshot:  100,
+				},
+				{
+					ItemId:             peachId,
+					OrderItemId:        orderItemId,
+					Quantity:           1,
+					StorePriceSnapshot: PEACH_PRICE,
+					DiscountAmount:     0,
+					TotalAmount:        1 * PEACH_PRICE,
+					ItemNameSnapshot:   "Peach Snapshot",
+					BasePriceSnapshot:  100,
+				},
+				{
+					ItemId:             peachId,
+					OrderItemId:        -1, // Invalid: this row fails the whole batch
+					Quantity:           1,
+					StorePriceSnapshot: PEACH_PRICE,
+					DiscountAmount:     0,
+					TotalAmount:        1 * PEACH_PRICE,
+					ItemNameSnapshot:   "Snapshot",
+					BasePriceSnapshot:  100,
+				},
+			}
+
+			_, err := repo.CreateList(data, false)
+			assert.NotNil(t, err)
+		})
 	})
 
 	t.Run("GetByOrderItemId", func(t *testing.T) {
-		orderItemRepo := NewOrderItemRepositoryImpl(gormClient)
-		purchasedItemListRepo := NewPurchasedItemRepositoryImpl(supabaseClient)
-
 		t.Run("NormalGet", func(t *testing.T) {
-			// Create the dummy item first
-			dummyOrderItem := &model.OrderItem{
-				PurchasedPrice: 20_000,
-				TotalQuantity:  3,
-				DiscountAmount: 10_000,
-				TotalAmount:    (APPLE_PRICE * 2) + (PEACH_PRICE * 1) - 10_000,
-				Subtotal:       (APPLE_PRICE * 2) + (PEACH_PRICE * 1),
-				StoreId:        STORE_ID,
-				TenantId:       TENANT_ID,
+			tx := gormClient.Begin()
+			defer tx.Rollback()
+
+			appleId, peachId, orderItemId := seedPurchasedItemDependencies(t, tx)
+			repo := NewPurchasedItemRepositoryImpl(tx)
+
+			data := []*model.PurchasedItem{
+				{
+					ItemId:             appleId,
+					OrderItemId:        orderItemId,
+					Quantity:           2,
+					StorePriceSnapshot: APPLE_PRICE,
+					DiscountAmount:     0,
+					TotalAmount:        2 * APPLE_PRICE,
+					ItemNameSnapshot:   "Apple Snapshot",
+					BasePriceSnapshot:  100,
+				},
+				{
+					ItemId:             peachId,
+					OrderItemId:        orderItemId,
+					Quantity:           1,
+					StorePriceSnapshot: PEACH_PRICE,
+					DiscountAmount:     0,
+					TotalAmount:        1 * PEACH_PRICE,
+					ItemNameSnapshot:   "Peach Snapshot",
+					BasePriceSnapshot:  100,
+				},
 			}
-			newDummyOrderItem, err := orderItemRepo.PlaceOrderItem(dummyOrderItem)
+
+			_, err := repo.CreateList(data, false)
 			require.Nil(t, err)
-			require.NotNil(t, newDummyOrderItem)
 
-			dummyPurchasedItem1 := &model.PurchasedItem{
-				ItemId:             APPLE_ID,
-				OrderItemId:        newDummyOrderItem.Id,
-				Quantity:           2,
-				StorePriceSnapshot: APPLE_PRICE,
-				DiscountAmount:     0,
-				TotalAmount:        2 * APPLE_PRICE,
-				ItemNameSnapshot:   "Item Name Snapshot",
-				BasePriceSnapshot:  100,
-			}
-			dummyPurchasedItem2 := &model.PurchasedItem{
-				ItemId:             PEACH_ID,
-				OrderItemId:        newDummyOrderItem.Id,
-				Quantity:           1,
-				StorePriceSnapshot: PEACH_PRICE,
-				DiscountAmount:     0,
-				TotalAmount:        1 * PEACH_PRICE,
-				ItemNameSnapshot:   "Item Name Snapshot",
-				BasePriceSnapshot:  100,
-			}
-			returnedData, err := purchasedItemListRepo.CreateList([]*model.PurchasedItem{dummyPurchasedItem1, dummyPurchasedItem2}, false)
-			assert.Nil(t, returnedData)
-			assert.Nil(t, err)
-
-			// Begin test here
-			purchasedItemsList, err := purchasedItemListRepo.GetByOrderItemId(newDummyOrderItem.Id)
+			purchasedItemsList, err := repo.GetByOrderItemId(orderItemId)
 			assert.Nil(t, err)
 			assert.Equal(t, 2, len(purchasedItemsList))
+
+			// Collect inserted item IDs for validation
+			insertedItemIds := map[int]bool{appleId: true, peachId: true}
 			for _, purchasedItem := range purchasedItemsList {
 				assert.Greater(t, purchasedItem.Id, 0)
-				// Searching if correct item inputted
-				check1 := false
-				for _, testI := range []*model.PurchasedItem{dummyPurchasedItem1, dummyPurchasedItem2} {
-					if testI.ItemId == purchasedItem.ItemId {
-						check1 = true
-						break
-					}
-				}
-				assert.True(t, check1)
+				assert.True(t, insertedItemIds[purchasedItem.ItemId],
+					"unexpected item_id %d in result", purchasedItem.ItemId)
 			}
+		})
 
-			// Clear up
-			_, _, err = supabaseClient.
-				From(query.PurchasedItemTable).
-				Delete("", "").
-				Filter("id", "in", fmt.Sprintf("(%d, %d)", purchasedItemsList[0].Id, purchasedItemsList[1].Id)).
-				Execute()
-			require.Nil(t, err, "If this error shown, then the TestPurchasedItem/GeByOrderItemId/NormalGet error while checking the item id")
+		t.Run("NotFound", func(t *testing.T) {
+			tx := gormClient.Begin()
+			defer tx.Rollback()
 
-			_, _, err = supabaseClient.From("order_item").Delete("", "").Eq("tenant_id", "1").Eq("store_id", "1").Eq("id", strconv.Itoa(newDummyOrderItem.Id)).Execute()
-			require.Nil(t, err, "If this error shown, then the TestPurchasedItem/GeByOrderItemId/NormalGet error while checking the item id")
+			repo := NewPurchasedItemRepositoryImpl(tx)
+
+			_, err := repo.GetByOrderItemId(-1)
+			assert.NotNil(t, err)
+			assert.Equal(t, "fatal error list of purchased item not available", err.Error())
 		})
 	})
 }

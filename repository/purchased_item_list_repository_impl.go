@@ -1,19 +1,17 @@
 package repository
 
 import (
-	"cashier-api/helper/query"
 	"cashier-api/model"
 	"errors"
-	"strconv"
 
-	"github.com/supabase-community/supabase-go"
+	"gorm.io/gorm"
 )
 
 type PurchasedItemRepositoryImpl struct {
-	Client *supabase.Client
+	Client *gorm.DB
 }
 
-func NewPurchasedItemRepositoryImpl(client *supabase.Client) PurchasedItemRepository {
+func NewPurchasedItemRepositoryImpl(client *gorm.DB) PurchasedItemRepository {
 	return &PurchasedItemRepositoryImpl{Client: client}
 }
 
@@ -25,37 +23,22 @@ CreateList:
 	un exist`item_id will result error !
 */
 func (repository *PurchasedItemRepositoryImpl) CreateList(data []*model.PurchasedItem, withReturn bool) ([]*model.PurchasedItem, error) {
-	if withReturn {
-		var purchasedItemList []*model.PurchasedItem
-		_, err := repository.Client.From(query.PurchasedItemTable).
-			Insert(data, false, "", "representation", "").
-			ExecuteTo(&purchasedItemList)
-		if err != nil {
-			return nil, err
-		}
-
-		return purchasedItemList, nil
-	} else {
-		_, _, err := repository.Client.From(query.PurchasedItemTable).
-			Insert(data, false, "", "representation", "").
-			Execute() // Use .Execute() because we don't want the result
-		if err != nil {
-			return nil, err
-		}
-
-		return nil, nil
+	result := repository.Client.Create(&data)
+	if result.Error != nil {
+		return nil, result.Error
 	}
+
+	if withReturn {
+		// GORM mutates data in-place, so it already contains id, created_at, etc.
+		return data, nil
+	}
+
+	return nil, nil
 }
 
 func (repository *PurchasedItemRepositoryImpl) GetByOrderItemId(orderItemId int) ([]*model.PurchasedItem, error) {
-	// order_item_id guarantee return unique list only for that order_item
-	// Do not limit the query, we want all the list.
 	var result []*model.PurchasedItem
-	_, err := repository.Client.From(query.PurchasedItemTable).
-		Select("*", "", false).
-		Eq("order_item_id", strconv.Itoa(orderItemId)).
-		ExecuteTo(&result)
-	if err != nil {
+	if err := repository.Client.Where("order_item_id = ?", orderItemId).Find(&result).Error; err != nil {
 		return nil, err
 	}
 

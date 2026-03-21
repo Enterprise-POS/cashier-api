@@ -25,45 +25,32 @@ func NewCategoryRepositoryImpl(client *gorm.DB) CategoryRepository {
 
 func (repository *CategoryRepositoryImpl) GetItemsByCategoryId(tenantId int, categoryId int, limit int, page int) ([]*model.CategoryWithItem, int, error) {
 	start := page * limit
-	// end := start + limit - 1
-
-	/*
-		Original query:
-
-		-- Get items base on category (id)
-			SELECT
-				category.id AS category_id, category.category_name,
-				warehouse.item_id, warehouse.item_name, warehouse.stocks
-			FROM warehouse
-			INNER JOIN category_mtm_warehouse ON category_mtm_warehouse.item_id=warehouse.item_id
-			INNER JOIN category ON category.id=category_mtm_warehouse.category_id
-			WHERE warehouse.tenant_id=p_tenant_id AND category.id=p_category_id;
-	*/
 
 	var results []*model.CategoryWithItem
-	err := repository.Client.Raw("SELECT * FROM get_items_by_category(?, ?, ?, ?)",
-		tenantId,
-		categoryId,
-		limit,
-		start,
-	).Scan(&results).Error
-
-	/*
-		Example return
-
-		[
-			{"category_id":1,"category_name":"Fruits","item_id":1,"item_name":"Apple","stocks":358},
-			{"category_id":1,"category_name":"Fruits","item_id":267,"item_name":"Durian","stocks":10}
-		]
-	*/
-
+	err := repository.Client.
+		Model(&model.Item{}).
+		Select(`
+			category.id AS category_id,
+			category.category_name,
+			warehouse.item_id,
+			warehouse.item_name,
+			warehouse.stocks,
+			warehouse.base_price,
+			COUNT(*) OVER() AS total_count
+		`).
+		Joins("INNER JOIN category_mtm_warehouse ON category_mtm_warehouse.item_id = warehouse.item_id").
+		Joins("INNER JOIN category ON category.id = category_mtm_warehouse.category_id").
+		Where("warehouse.tenant_id = ? AND category.id = ?", tenantId, categoryId).
+		Limit(limit).
+		Offset(start).
+		Scan(&results).Error
 	if err != nil {
 		return nil, 0, err
 	}
 
 	countResult := 0
 	if len(results) > 0 {
-		countResult = results[0].TotalCount // Same value for all rows
+		countResult = results[0].TotalCount
 	}
 
 	return results, countResult, nil
@@ -71,43 +58,32 @@ func (repository *CategoryRepositoryImpl) GetItemsByCategoryId(tenantId int, cat
 
 func (repository *CategoryRepositoryImpl) GetCategoryWithItems(tenantId, page, limit int) ([]*model.CategoryWithItem, int, error) {
 	start := page * limit
-	// end := start + limit - 1
 
-	/*
-		Example join using bare bone supabase method.
-
-		results, _, err := repository.Client.From("category").
-			Select("id, category_name, category_mtm_warehouse(warehouse(item_id))", "", false).
-			Limit(limit, "category_mtm_warehouse(warehouse(item_id))").
-			Range(start, end, "category_mtm_warehouse(warehouse(item_id))").
-			Eq("tenant_id", strconv.Itoa(tenantId)).
-			Execute()
-
-		Instead will be using Rpc with the same query as above
-	*/
-
-	/*
-		Return
-		- category_id
-		- category_name
-		- warehouse.item_id
-		- warehouse.item_name
-		- warehouse.stocks
-	*/
 	var results = make([]*model.CategoryWithItem, 0)
-	err := repository.Client.Raw("SELECT * FROM get_category_with_items(?, ?, ?)",
-		tenantId,
-		limit,
-		start,
-	).Scan(&results).Error
+	err := repository.Client.
+		Model(&model.Item{}).
+		Select(`
+			category.id AS category_id,
+			category.category_name,
+			warehouse.item_id,
+			warehouse.item_name,
+			warehouse.stocks,
+			warehouse.base_price,
+			COUNT(*) OVER() AS total_count
+		`).
+		Joins("INNER JOIN category_mtm_warehouse ON category_mtm_warehouse.item_id = warehouse.item_id").
+		Joins("INNER JOIN category ON category.id = category_mtm_warehouse.category_id").
+		Where("warehouse.tenant_id = ?", tenantId).
+		Limit(limit).
+		Offset(start).
+		Scan(&results).Error
 	if err != nil {
-		// Return error message from rpc
 		return nil, 0, err
 	}
 
 	countResult := 0
 	if len(results) > 0 {
-		countResult = results[0].TotalCount // same value for all rows
+		countResult = results[0].TotalCount
 	}
 
 	return results, countResult, nil

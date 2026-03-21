@@ -13,15 +13,47 @@ import (
 	"gorm.io/gorm"
 )
 
+// seedOrderItemTestDependencies creates a user, tenant, and store within the
+// given transaction. All rows are rolled back automatically after each test.
+func seedOrderItemTestDependencies(t *testing.T, tx *gorm.DB) (tenantId int, storeId int) {
+	t.Helper()
+
+	user := &model.User{
+		Name:     "Order Item Test User",
+		Email:    "orderitem_test@example.com",
+		Password: "password",
+	}
+	require.NoError(t, tx.Create(user).Error)
+	require.NotZero(t, user.Id)
+
+	tenant := &model.Tenant{
+		Name:        "Order Item Test Tenant",
+		OwnerUserId: user.Id,
+		IsActive:    true,
+	}
+	require.NoError(t, tx.Create(tenant).Error)
+	require.NotZero(t, tenant.Id)
+
+	store := &model.Store{
+		Name:     "Order Item Test Store",
+		TenantId: tenant.Id,
+		IsActive: true,
+	}
+	require.NoError(t, tx.Create(store).Error)
+	require.NotZero(t, store.Id)
+
+	return tenant.Id, store.Id
+}
+
 func TestOrderItemRepository(t *testing.T) {
 	var gormClient *gorm.DB = client.CreateGormClient()
 
-	const STORE_ID = 1
-	const TENANT_ID = 1
 	t.Run("_PlaceOrderItem", func(t *testing.T) {
 		t.Run("SuccessCase", func(t *testing.T) {
 			tx := gormClient.Begin()
 			defer tx.Rollback()
+
+			tenantId, storeId := seedOrderItemTestDependencies(t, tx)
 
 			warehouseRepo := NewWarehouseRepositoryImpl(tx)
 			orderItemRepo := NewOrderItemRepositoryImpl(tx)
@@ -31,22 +63,22 @@ func TestOrderItemRepository(t *testing.T) {
 				ItemName:  "Test PlaceOrderItem Success",
 				Stocks:    100,
 				StockType: model.StockTypeTracked,
-				TenantId:  TENANT_ID,
+				TenantId:  tenantId,
 			}
 
 			items, err := warehouseRepo.CreateItem([]*model.Item{dummyItem})
-			require.NoError(t, err)
-			require.NotEmpty(t, items)
+			assert.NoError(t, err)
+			assert.NotEmpty(t, items)
 
 			item := items[0]
 
 			err = storeStockRepo.TransferStockToStoreStock(
 				5,
 				item.ItemId,
-				STORE_ID,
-				TENANT_ID,
+				storeId,
+				tenantId,
 			)
-			require.NoError(t, err)
+			assert.NoError(t, err)
 
 			input := &model.OrderItem{
 				PurchasedPrice: 10000,
@@ -54,40 +86,41 @@ func TestOrderItemRepository(t *testing.T) {
 				TotalAmount:    10000,
 				DiscountAmount: 0,
 				Subtotal:       10000,
-				TenantId:       TENANT_ID,
-				StoreId:        STORE_ID,
+				TenantId:       tenantId,
+				StoreId:        storeId,
 			}
 
 			result, err := orderItemRepo.PlaceOrderItem(input)
 
-			require.NoError(t, err)
-			require.NotNil(t, result)
-			require.NotZero(t, result.Id)
+			assert.NoError(t, err)
+			assert.NotNil(t, result)
+			assert.NotZero(t, result.Id)
 		})
 
 		t.Run("InvalidTotalQuantity", func(t *testing.T) {
 			tx := gormClient.Begin()
 			defer tx.Rollback()
 
+			tenantId, storeId := seedOrderItemTestDependencies(t, tx)
 			repo := NewOrderItemRepositoryImpl(tx)
 
 			input := &model.OrderItem{
 				PurchasedPrice: 10000,
-				TotalQuantity:  0,
+				TotalQuantity:  0, // Invalid
 				TotalAmount:    10000,
 				DiscountAmount: 0,
 				Subtotal:       10000,
-				TenantId:       TENANT_ID,
-				StoreId:        STORE_ID,
+				TenantId:       tenantId,
+				StoreId:        storeId,
 			}
 
 			result, err := repo.PlaceOrderItem(input)
 
-			require.Nil(t, result)
-			require.Error(t, err)
+			assert.Nil(t, result)
+			assert.Error(t, err)
 
 			pgErr, ok := err.(*pgconn.PgError)
-			require.True(t, ok)
+			assert.True(t, ok)
 			assert.Equal(t, "23514", pgErr.Code)
 		})
 
@@ -95,25 +128,26 @@ func TestOrderItemRepository(t *testing.T) {
 			tx := gormClient.Begin()
 			defer tx.Rollback()
 
+			tenantId, storeId := seedOrderItemTestDependencies(t, tx)
 			repo := NewOrderItemRepositoryImpl(tx)
 
 			input := &model.OrderItem{
 				PurchasedPrice: 10000,
 				TotalQuantity:  1,
-				TotalAmount:    -1,
+				TotalAmount:    -1, // Invalid
 				DiscountAmount: 0,
 				Subtotal:       10000,
-				TenantId:       TENANT_ID,
-				StoreId:        STORE_ID,
+				TenantId:       tenantId,
+				StoreId:        storeId,
 			}
 
 			result, err := repo.PlaceOrderItem(input)
 
-			require.Nil(t, result)
-			require.Error(t, err)
+			assert.Nil(t, result)
+			assert.Error(t, err)
 
 			pgErr, ok := err.(*pgconn.PgError)
-			require.True(t, ok)
+			assert.True(t, ok)
 			assert.Equal(t, "23514", pgErr.Code)
 		})
 
@@ -121,25 +155,26 @@ func TestOrderItemRepository(t *testing.T) {
 			tx := gormClient.Begin()
 			defer tx.Rollback()
 
+			tenantId, storeId := seedOrderItemTestDependencies(t, tx)
 			repo := NewOrderItemRepositoryImpl(tx)
 
 			input := &model.OrderItem{
 				PurchasedPrice: 10000,
 				TotalQuantity:  1,
 				TotalAmount:    10000,
-				DiscountAmount: -1,
+				DiscountAmount: -1, // Invalid
 				Subtotal:       10000,
-				TenantId:       TENANT_ID,
-				StoreId:        STORE_ID,
+				TenantId:       tenantId,
+				StoreId:        storeId,
 			}
 
 			result, err := repo.PlaceOrderItem(input)
 
-			require.Nil(t, result)
-			require.Error(t, err)
+			assert.Nil(t, result)
+			assert.Error(t, err)
 
 			pgErr, ok := err.(*pgconn.PgError)
-			require.True(t, ok)
+			assert.True(t, ok)
 			assert.Equal(t, "23514", pgErr.Code)
 		})
 
@@ -147,6 +182,7 @@ func TestOrderItemRepository(t *testing.T) {
 			tx := gormClient.Begin()
 			defer tx.Rollback()
 
+			tenantId, _ := seedOrderItemTestDependencies(t, tx)
 			repo := NewOrderItemRepositoryImpl(tx)
 
 			input := &model.OrderItem{
@@ -155,17 +191,17 @@ func TestOrderItemRepository(t *testing.T) {
 				TotalAmount:    9999,
 				DiscountAmount: 0,
 				Subtotal:       9999,
-				TenantId:       TENANT_ID,
-				StoreId:        0,
+				TenantId:       tenantId,
+				StoreId:        0, // Invalid: FK violation expected
 			}
 
 			result, err := repo.PlaceOrderItem(input)
 
-			require.Nil(t, result)
-			require.Error(t, err)
+			assert.Nil(t, result)
+			assert.Error(t, err)
 
 			pgErr, ok := err.(*pgconn.PgError)
-			require.True(t, ok)
+			assert.True(t, ok)
 			assert.Equal(t, "23503", pgErr.Code)
 		})
 
@@ -173,6 +209,7 @@ func TestOrderItemRepository(t *testing.T) {
 			tx := gormClient.Begin()
 			defer tx.Rollback()
 
+			_, storeId := seedOrderItemTestDependencies(t, tx)
 			repo := NewOrderItemRepositoryImpl(tx)
 
 			input := &model.OrderItem{
@@ -181,17 +218,17 @@ func TestOrderItemRepository(t *testing.T) {
 				TotalAmount:    9999,
 				DiscountAmount: 0,
 				Subtotal:       9999,
-				TenantId:       0,
-				StoreId:        STORE_ID,
+				TenantId:       0, // Invalid: FK violation expected
+				StoreId:        storeId,
 			}
 
 			result, err := repo.PlaceOrderItem(input)
 
-			require.Nil(t, result)
-			require.Error(t, err)
+			assert.Nil(t, result)
+			assert.Error(t, err)
 
 			pgErr, ok := err.(*pgconn.PgError)
-			require.True(t, ok)
+			assert.True(t, ok)
 			assert.Equal(t, "23503", pgErr.Code)
 		})
 	})
@@ -201,30 +238,31 @@ func TestOrderItemRepository(t *testing.T) {
 			tx := gormClient.Begin()
 			defer tx.Rollback()
 
+			tenantId, storeId := seedOrderItemTestDependencies(t, tx)
 			orderItemRepo := NewOrderItemRepositoryImpl(tx)
 
 			dummyOrderItems := []*model.OrderItem{
-				{PurchasedPrice: 10000, TotalQuantity: 1, TotalAmount: 10000, DiscountAmount: 0, Subtotal: 10000, TenantId: TENANT_ID, StoreId: STORE_ID},
-				{PurchasedPrice: 20000, TotalQuantity: 2, TotalAmount: 40000, DiscountAmount: 0, Subtotal: 40000, TenantId: TENANT_ID, StoreId: STORE_ID},
-				{PurchasedPrice: 30000, TotalQuantity: 3, TotalAmount: 90000, DiscountAmount: 0, Subtotal: 90000, TenantId: TENANT_ID, StoreId: STORE_ID},
-				{PurchasedPrice: 40000, TotalQuantity: 4, TotalAmount: 100000, DiscountAmount: 60000, Subtotal: 160000, TenantId: TENANT_ID, StoreId: STORE_ID},
-				{PurchasedPrice: 50000, TotalQuantity: 5, TotalAmount: 250000, DiscountAmount: 0, Subtotal: 250000, TenantId: TENANT_ID, StoreId: STORE_ID},
+				{PurchasedPrice: 10000, TotalQuantity: 1, TotalAmount: 10000, DiscountAmount: 0, Subtotal: 10000, TenantId: tenantId, StoreId: storeId},
+				{PurchasedPrice: 20000, TotalQuantity: 2, TotalAmount: 40000, DiscountAmount: 0, Subtotal: 40000, TenantId: tenantId, StoreId: storeId},
+				{PurchasedPrice: 30000, TotalQuantity: 3, TotalAmount: 90000, DiscountAmount: 0, Subtotal: 90000, TenantId: tenantId, StoreId: storeId},
+				{PurchasedPrice: 40000, TotalQuantity: 4, TotalAmount: 100000, DiscountAmount: 60000, Subtotal: 160000, TenantId: tenantId, StoreId: storeId},
+				{PurchasedPrice: 50000, TotalQuantity: 5, TotalAmount: 250000, DiscountAmount: 0, Subtotal: 250000, TenantId: tenantId, StoreId: storeId},
 			}
 
 			for _, item := range dummyOrderItems {
 				result, err := orderItemRepo.PlaceOrderItem(item)
-				require.Nil(t, err)
-				require.NotZero(t, result.Id)
+				assert.Nil(t, err)
+				assert.NotZero(t, result.Id)
 			}
 
-			results, count, err := orderItemRepo.Get(TENANT_ID, 0, 5, 0, nil, nil)
+			results, count, err := orderItemRepo.Get(tenantId, 0, 5, 0, nil, nil)
 
-			require.Nil(t, err)
-			require.Equal(t, 5, count)
-			require.Len(t, results, 5)
+			assert.Nil(t, err)
+			assert.Equal(t, 5, count)
+			assert.Len(t, results, 5)
 
 			for _, r := range results {
-				assert.Equal(t, TENANT_ID, r.TenantId)
+				assert.Equal(t, tenantId, r.TenantId)
 				assert.NotZero(t, r.TotalAmount)
 			}
 		})
@@ -233,6 +271,7 @@ func TestOrderItemRepository(t *testing.T) {
 			tx := gormClient.Begin()
 			defer tx.Rollback()
 
+			tenantId, storeId := seedOrderItemTestDependencies(t, tx)
 			orderItemRepo := NewOrderItemRepositoryImpl(tx)
 
 			base := time.Date(2025, 1, 10, 10, 0, 0, 0, time.UTC)
@@ -252,15 +291,15 @@ func TestOrderItemRepository(t *testing.T) {
 					TotalAmount:    100 * (i + 1),
 					DiscountAmount: 0,
 					Subtotal:       100 * (i + 1),
-					TenantId:       TENANT_ID,
-					StoreId:        STORE_ID,
+					TenantId:       tenantId,
+					StoreId:        storeId,
 					CreatedAt:      dates[i],
 				})
-				require.Nil(t, err)
+				assert.Nil(t, err)
 			}
 
 			results, count, err := orderItemRepo.Get(
-				TENANT_ID,
+				tenantId,
 				0,
 				5,
 				0,
@@ -270,12 +309,12 @@ func TestOrderItemRepository(t *testing.T) {
 				nil,
 			)
 
-			require.Nil(t, err)
-			require.Equal(t, 5, count)
-			require.Len(t, results, 5)
+			assert.Nil(t, err)
+			assert.Equal(t, 5, count)
+			assert.Len(t, results, 5)
 
 			for i := 1; i < len(results); i++ {
-				require.False(t, results[i].CreatedAt.After(results[i-1].CreatedAt))
+				assert.False(t, results[i].CreatedAt.After(results[i-1].CreatedAt))
 			}
 		})
 
@@ -283,6 +322,7 @@ func TestOrderItemRepository(t *testing.T) {
 			tx := gormClient.Begin()
 			defer tx.Rollback()
 
+			tenantId, storeId := seedOrderItemTestDependencies(t, tx)
 			orderItemRepo := NewOrderItemRepositoryImpl(tx)
 
 			amounts := []int{10000, 40000, 90000, 100000, 250000}
@@ -294,14 +334,14 @@ func TestOrderItemRepository(t *testing.T) {
 					TotalAmount:    amt,
 					DiscountAmount: 0,
 					Subtotal:       amt,
-					TenantId:       TENANT_ID,
-					StoreId:        STORE_ID,
+					TenantId:       tenantId,
+					StoreId:        storeId,
 				})
-				require.Nil(t, err)
+				assert.Nil(t, err)
 			}
 
 			results, count, err := orderItemRepo.Get(
-				TENANT_ID,
+				tenantId,
 				0,
 				5,
 				0,
@@ -311,12 +351,12 @@ func TestOrderItemRepository(t *testing.T) {
 				nil,
 			)
 
-			require.Nil(t, err)
-			require.Equal(t, 5, count)
-			require.Len(t, results, 5)
+			assert.Nil(t, err)
+			assert.Equal(t, 5, count)
+			assert.Len(t, results, 5)
 
 			for i := 1; i < len(results); i++ {
-				require.LessOrEqual(t, results[i].TotalAmount, results[i-1].TotalAmount)
+				assert.LessOrEqual(t, results[i].TotalAmount, results[i-1].TotalAmount)
 			}
 		})
 	})
