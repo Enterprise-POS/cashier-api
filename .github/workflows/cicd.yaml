@@ -4,6 +4,11 @@ env:
   SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
   SUPABASE_API_URL: ${{ secrets.SUPABASE_API_URL }}
   JWT_S: ${{ secrets.JWT_S }}
+  DB_USER: ${{ secrets.DB_USER }}
+  DB_HOST: ${{ secrets.DB_HOST }}
+  DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+  DB_PORT: ${{ secrets.DB_PORT }}
+  DB_TIMEZONE: ${{ secrets.DB_TIMEZONE }}
 
 on:
   push:
