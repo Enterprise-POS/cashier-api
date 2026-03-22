@@ -139,7 +139,7 @@ func TestStoreStockServiceImpl(t *testing.T) {
 			storeStockRepository.Mock.
 				On("GetV2", testTenantId, testStoreId, limit, page-1).
 				Return(expectedStoreStocks, len(expectedStoreStocks), nil)
-			storeStocks, count, err := storeStockService.GetV2(testTenantId, testStoreId, limit, page, "")
+			storeStocks, count, err := storeStockService.GetV2(testTenantId, testStoreId, limit, page, "", 0)
 			assert.NoError(t, err)
 			assert.Equal(t, len(expectedStoreStocks), count)
 			assert.Len(t, storeStocks, len(expectedStoreStocks))
@@ -153,55 +153,55 @@ func TestStoreStockServiceImpl(t *testing.T) {
 
 		t.Run("InvalidParam", func(t *testing.T) {
 			invalidLimit := -1
-			storeStocks, count, err := storeStockService.GetV2(testTenantId, testStoreId, invalidLimit, page, "")
+			storeStocks, count, err := storeStockService.GetV2(testTenantId, testStoreId, invalidLimit, page, "", 0)
 			assert.Error(t, err)
 			assert.Equal(t, 0, count)
 			assert.Nil(t, storeStocks)
 
 			invalidLimit = 0
-			storeStocks, count, err = storeStockService.GetV2(testTenantId, testStoreId, invalidLimit, page, "")
+			storeStocks, count, err = storeStockService.GetV2(testTenantId, testStoreId, invalidLimit, page, "", 0)
 			assert.Error(t, err)
 			assert.Equal(t, 0, count)
 			assert.Nil(t, storeStocks)
 
 			invalidPage := -1
-			storeStocks, count, err = storeStockService.GetV2(testTenantId, testStoreId, limit, invalidPage, "")
+			storeStocks, count, err = storeStockService.GetV2(testTenantId, testStoreId, limit, invalidPage, "", 0)
 			assert.Error(t, err)
 			assert.Equal(t, 0, count)
 			assert.Nil(t, storeStocks)
 
 			invalidPage = 0
-			storeStocks, count, err = storeStockService.GetV2(testTenantId, testStoreId, limit, invalidPage, "")
+			storeStocks, count, err = storeStockService.GetV2(testTenantId, testStoreId, limit, invalidPage, "", 0)
 			assert.Error(t, err)
 			assert.Equal(t, 0, count)
 			assert.Nil(t, storeStocks)
 
 			invalidTenantId := -1
-			storeStocks, count, err = storeStockService.GetV2(invalidTenantId, testStoreId, limit, page, "")
+			storeStocks, count, err = storeStockService.GetV2(invalidTenantId, testStoreId, limit, page, "", 0)
 			assert.Error(t, err)
 			assert.Equal(t, 0, count)
 			assert.Nil(t, storeStocks)
 
 			invalidTenantId = 0
-			storeStocks, count, err = storeStockService.GetV2(invalidTenantId, testStoreId, limit, page, "")
+			storeStocks, count, err = storeStockService.GetV2(invalidTenantId, testStoreId, limit, page, "", 0)
 			assert.Error(t, err)
 			assert.Equal(t, 0, count)
 			assert.Nil(t, storeStocks)
 
 			invalidStoreId := -1
-			storeStocks, count, err = storeStockService.GetV2(testTenantId, invalidStoreId, limit, page, "")
+			storeStocks, count, err = storeStockService.GetV2(testTenantId, invalidStoreId, limit, page, "", 0)
 			assert.Error(t, err)
 			assert.Equal(t, 0, count)
 			assert.Nil(t, storeStocks)
 
 			invalidStoreId = 0
-			storeStocks, count, err = storeStockService.GetV2(testTenantId, invalidStoreId, limit, page, "")
+			storeStocks, count, err = storeStockService.GetV2(testTenantId, invalidStoreId, limit, page, "", 0)
 			assert.Error(t, err)
 			assert.Equal(t, 0, count)
 			assert.Nil(t, storeStocks)
 
 			invalidNameQuery := "SELECT * FROM store_stock"
-			storeStocks, count, err = storeStockService.GetV2(testTenantId, invalidStoreId, limit, page, invalidNameQuery)
+			storeStocks, count, err = storeStockService.GetV2(testTenantId, invalidStoreId, limit, page, invalidNameQuery, 0)
 			assert.Error(t, err)
 			assert.Equal(t, 0, count)
 			assert.Nil(t, storeStocks)

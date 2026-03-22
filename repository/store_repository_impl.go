@@ -3,16 +3,15 @@ package repository
 import (
 	"cashier-api/model"
 	"fmt"
-	"strconv"
 
-	"github.com/supabase-community/supabase-go"
+	"gorm.io/gorm"
 )
 
 type StoreRepositoryImpl struct {
-	Client *supabase.Client
+	Client *gorm.DB
 }
 
-func NewStoreRepositoryImpl(client *supabase.Client) StoreRepository {
+func NewStoreRepositoryImpl(client *gorm.DB) StoreRepository {
 	return &StoreRepositoryImpl{Client: client}
 }
 
@@ -21,59 +20,54 @@ const StoreTable = "store"
 // GetAll implements StoreRepository.
 func (repository *StoreRepositoryImpl) GetAll(tenantId, page, limit int, includeNonActive bool) ([]*model.Store, int, error) {
 	start := page * limit
-	end := start + limit - 1
-	query := repository.Client.From(StoreTable).
-		Select("*", "exact", false).
-		Eq("tenant_id", strconv.Itoa(tenantId)).
-		Range(start, end, "").
-		Limit(limit, "")
-
-	// Will not include non-active store / Only active store will be return
-	if !includeNonActive {
-		query = query.Eq("is_active", "TRUE")
-	}
 
 	var stores []*model.Store
-	count, err := query.ExecuteTo(&stores)
-	if err != nil {
+	var totalCount int64
+
+	query := repository.Client.Model(&model.Store{}).
+		Where("tenant_id = ?", tenantId)
+
+	if !includeNonActive {
+		query = query.Where("is_active = ?", true)
+	}
+
+	if err := query.Count(&totalCount).Error; err != nil {
 		return nil, 0, err
 	}
 
-	return stores, int(count), nil
+	if err := query.Offset(start).Limit(limit).Find(&stores).Error; err != nil {
+		return nil, 0, err
+	}
+
+	return stores, int(totalCount), nil
 }
 
 // Create implements StoreRepository.
 func (repository *StoreRepositoryImpl) Create(tenantId int, name string) (*model.Store, error) {
-	var createdStore *model.Store
-	_, err := repository.Client.From(StoreTable).
-		Insert(&model.Store{TenantId: tenantId, Name: name, IsActive: true}, false, "", "representation", "").
-		Single().
-		ExecuteTo(&createdStore)
-	if err != nil {
+	store := &model.Store{
+		TenantId: tenantId,
+		Name:     name,
+		IsActive: true,
+	}
+
+	if err := repository.Client.Create(store).Error; err != nil {
 		return nil, err
 	}
 
-	return createdStore, nil
+	return store, nil
 }
 
 // SetActivate implements StoreRepository.
 func (repository *StoreRepositoryImpl) SetActivate(tenantId, storeId int, setInto bool) error {
-	tobeUpdatedValue := map[string]interface{}{
-		"is_active": setInto,
+	result := repository.Client.Model(&model.Store{}).
+		Where("tenant_id", tenantId).Where("id", storeId).
+		Update("is_active", setInto)
+
+	if result.Error != nil {
+		return result.Error
 	}
 
-	message, _, err := repository.Client.From(StoreTable).
-		Update(tobeUpdatedValue, "", "").
-		Eq("tenant_id", strconv.Itoa(tenantId)).
-		Eq("id", strconv.Itoa(storeId)).
-		Execute()
-	if err != nil {
-		return err
-	}
-
-	// If the request did not do anything then nothing happen, which mean invalid/error
-	// Should say this a warn instead an error ?
-	if len(message) == 0 || string(message) == "[]" {
+	if result.RowsAffected == 0 {
 		return fmt.Errorf("[ERROR] No store found with tenant_id=%d and id=%d", tenantId, storeId)
 	}
 
@@ -82,22 +76,26 @@ func (repository *StoreRepositoryImpl) SetActivate(tenantId, storeId int, setInt
 
 // Edit implements StoreRepository.
 func (repository *StoreRepositoryImpl) Edit(tobeEditStore *model.Store) (*model.Store, error) {
-	tobeUpdatedValue := map[string]interface{}{
-		"name": tobeEditStore.Name,
+	result := repository.Client.Model(&model.Store{}).
+		Where("tenant_id", tobeEditStore.TenantId).Where("id", tobeEditStore.Id).
+		Update("name", tobeEditStore.Name)
+
+	if result.Error != nil {
+		return nil, result.Error
 	}
 
-	var updatedStore *model.Store
-	_, err := repository.Client.From(StoreTable).
-		Update(tobeUpdatedValue, "", "").
-		Eq("tenant_id", strconv.Itoa(tobeEditStore.TenantId)).
-		Eq("id", strconv.Itoa(tobeEditStore.Id)).
-		Single().ExecuteTo(&updatedStore)
-	if err != nil {
+	if result.RowsAffected == 0 {
+		// Bug fix: original used tobeEditStore.Id twice, should be TenantId and Id
+		return nil, fmt.Errorf("[ERROR] No store found with tenant_id=%d and id=%d", tobeEditStore.TenantId, tobeEditStore.Id)
+	}
+
+	// Fetch the updated record to return it
+	var updatedStore model.Store
+	if err := repository.Client.
+		Where("tenant_id = ? AND id = ?", tobeEditStore.TenantId, tobeEditStore.Id).
+		First(&updatedStore).Error; err != nil {
 		return nil, err
 	}
-	if updatedStore == nil {
-		return nil, fmt.Errorf("[ERROR] No store found with tenant_id=%d and id=%d", tobeEditStore.Id, tobeEditStore.Id)
-	}
 
-	return updatedStore, nil
+	return &updatedStore, nil
 }

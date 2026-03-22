@@ -32,7 +32,7 @@ func TestUserServiceImpl(t *testing.T) {
 				Email:     dummyIdentity + "@gmail.com",
 				Id:        1,
 				UserUuid:  "",
-				CreatedAt: &now,
+				CreatedAt: now,
 			}
 
 			// customMatcher say: "I don’t care about the full model.User, but if the .Email and .Name fields match expectedDummyUser, then treat it as a match."
@@ -97,7 +97,7 @@ func TestUserServiceImpl(t *testing.T) {
 				Email:     dummyIdentity + "@gmail.com",
 				Id:        1,
 				UserUuid:  "",
-				CreatedAt: &now,
+				CreatedAt: now,
 			}
 
 			// customMatcher say: "I don’t care about the full model.User, but if the .Email and .Name fields match expectedDummyUser, then treat it as a match."
@@ -111,16 +111,14 @@ func TestUserServiceImpl(t *testing.T) {
 			require.NotNil(t, createdDummyUser)
 
 			hashedPassword := "$2a$10$BhhTb567SYl3CEZw.s9MlOsZCswa3/UdzTcGQcaU6zrbRMIbDiFiK"
-			expectedDummyUserRegisterForm := &model.UserRegisterForm{
-				Id:        createdDummyUser.Id,
-				Name:      createdDummyUser.Name,
-				Email:     createdDummyUser.Email,
-				UserUuid:  createdDummyUser.UserUuid,
-				CreatedAt: createdDummyUser.CreatedAt,
-				Password:  hashedPassword,
+			expectedDummyUserForLogin := &model.User{
+				Id:       createdDummyUser.Id,
+				Name:     createdDummyUser.Name,
+				Email:    createdDummyUser.Email,
+				Password: hashedPassword,
 			}
 
-			userRepo.Mock.On("GetByEmail", createdDummyUser.Email).Return(expectedDummyUserRegisterForm, nil)
+			userRepo.Mock.On("GetByEmail", createdDummyUser.Email).Return(expectedDummyUserForLogin, nil)
 			user, tokenString, err := userService.SignInWithEmailAndPassword(createdDummyUser.Email, dummyPassword)
 			assert.Nil(t, err)
 			assert.NotNil(t, user)
@@ -163,6 +161,7 @@ func TestUserServiceImpl(t *testing.T) {
 					assert.Equal(t, user.Name, val)
 				case "created_at":
 					createdAtStr, ok := val.(string)
+					fmt.Println("Debug ", val)
 					assert.True(t, ok)
 
 					createdAt, err := time.Parse(time.RFC3339Nano, createdAtStr)

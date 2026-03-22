@@ -27,10 +27,11 @@ func TestProtectedRoute(t *testing.T) {
 		t.Skip("Required ENV not available: JWT_S")
 	}
 
+	gormClient := client.CreateGormClient()
 	supabaseClient := client.CreateSupabaseClient()
 
 	// To create new user, User endpoint are needed
-	userRepository := repository.NewUserRepositoryImpl(supabaseClient)
+	userRepository := repository.NewUserRepositoryImpl(gormClient)
 	userService := service.NewUserServiceImpl(userRepository)
 	userController := controller.NewUserControllerImpl(userService)
 

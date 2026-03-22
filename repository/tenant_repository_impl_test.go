@@ -3,7 +3,6 @@ package repository
 import (
 	"cashier-api/helper/client"
 	"cashier-api/model"
-	"strconv"
 	"testing"
 
 	"github.com/google/uuid"
@@ -12,14 +11,14 @@ import (
 )
 
 func TestTenantRepositoryImpl(t *testing.T) {
-	supabaseClient := client.CreateSupabaseClient()
+	gormClient := client.CreateGormClient()
 
 	// This is test user id; Do not delete any accidentally
 	// delete may cause another test case throw panic
 	const UserId = 1
 
 	t.Run("GetByUserId", func(t *testing.T) {
-		tenantRepo := NewTenantRepositoryImpl(supabaseClient)
+		tenantRepo := NewTenantRepositoryImpl(gormClient)
 
 		t.Run("NormalGetByUserId", func(t *testing.T) {
 			// Create the tenant first
@@ -37,13 +36,13 @@ func TestTenantRepositoryImpl(t *testing.T) {
 			assert.GreaterOrEqual(t, len(dummyTenants), 1)
 
 			// Clean up
-			_, _, err = supabaseClient.From(TenantTable).Delete("", "").Eq("id", strconv.Itoa(newDummyTenant.Id)).Execute()
+			err = gormClient.Delete(&newDummyTenant).Error
 			require.Nil(t, err, "If this fail, then delete data immediately TestTenantRepositoryImpl/Create/NormalCreate")
 		})
 	})
 
 	t.Run("Create", func(t *testing.T) {
-		tenantRepo := NewTenantRepositoryImpl(supabaseClient)
+		tenantRepo := NewTenantRepositoryImpl(gormClient)
 
 		t.Run("NormalCreate", func(t *testing.T) {
 			// Create the tenant first
@@ -59,26 +58,30 @@ func TestTenantRepositoryImpl(t *testing.T) {
 			assert.Equal(t, dummyTenant.OwnerUserId, newDummyTenant.OwnerUserId)
 
 			// Clean up
-			_, _, err = supabaseClient.From(TenantTable).Delete("", "").Eq("id", strconv.Itoa(newDummyTenant.Id)).Execute()
+			err = gormClient.Delete(&newDummyTenant).Error
 			require.Nil(t, err, "If this fail, then delete data immediately TestTenantRepositoryImpl/Create/NormalCreate")
 		})
 	})
 
 	t.Run("GetTenantWithUser", func(t *testing.T) {
-		tenantRepo := NewTenantRepositoryImpl(supabaseClient)
+		tenantRepo := NewTenantRepositoryImpl(gormClient)
 
 		t.Run("NormalGet", func(t *testing.T) {
-			// Create the tenant first
 			dummyTenant := &model.Tenant{
 				Name:        "Test_TenantRepositoryImpl/GetTenantWithUser/NormalGet 1 Group_" + uuid.NewString(),
 				OwnerUserId: UserId,
 				IsActive:    true,
 			}
+
 			newDummyTenant, err := tenantRepo.Create(dummyTenant)
 			require.Nil(t, err)
 
-			// For test purpose, insert into user_mtm_tenant table manually
-			supabaseClient.From("user_mtm_tenant").Insert(&model.UserMtmTenant{UserId: UserId, TenantId: newDummyTenant.Id}, false, "", "", "").Execute()
+			// Insert into user_mtm_tenant using GORM
+			err = gormClient.Create(&model.UserMtmTenant{
+				UserId:   UserId,
+				TenantId: newDummyTenant.Id,
+			}).Error
+			require.Nil(t, err)
 
 			createdDummyTenants, err := tenantRepo.GetTenantWithUser(UserId)
 			assert.Nil(t, err)
@@ -94,16 +97,20 @@ func TestTenantRepositoryImpl(t *testing.T) {
 			}
 			assert.True(t, isAvailable)
 
-			// Clean up
-			_, _, err = supabaseClient.From("user_mtm_tenant").Delete("", "").Eq("user_id", strconv.Itoa(UserId)).Eq("tenant_id", strconv.Itoa(newDummyTenant.Id)).Execute()
+			// Clean up user_mtm_tenant
+			err = gormClient.
+				Where("user_id = ? AND tenant_id = ?", UserId, newDummyTenant.Id).
+				Delete(&model.UserMtmTenant{}).Error
 			require.Nil(t, err, "If this fail, then delete data immediately TestTenantRepositoryImpl/GetTenantWithUser/NormalGet 1")
-			_, _, err = supabaseClient.From(TenantTable).Delete("", "").Eq("id", strconv.Itoa(newDummyTenant.Id)).Execute()
+
+			// Clean up tenant
+			err = gormClient.Delete(&model.Tenant{}, newDummyTenant.Id).Error
 			require.Nil(t, err, "If this fail, then delete data immediately TestTenantRepositoryImpl/GetTenantWithUser/NormalGet 2")
 		})
 	})
 
 	t.Run("NewTenant", func(t *testing.T) {
-		tenantRepo := NewTenantRepositoryImpl(supabaseClient)
+		tenantRepo := NewTenantRepositoryImpl(gormClient)
 
 		t.Run("NormalInput", func(t *testing.T) {
 			dummyTenant := &model.Tenant{
@@ -133,16 +140,21 @@ func TestTenantRepositoryImpl(t *testing.T) {
 			require.NotEqual(t, 0, createdTenantId)
 
 			// Clean up
-			_, _, err = supabaseClient.From("user_mtm_tenant").Delete("", "").Eq("user_id", strconv.Itoa(UserId)).Eq("tenant_id", strconv.Itoa(createdTenantId)).Execute()
+			err = gormClient.
+				Where("user_id", UserId).
+				Where("tenant_id", createdTenantId).
+				Delete(&model.UserMtmTenant{}).Error
 			require.Nil(t, err, "If this fail, then delete data immediately TestTenantRepositoryImpl/NewTenant/NormalInput 1")
-			_, _, err = supabaseClient.From(TenantTable).Delete("", "").Eq("id", strconv.Itoa(createdTenantId)).Execute()
+			err = gormClient.
+				Where("id", createdTenantId).
+				Delete(&model.Tenant{}).Error
 			require.Nil(t, err, "If this fail, then delete data immediately TestTenantRepositoryImpl/NewTenant/NormalInput 2")
 		})
 	})
 
 	t.Run("AddUserToTenant", func(t *testing.T) {
-		tenantRepo := NewTenantRepositoryImpl(supabaseClient)
-		userRepo := NewUserRepositoryImpl(supabaseClient)
+		userRepo := NewUserRepositoryImpl(gormClient)
+		tenantRepo := NewTenantRepositoryImpl(gormClient)
 
 		// create user
 		dummyUser := model.User{
@@ -203,15 +215,22 @@ func TestTenantRepositoryImpl(t *testing.T) {
 			assert.Equal(t, createdTenantId, data.TenantId)
 
 			// Check manually if current tenant actually added
-			var checkData []*model.UserMtmTenant
-			count, err := supabaseClient.From(UserMtmTenantTable).Select("*", "exact", false).Eq("tenant_id", strconv.Itoa(createdTenantId)).ExecuteTo(&checkData)
+			var count int64
+			err = gormClient.
+				Model(&model.UserMtmTenant{}).
+				Where("tenant_id = ?", createdTenantId).
+				Count(&count).Error
 			assert.Nil(t, err)
-			assert.Equal(t, 2, int(count))
+			assert.Equal(t, int64(2), count)
 
 			// Clean up
-			_, _, err = supabaseClient.From(UserMtmTenantTable).Delete("", "").Eq("user_id", strconv.Itoa(newCreatedDummyUser2.Id)).Eq("tenant_id", strconv.Itoa(createdTenantId)).Execute()
+			err = gormClient.
+				Where("user_id = ? AND tenant_id = ?", newCreatedDummyUser2.Id, createdTenantId).
+				Delete(&model.UserMtmTenant{}).Error
 			require.Nil(t, err, "If this fail, then delete data immediately TestTenantRepositoryImpl/NewTenant/NormalInput 1")
-			_, _, err = supabaseClient.From(UserTable).Delete("", "").Eq("id", strconv.Itoa(newCreatedDummyUser2.Id)).Execute()
+
+			err = gormClient.
+				Delete(&model.User{}, newCreatedDummyUser2.Id).Error
 			require.Nil(t, err, "If this fail, then delete data immediately TestTenantRepositoryImpl/NewTenant/NormalInput 2")
 		})
 
@@ -220,7 +239,7 @@ func TestTenantRepositoryImpl(t *testing.T) {
 			data, err := tenantRepo.AddUserToTenant(notAvailableUserId, createdTenantId)
 			assert.Nil(t, data)
 			assert.NotNil(t, err)
-			assert.Equal(t, "(23503) insert or update on table \"user_mtm_tenant\" violates foreign key constraint \"user_mtm_tenant_user_id_fkey\"", err.Error())
+			assert.Contains(t, err.Error(), "23503")
 		})
 
 		t.Run("TenantIdNotAvailable", func(t *testing.T) {
@@ -228,21 +247,25 @@ func TestTenantRepositoryImpl(t *testing.T) {
 			data, err := tenantRepo.AddUserToTenant(newCreatedDummyUser.Id, notAvailableTenantId)
 			assert.Nil(t, data)
 			assert.NotNil(t, err)
-			assert.Equal(t, "(23503) insert or update on table \"user_mtm_tenant\" violates foreign key constraint \"user_mtm_tenant_tenant_id_fkey\"", err.Error())
+			assert.Contains(t, err.Error(), "23503")
 		})
 
 		// Clean up helper dummy
-		_, _, err = supabaseClient.From(UserMtmTenantTable).Delete("", "").Eq("user_id", strconv.Itoa(newCreatedDummyUser.Id)).Eq("tenant_id", strconv.Itoa(createdTenantId)).Execute()
-		require.Nil(t, err, "If this fail, then delete data immediately TestTenantRepositoryImpl/Register 1")
-		_, _, err = supabaseClient.From(TenantTable).Delete("", "").Eq("id", strconv.Itoa(createdTenantId)).Execute()
-		require.Nil(t, err, "If this fail, then delete data immediately TestTenantRepositoryImpl/Register 2")
-		_, _, err = supabaseClient.From(UserTable).Delete("", "").Eq("id", strconv.Itoa(newCreatedDummyUser.Id)).Execute()
-		require.Nil(t, err, "If this fail, then delete data immediately TestTenantRepositoryImpl/Register 3")
+		err = gormClient.
+			Where("user_id = ? AND tenant_id = ?", newCreatedDummyUser.Id, createdTenantId).
+			Delete(&model.UserMtmTenant{}).Error
+		require.Nil(t, err)
+
+		err = gormClient.Delete(&model.Tenant{}, createdTenantId).Error
+		require.Nil(t, err)
+
+		err = gormClient.Delete(&newCreatedDummyUser).Error
+		require.Nil(t, err)
 	})
 
 	t.Run("RemoveUserFromTenant", func(t *testing.T) {
-		tenantRepo := NewTenantRepositoryImpl(supabaseClient)
-		userRepo := NewUserRepositoryImpl(supabaseClient)
+		userRepo := NewUserRepositoryImpl(gormClient)
+		tenantRepo := NewTenantRepositoryImpl(gormClient)
 
 		// create user
 		dummyUser := model.User{
@@ -319,10 +342,10 @@ func TestTenantRepositoryImpl(t *testing.T) {
 			response, err := tenantRepo.RemoveUserFromTenant(&model.UserMtmTenant{UserId: newCreatedDummyUser2.Id, TenantId: createdTenantId}, newCreatedDummyUser2.Id)
 			assert.Error(t, err)
 			assert.Equal(t, "", response)
-			assert.Equal(t, "\"[ERROR] Illegal action! Removing user only allowed by the owner\"", err.Error())
+			assert.Equal(t, "[ERROR] Illegal action! Removing user only allowed by the owner", err.Error())
 
 			// Clean up
-			_, _, err = supabaseClient.From(UserTable).Delete("", "").Eq("id", strconv.Itoa(newCreatedDummyUser2.Id)).Execute()
+			err = gormClient.Delete(&newCreatedDummyUser2).Error
 			require.Nil(t, err, "If this fail, then delete data immediately TestTenantRepositoryImpl/RemoveUserFromTenant/IllegalActionRemoveUserFromNonOwners 1")
 		})
 
@@ -344,9 +367,14 @@ func TestTenantRepositoryImpl(t *testing.T) {
 
 			// Check manually if current tenant actually added
 			var checkData []*model.UserMtmTenant
-			count, err := supabaseClient.From(UserMtmTenantTable).Select("*", "exact", false).Eq("tenant_id", strconv.Itoa(createdTenantId)).ExecuteTo(&checkData)
+			err = gormClient.Where("tenant_id", createdTenantId).Find(&checkData).Error
 			assert.Nil(t, err)
-			assert.Equal(t, 2, int(count))
+
+			var count int64
+			err = gormClient.Model(&model.UserMtmTenant{}).Where("tenant_id", createdTenantId).Count(&count).Error
+			assert.Nil(t, err)
+
+			assert.Equal(t, int64(2), count)
 
 			// Begin test
 			response, err := tenantRepo.RemoveUserFromTenant(&model.UserMtmTenant{UserId: newCreatedDummyUser2.Id, TenantId: createdTenantId}, newCreatedDummyUser.Id)
@@ -361,7 +389,7 @@ func TestTenantRepositoryImpl(t *testing.T) {
 			assert.Equal(t, 0, len(tenants))
 
 			// Clean up helper dummy
-			_, _, err = supabaseClient.From(UserTable).Delete("", "").Eq("id", strconv.Itoa(newCreatedDummyUser2.Id)).Execute()
+			err = gormClient.Delete(&newCreatedDummyUser2).Error
 			require.Nil(t, err, "If this fail, then delete data immediately TestTenantRepositoryImpl/RemoveUserFromTenant 1")
 		})
 
@@ -380,17 +408,24 @@ func TestTenantRepositoryImpl(t *testing.T) {
 		})
 
 		// Clean up helper dummy
-		_, _, err = supabaseClient.From(UserMtmTenantTable).Delete("", "").Eq("user_id", strconv.Itoa(newCreatedDummyUser.Id)).Eq("tenant_id", strconv.Itoa(createdTenantId)).Execute()
+		err = gormClient.
+			Where("user_id", newCreatedDummyUser.Id).
+			Where("tenant_id", createdTenantId).
+			Delete(&model.UserMtmTenant{}).Error
 		require.Nil(t, err, "If this fail, then delete data immediately TestTenantRepositoryImpl/RemoveUserFromTenant 2")
-		_, _, err = supabaseClient.From(TenantTable).Delete("", "").Eq("id", strconv.Itoa(createdTenantId)).Execute()
+		err = gormClient.
+			Where("id", createdTenantId).
+			Delete(&model.Tenant{}).Error
 		require.Nil(t, err, "If this fail, then delete data immediately TestTenantRepositoryImpl/RemoveUserFromTenant 3")
-		_, _, err = supabaseClient.From(UserTable).Delete("", "").Eq("id", strconv.Itoa(newCreatedDummyUser.Id)).Execute()
+		err = gormClient.
+			Where("id", newCreatedDummyUser.Id).
+			Delete(&model.User{}).Error
 		require.Nil(t, err, "If this fail, then delete data immediately TestTenantRepositoryImpl/RemoveUserFromTenant 4")
 	})
 
 	t.Run("GetTenantMembers", func(t *testing.T) {
-		tenantRepo := NewTenantRepositoryImpl(supabaseClient)
-		userRepo := NewUserRepositoryImpl(supabaseClient)
+		userRepo := NewUserRepositoryImpl(gormClient)
+		tenantRepo := NewTenantRepositoryImpl(gormClient)
 
 		// create user
 		dummyUser := model.User{
@@ -438,21 +473,17 @@ func TestTenantRepositoryImpl(t *testing.T) {
 		assert.Equal(t, 2, len(users))
 
 		// Clean up helper dummy
-		_, _, err = supabaseClient.From(UserMtmTenantTable).
-			Delete("", "").
-			In("user_id", []string{strconv.Itoa(newCreatedDummyUser.Id), strconv.Itoa(newCreatedDummyUser2.Id)}).
-			Eq("tenant_id", strconv.Itoa(createdDummyTenantId)).
-			Execute()
+		err = gormClient.
+			Where("user_id", []int{newCreatedDummyUser.Id, newCreatedDummyUser2.Id}).
+			Where("tenant_id", createdDummyTenantId).
+			Delete(&model.UserMtmTenant{}).Error
 		require.Nil(t, err, "If this fail, then delete data immediately TestTenantRepositoryImpl/Register 1")
-		_, _, err = supabaseClient.From(TenantTable).
-			Delete("", "").
-			Eq("id", strconv.Itoa(createdDummyTenantId)).
-			Execute()
+		err = gormClient.
+			Delete(createdDummyTenants[0]).Error
 		require.Nil(t, err, "If this fail, then delete data immediately TestTenantRepositoryImpl/Register 2")
-		_, _, err = supabaseClient.From(UserTable).
-			Delete("", "").
-			In("id", []string{strconv.Itoa(newCreatedDummyUser.Id), strconv.Itoa(newCreatedDummyUser2.Id)}).
-			Execute()
+		err = gormClient.
+			Where("id", []int{newCreatedDummyUser.Id, newCreatedDummyUser2.Id}).
+			Delete(&model.User{}).Error
 		require.Nil(t, err, "If this fail, then delete data immediately TestTenantRepositoryImpl/Register 3")
 	})
 }

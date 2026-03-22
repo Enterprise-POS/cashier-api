@@ -4,10 +4,14 @@ import "time"
 
 // This is called when only get the list of category from some tenant
 type Category struct {
-	Id           int        `json:"id,omitempty"`
-	CategoryName string     `json:"category_name"`
-	CreatedAt    *time.Time `json:"created_at,omitempty"`
-	TenantId     int        `json:"tenant_id"`
+	Id           int       `json:"id,omitempty" gorm:"primaryKey;autoIncrement;column:id"`
+	CategoryName string    `json:"category_name" gorm:"column:category_name"`
+	TenantId     int       `json:"tenant_id" gorm:"column:tenant_id"`
+	CreatedAt    time.Time `json:"created_at,omitempty" gorm:"column:created_at;<-:create"`
+}
+
+func (Category) TableName() string {
+	return "category"
 }
 
 /*
@@ -37,8 +41,12 @@ type CategoryWithItem struct {
 }
 
 type CategoryMtmWarehouse struct {
-	Id         int        `json:"id,omitempty"`
-	CategoryId int        `json:"category_id"`
-	ItemId     int        `json:"item_id"`
-	CreatedAt  *time.Time `json:"created_at,omitempty"`
+	Id         int        `json:"id,omitempty" gorm:"primaryKey;autoIncrement;column:id"`
+	CategoryId int        `json:"category_id" gorm:"column:category_id"`
+	ItemId     int        `json:"item_id" gorm:"column:item_id"`
+	CreatedAt  *time.Time `json:"created_at,omitempty" gorm:"column:created_at;<-create"`
+}
+
+func (CategoryMtmWarehouse) TableName() string {
+	return "category_mtm_warehouse"
 }

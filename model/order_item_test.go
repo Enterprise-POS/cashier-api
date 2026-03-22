@@ -12,7 +12,7 @@ func TestOrderItem(t *testing.T) {
 	orderItem := OrderItem{
 		Id:             1,
 		PurchasedPrice: 10000,
-		CreatedAt:      &now,
+		CreatedAt:      now,
 		TotalQuantity:  1,
 		TotalAmount:    10000,
 		DiscountAmount: 0,

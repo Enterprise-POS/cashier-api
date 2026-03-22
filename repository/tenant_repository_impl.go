@@ -2,70 +2,61 @@ package repository
 
 import (
 	"cashier-api/model"
-	"encoding/json"
 	"errors"
-	"strconv"
 	"strings"
 
 	log "github.com/sirupsen/logrus"
-	"github.com/supabase-community/supabase-go"
+	"gorm.io/gorm"
 )
 
 type TenantRepositoryImpl struct {
-	Client *supabase.Client
+	Client *gorm.DB
 }
 
 const TenantTable string = "tenant"
 const UserMtmTenantTable string = "user_mtm_tenant"
 
-func NewTenantRepositoryImpl(client *supabase.Client) TenantRepository {
+func NewTenantRepositoryImpl(client *gorm.DB) TenantRepository {
 	return &TenantRepositoryImpl{Client: client}
 }
 
 func (repository *TenantRepositoryImpl) GetByUserId(ownerUserId int) ([]*model.Tenant, error) {
-	// For now we don't limit how many should return
-	var results []*model.Tenant
-	_, err := repository.Client.From(TenantTable).
-		Select("*", "", false).
-		Eq("owner_user_id", strconv.Itoa(ownerUserId)).
-		ExecuteTo(&results)
+	var results = make([]*model.Tenant, 0)
+	err := repository.Client.Table(TenantTable).
+		Where("owner_user_id = ?", ownerUserId).
+		Find(&results).Error
 	if err != nil {
 		return nil, err
 	}
-
 	return results, nil
 }
 
 func (repository *TenantRepositoryImpl) Create(tenant *model.Tenant) (*model.Tenant, error) {
-	var newTenant *model.Tenant
-	_, err := repository.Client.From(TenantTable).
-		Insert(tenant, false, "", "", "").
-		Single().
-		ExecuteTo(&newTenant)
+	err := repository.Client.Table(TenantTable).
+		Create(tenant).Error
+	if err != nil {
+		return nil, err
+	}
+	return tenant, nil
+}
+
+func (repository *TenantRepositoryImpl) Delete(tenantId int) error {
+	panic("not implemented") // TODO: Implement
+}
+
+func (repository *TenantRepositoryImpl) GetTenantWithUser(userId int) ([]*model.Tenant, error) {
+	var user model.User
+
+	err := repository.Client.
+		Preload("Tenants").
+		First(&user, userId).Error
 	if err != nil {
 		return nil, err
 	}
 
-	return newTenant, nil
-}
-
-func (repository *TenantRepositoryImpl) Delete(tenantId int) (_ error) {
-	panic("not implemented") // TODO: Implement
-}
-
-/*
-Return all tenants from 1 user tenant
-- will call user_mtm_tenant
-*/
-func (repository *TenantRepositoryImpl) GetTenantWithUser(userId int) ([]*model.Tenant, error) {
-	data := repository.Client.Rpc("get_tenant_base_on_user_id", "", map[string]int{
-		"p_user_id": userId,
-	})
-
-	var results []*model.Tenant
-	err := json.Unmarshal([]byte(data), &results)
-	if err != nil {
-		return nil, err
+	results := make([]*model.Tenant, len(user.Tenants))
+	for i := range user.Tenants {
+		results[i] = &user.Tenants[i]
 	}
 
 	return results, nil
@@ -77,12 +68,14 @@ only create 1 tenant, will call new_tenant_user_as_owner function
 ? when fresh new tenant created, automatically also insert into new_tenant_user_as_owner table
 */
 func (repository *TenantRepositoryImpl) NewTenant(tenant *model.Tenant) error {
-	var response string = repository.Client.Rpc("new_tenant_user_as_owner", "", map[string]interface{}{
-		"p_user_id":     tenant.OwnerUserId,
-		"p_tenant_name": tenant.Name,
-	})
+	var response string
+	err := repository.Client.
+		Raw("SELECT new_tenant_user_as_owner(?, ?)", tenant.OwnerUserId, tenant.Name).
+		Scan(&response).Error
+	if err != nil {
+		return err
+	}
 
-	// space after [ERROR] are required
 	if strings.Contains(response, "[ERROR]") {
 		return errors.New(response)
 	}
@@ -98,24 +91,23 @@ Will create new data into user_mtm_tenant table
 that will make user have many to many relation with tenant table
 */
 func (repository *TenantRepositoryImpl) AddUserToTenant(userId, tenantId int) (*model.UserMtmTenant, error) {
-	var newUserMtmTenant *model.UserMtmTenant
-	_, err := repository.Client.From(UserMtmTenantTable).
-		Insert(&model.UserMtmTenant{UserId: userId, TenantId: tenantId}, false, "", "", "").
-		Single().
-		ExecuteTo(&newUserMtmTenant)
+	newUserMtmTenant := &model.UserMtmTenant{UserId: userId, TenantId: tenantId}
+	err := repository.Client.Table(UserMtmTenantTable).
+		Create(newUserMtmTenant).Error
 	if err != nil {
 		return nil, err
 	}
-
 	return newUserMtmTenant, nil
 }
 
 func (repository *TenantRepositoryImpl) RemoveUserFromTenant(userMtmTenant *model.UserMtmTenant, userId int) (string, error) {
-	response := repository.Client.Rpc("remove_user_from_tenant", "", map[string]any{
-		"p_performer": userId,
-		"p_user_id":   userMtmTenant.UserId,
-		"p_tenant_id": userMtmTenant.TenantId,
-	})
+	var response string
+	err := repository.Client.
+		Raw("SELECT remove_user_from_tenant(?, ?, ?)", userId, userMtmTenant.UserId, userMtmTenant.TenantId).
+		Scan(&response).Error
+	if err != nil {
+		return "", err
+	}
 
 	if strings.Contains(response, "[ERROR] ") {
 		return "", errors.New(response)
@@ -135,15 +127,18 @@ func (repository *TenantRepositoryImpl) RemoveUserFromTenant(userMtmTenant *mode
 
 // GetTenantMembers implements TenantRepository.
 func (repository *TenantRepositoryImpl) GetTenantMembers(tenantId int) ([]*model.User, error) {
-	data := repository.Client.Rpc("get_tenant_members", "", map[string]interface{}{
-		"p_tenant_id": tenantId,
-	})
+	var tenant model.Tenant
 
-	var results []*model.User
-	err := json.Unmarshal([]byte(data), &results)
+	err := repository.Client.
+		Preload("Users").
+		First(&tenant, tenantId).Error
 	if err != nil {
-		log.Errorf("ERROR ! While unmarshaling data at TenantRepositoryImpl.GetTenantMembers tenantId: %d", tenantId)
 		return nil, err
+	}
+
+	results := make([]*model.User, len(tenant.Users))
+	for i := range tenant.Users {
+		results[i] = &tenant.Users[i]
 	}
 
 	return results, nil

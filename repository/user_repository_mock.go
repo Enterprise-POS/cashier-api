@@ -17,14 +17,14 @@ func NewUserRepositoryMock(mock *mock.Mock) UserRepository {
 }
 
 // EmailAndPasswordLogin implements UserRepository.
-func (repository *UserRepositoryMock) GetByEmail(email string) (*model.UserRegisterForm, error) {
+func (repository *UserRepositoryMock) GetByEmail(email string) (*model.User, error) {
 	args := repository.Mock.Called(email)
 
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
 
-	return args.Get(0).(*model.UserRegisterForm), nil
+	return args.Get(0).(*model.User), nil
 }
 
 // EmailAndPasswordRegister implements UserRepository.

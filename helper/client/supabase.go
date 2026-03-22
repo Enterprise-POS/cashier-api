@@ -8,7 +8,6 @@ import (
 )
 
 var (
-	// MODE             string = os.Getenv("MODE")
 	API_URL          string = os.Getenv("SUPABASE_API_URL")
 	SERVICE_ROLE_KEY string = os.Getenv("SUPABASE_SERVICE_ROLE_KEY")
 )

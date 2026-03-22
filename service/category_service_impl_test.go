@@ -26,19 +26,19 @@ func TestCategoryServiceImpl(t *testing.T) {
 					Id:           1,
 					CategoryName: "Fruit",
 					TenantId:     tenantId,
-					CreatedAt:    &now,
+					CreatedAt:    now,
 				},
 				{
 					Id:           2,
 					CategoryName: "Milk",
 					TenantId:     tenantId,
-					CreatedAt:    &now,
+					CreatedAt:    now,
 				},
 				{
 					Id:           3,
 					CategoryName: "Italian_Food",
 					TenantId:     tenantId,
-					CreatedAt:    &now,
+					CreatedAt:    now,
 				},
 			}
 
@@ -350,7 +350,7 @@ func TestCategoryServiceImpl(t *testing.T) {
 				Id:           categoryId,
 				CategoryName: tobeChangeCategoryName,
 				TenantId:     tenantId,
-				CreatedAt:    &now,
+				CreatedAt:    now,
 			}
 
 			categoryRepository.Mock.On("Update", tenantId, categoryId, tobeChangeCategoryName).Return(expectedUpdatedCategory, nil)
@@ -546,7 +546,7 @@ func TestCategoryServiceImpl(t *testing.T) {
 				CategoryName: "Test Category Name",
 
 				// Not Required
-				CreatedAt: &now,
+				CreatedAt: now,
 			}
 
 			categoryRepository.Mock.On("Delete", category).Return(nil)
@@ -558,7 +558,7 @@ func TestCategoryServiceImpl(t *testing.T) {
 			category := &model.Category{
 				Id:           1,
 				CategoryName: "Test Category Name",
-				CreatedAt:    &now,
+				CreatedAt:    now,
 				TenantId:     1,
 			}
 
@@ -572,7 +572,7 @@ func TestCategoryServiceImpl(t *testing.T) {
 			invalidCategory := &model.Category{
 				// Id: 1, // Invalid
 				CategoryName: "Test Category Name",
-				CreatedAt:    &now,
+				CreatedAt:    now,
 				TenantId:     1,
 			}
 			err := categoryService.Delete(invalidCategory)
@@ -581,7 +581,7 @@ func TestCategoryServiceImpl(t *testing.T) {
 			invalidCategory = &model.Category{
 				Id:           1, // Invalid
 				CategoryName: "Test Category Name",
-				CreatedAt:    &now,
+				CreatedAt:    now,
 				// TenantId:     1,
 			}
 			err = categoryService.Delete(invalidCategory)

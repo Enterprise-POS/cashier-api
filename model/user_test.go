@@ -14,7 +14,7 @@ func TestUser(t *testing.T) {
 		UserUuid:  "00000000-0000-0000-0000-000000000000",
 		Name:      "Test user",
 		Email:     "Test@gmail.com",
-		CreatedAt: &now,
+		CreatedAt: now,
 	}
 
 	assert.Equal(t, time.Now().UTC().Day(), user.CreatedAt.UTC().Day())
@@ -25,20 +25,13 @@ func TestUser(t *testing.T) {
 }
 
 func TestUserRegisterForm(t *testing.T) {
-	now := time.Now()
 	user := &UserRegisterForm{
-		Id:        1,
-		UserUuid:  "00000000-0000-0000-0000-000000000000",
-		Name:      "Test user",
-		Email:     "Test@gmail.com",
-		CreatedAt: &now,
-		Password:  "12345678",
+		Name:     "Test user",
+		Email:    "Test@gmail.com",
+		Password: "12345678",
 	}
 
-	assert.Equal(t, time.Now().UTC().Day(), user.CreatedAt.UTC().Day())
-	assert.Equal(t, 1, user.Id)
 	assert.Equal(t, "Test user", user.Name)
 	assert.Equal(t, "Test@gmail.com", user.Email)
-	assert.Equal(t, "00000000-0000-0000-0000-000000000000", user.UserUuid)
 	assert.Equal(t, "12345678", user.Password)
 }

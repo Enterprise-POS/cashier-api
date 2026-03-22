@@ -64,6 +64,7 @@ func (controller *StoreStockControllerImpl) GetV2(ctx *fiber.Ctx) error {
 	paramPage := ctx.Query("page", "1")   // default 1
 	paramStoreId := ctx.Query("store_id", "must specify")
 	nameQuery := ctx.Query("name_query", "")
+	paramCategoryId := ctx.Query("category_id", "0")
 
 	tenantId, _ := strconv.Atoi(ctx.Params("tenantId"))
 
@@ -85,7 +86,13 @@ func (controller *StoreStockControllerImpl) GetV2(ctx *fiber.Ctx) error {
 		return ctx.Status(fiber.StatusBadRequest).JSON(response)
 	}
 
-	storeStocks, count, err := controller.Service.GetV2(tenantId, storeId, limit, page, nameQuery)
+	categoryId, err := strconv.Atoi(paramCategoryId)
+	if err != nil {
+		response := common.NewWebResponseError(fiber.StatusBadRequest, common.StatusError, err.Error())
+		return ctx.Status(fiber.StatusBadRequest).JSON(response)
+	}
+
+	storeStocks, count, err := controller.Service.GetV2(tenantId, storeId, limit, page, nameQuery, categoryId)
 	if err != nil {
 		response := common.NewWebResponseError(fiber.StatusBadRequest, common.StatusError, err.Error())
 		return ctx.Status(fiber.StatusBadRequest).JSON(response)

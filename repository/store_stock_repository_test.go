@@ -1,27 +1,22 @@
 package repository
 
 import (
-	"cashier-api/exception"
 	"cashier-api/helper/client"
 	"cashier-api/model"
-	"encoding/json"
-	"fmt"
-	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/supabase-community/supabase-go"
 )
 
 func TestStoreStockRepository(t *testing.T) {
-	var supabaseClient *supabase.Client = client.CreateSupabaseClient()
+	gormClient := client.CreateGormClient()
 	const WarehouseTable = "warehouse"
 	const StoreId = 1
 	const TenantId = 1
 
 	t.Run("_Get", func(t *testing.T) {
-		storeStockRepo := StoreStockRepositoryImpl{Client: supabaseClient}
+		storeStockRepo := NewStoreStockRepositoryImpl(gormClient)
 		storeStocks, count, err := storeStockRepo.Get(TenantId, StoreId, 1, 1)
 		assert.Nil(t, err)
 		assert.NotNil(t, count)
@@ -30,16 +25,15 @@ func TestStoreStockRepository(t *testing.T) {
 
 		// Not exist page
 		storeStocks, count, err = storeStockRepo.Get(TenantId, StoreId, 999, 999)
-		assert.NotNil(t, err)
-		assert.Equal(t, "(PGRST103) Requested range not satisfiable", err.Error())
-		assert.Equal(t, 0, count)
-		assert.Nil(t, storeStocks)
+		assert.NoError(t, err)
+		assert.Equal(t, 2, count)
+		assert.NotNil(t, storeStocks)
 	})
 
 	t.Run("GetV2", func(t *testing.T) {
 		t.Run("NormalGetV2", func(t *testing.T) {
-			storeStockRepo := NewStoreStockRepositoryImpl(supabaseClient)
-			storeStocks, count, err := storeStockRepo.GetV2(TenantId, StoreId, 1, 1, "")
+			storeStockRepo := NewStoreStockRepositoryImpl(gormClient)
+			storeStocks, count, err := storeStockRepo.GetV2(TenantId, StoreId, 1, 1, "", 0)
 			assert.NoError(t, err)
 			assert.NotNil(t, storeStocks)
 			assert.Greater(t, count, 0)
@@ -47,20 +41,20 @@ func TestStoreStockRepository(t *testing.T) {
 		})
 
 		t.Run("NotExistItemAtStoreStock", func(t *testing.T) {
-			storeStockRepo := NewStoreStockRepositoryImpl(supabaseClient)
-			storeStocks, count, err := storeStockRepo.GetV2(TenantId, 99, 1, 1, "")
-			assert.Error(t, err)
+			storeStockRepo := NewStoreStockRepositoryImpl(gormClient)
+			storeStocks, count, err := storeStockRepo.GetV2(TenantId, 99, 1, 1, "", 0)
+			assert.NoError(t, err)
 			assert.Equal(t, 0, count)
-			assert.Nil(t, storeStocks)
+			assert.NotNil(t, storeStocks)
 
-			_, ok := err.(*exception.PostgreSQLException)
-			assert.True(t, ok)
+			// _, ok := err.(*exception.PostgreSQLException)
+			// assert.True(t, ok)
 		})
 	})
 
 	t.Run("Edit", func(t *testing.T) {
-		storeStockRepo := NewStoreStockRepositoryImpl(supabaseClient)
-		warehouseRepo := NewWarehouseRepositoryImpl(supabaseClient)
+		storeStockRepo := NewStoreStockRepositoryImpl(gormClient)
+		warehouseRepo := NewWarehouseRepositoryImpl(gormClient)
 
 		// Flow: warehouse -transfer-> store_stock
 		dummyItem := &model.Item{
@@ -68,8 +62,8 @@ func TestStoreStockRepository(t *testing.T) {
 			Stocks:    100,
 			TenantId:  TenantId,
 			StockType: model.StockTypeTracked,
-			// IsActive: , -> by default is active when inserting into DB
 		}
+
 		_dummyItemsFromDB, err := warehouseRepo.CreateItem([]*model.Item{dummyItem})
 		require.Nil(t, err, "Failed not allowed !")
 
@@ -77,29 +71,32 @@ func TestStoreStockRepository(t *testing.T) {
 		require.Equal(t, 100, dummyItemFromDB.Stocks)
 
 		// stocks = 100 - 5
-		err = storeStockRepo.TransferStockToStoreStock(5, dummyItemFromDB.ItemId, StoreId, TenantId)
+		err = storeStockRepo.TransferStockToStoreStock(
+			5,
+			dummyItemFromDB.ItemId,
+			StoreId,
+			TenantId,
+		)
 		require.Nil(t, err)
 
-		// Get the transferred item
-		rData, _, _ := supabaseClient.From(StoreStockTable).
-			Select("*", "", false).
-			Eq("item_id", strconv.Itoa(dummyItemFromDB.ItemId)).
-			Eq("tenant_id", strconv.Itoa(dummyItem.TenantId)).
-			Eq("store_id", strconv.Itoa(StoreId)).
-			Single().Execute()
-		var storeStockDummyFromDB = new(model.StoreStock)
-		err = json.Unmarshal(rData, storeStockDummyFromDB)
+		// Get the transferred item using GORM
+		var storeStockDummyFromDB model.StoreStock
+		err = gormClient.
+			Where("item_id", dummyItemFromDB.ItemId).
+			Where("tenant_id", dummyItemFromDB.TenantId).
+			Where("store_id", StoreId).
+			Take(&storeStockDummyFromDB).Error
 		require.Nil(t, err)
 
-		require.Equal(t, 0, storeStockDummyFromDB.Price) // Current item never exist before, so the price will be 0
+		require.Equal(t, 0, storeStockDummyFromDB.Price)
 		require.Equal(t, 5, storeStockDummyFromDB.Stocks)
 		require.Equal(t, StoreId, storeStockDummyFromDB.StoreId)
 		require.Equal(t, dummyItemFromDB.ItemId, storeStockDummyFromDB.ItemId)
 		require.Equal(t, dummyItemFromDB.TenantId, storeStockDummyFromDB.TenantId)
 
 		t.Run("NormalEdit", func(t *testing.T) {
-			// Update the value
 			expectedPrice := 10000
+
 			err = storeStockRepo.Edit(&model.StoreStock{
 				Id:       storeStockDummyFromDB.Id,
 				ItemId:   storeStockDummyFromDB.ItemId,
@@ -109,21 +106,18 @@ func TestStoreStockRepository(t *testing.T) {
 			})
 			assert.NoError(t, err)
 
-			var testStoreStock *model.StoreStock
-			_, err = supabaseClient.From(StoreStockTable).
-				Select("*", "", false).
-				Eq("id", strconv.Itoa(storeStockDummyFromDB.Id)).
-				Single().
-				ExecuteTo(&testStoreStock)
-
+			var testStoreStock model.StoreStock
+			err = gormClient.
+				Where("id", storeStockDummyFromDB.Id).
+				First(&testStoreStock).Error
 			assert.NoError(t, err)
+
 			assert.Equal(t, expectedPrice, testStoreStock.Price)
 		})
 
 		t.Run("InvalidPriceValue", func(t *testing.T) {
-			// We make sure the user don't crash the server by sending invalid value (INT)
-			// From value < 0 OR value > 100.000.000
 			invalidPriceValue := 100_000_001
+
 			err = storeStockRepo.Edit(&model.StoreStock{
 				Id:       storeStockDummyFromDB.Id,
 				ItemId:   storeStockDummyFromDB.ItemId,
@@ -135,57 +129,60 @@ func TestStoreStockRepository(t *testing.T) {
 		})
 
 		t.Cleanup(func() {
-			// Delete the data
-			// store_stock
-			_, _, err = supabaseClient.From(StoreStockTable).
-				Delete("", "").
-				Eq("id", fmt.Sprint(storeStockDummyFromDB.Id)).
-				Eq("item_id", fmt.Sprint(storeStockDummyFromDB.ItemId)).
-				Eq("store_id", fmt.Sprint(storeStockDummyFromDB.StoreId)).
-				Execute()
+			// Delete store_stock
+			err = gormClient.
+				Where("id", storeStockDummyFromDB.Id).
+				Delete(&model.StoreStock{}).Error
 			require.Nil(t, err, "Failed not allowed ! Because test data will persist !")
 
-			// warehouse
-			_, _, err = supabaseClient.From(WarehouseTable).
-				Delete("", "").
-				Eq("item_id", fmt.Sprint(dummyItemFromDB.ItemId)).
-				Execute()
+			// Delete warehouse item
+			err = gormClient.
+				Where("item_id", dummyItemFromDB.ItemId).
+				Delete(&model.Item{}).Error
 			require.Nil(t, err, "Failed not allowed ! Because test data will persist !")
 		})
 	})
 
 	t.Run("_TransferStockToWarehouse", func(t *testing.T) {
-		storeStockRepo := NewStoreStockRepositoryImpl(supabaseClient)
-		warehouseRepo := NewWarehouseRepositoryImpl(supabaseClient)
+		storeStockRepo := NewStoreStockRepositoryImpl(gormClient)
+		warehouseRepo := NewWarehouseRepositoryImpl(gormClient)
 
 		// Flow: warehouse -> store_stock -> warehouse
 		dummyItem := &model.Item{
 			ItemName:  "Test _TransferStockWarehouse 1",
 			Stocks:    100,
-			TenantId:  1,
+			TenantId:  TenantId,
 			StockType: model.StockTypeTracked,
-			// IsActive: , -> by default is active when inserting into DB
 		}
+
 		_dummyItemsFromDB, err := warehouseRepo.CreateItem([]*model.Item{dummyItem})
 		require.Nil(t, err, "Failed not allowed !")
 
 		dummyItemFromDB := _dummyItemsFromDB[0]
 
 		// stock = 100 - 5 = 95
-		err = storeStockRepo.TransferStockToStoreStock(5, dummyItemFromDB.ItemId, StoreId, TenantId)
+		err = storeStockRepo.TransferStockToStoreStock(
+			5,
+			dummyItemFromDB.ItemId,
+			StoreId,
+			TenantId,
+		)
 		require.Nil(t, err)
 
 		// stock = 95 + 5 = 100
-		err = storeStockRepo.TransferStockToWarehouse(5, dummyItemFromDB.ItemId, StoreId, TenantId)
+		err = storeStockRepo.TransferStockToWarehouse(
+			5,
+			dummyItemFromDB.ItemId,
+			StoreId,
+			TenantId,
+		)
 		assert.Nil(t, err)
 
-		// Get the updated warehouse 'item'
-		rData, _, _ := supabaseClient.From(WarehouseTable).
-			Select("*", "", false).
-			Eq("item_id", fmt.Sprint(dummyItemFromDB.ItemId)).
-			Single().Execute()
-		var transferredItemFromDB = new(model.Item)
-		err = json.Unmarshal(rData, transferredItemFromDB)
+		// Get the updated warehouse item using GORM
+		var transferredItemFromDB model.Item
+		err = gormClient.
+			Where("item_id = ?", dummyItemFromDB.ItemId).
+			First(&transferredItemFromDB).Error
 		require.Nil(t, err)
 
 		// Begin test
@@ -194,28 +191,34 @@ func TestStoreStockRepository(t *testing.T) {
 		assert.Equal(t, dummyItemFromDB.ItemName, transferredItemFromDB.ItemName)
 
 		// TEST: transfer not enough stock from store_stock
-		err = storeStockRepo.TransferStockToWarehouse(100, dummyItemFromDB.ItemId, StoreId, TenantId)
+		err = storeStockRepo.TransferStockToWarehouse(
+			100,
+			dummyItemFromDB.ItemId,
+			StoreId,
+			TenantId,
+		)
 		assert.NotNil(t, err)
-		assert.Equal(t, "\"[ERROR] Not enough stock\"", err.Error())
+		assert.Equal(t, "[ERROR] Not enough stock", err.Error())
 
 		// Clean up
-		// store_stock
-		supabaseClient.From(StoreStockTable).
-			Delete("", "").
-			Eq("item_id", fmt.Sprint(transferredItemFromDB.ItemId)).
-			Eq("store_id", fmt.Sprint(StoreId)).
-			Execute()
 
-		// warehouse
-		supabaseClient.From(WarehouseTable).
-			Delete("", "").
-			Eq("item_id", fmt.Sprint(transferredItemFromDB.ItemId)).
-			Execute()
+		// store_stock
+		err = gormClient.
+			Where("item_id", transferredItemFromDB.ItemId).
+			Where("store_id", StoreId).
+			Delete(&model.StoreStock{}).Error
+		require.Nil(t, err)
+
+		// warehouse (item)
+		err = gormClient.
+			Where("item_id = ?", transferredItemFromDB.ItemId).
+			Delete(&model.Item{}).Error
+		require.Nil(t, err)
 	})
 
 	t.Run("_TransferStockToStoreStock", func(t *testing.T) {
-		storeStockRepo := StoreStockRepositoryImpl{Client: supabaseClient}
-		warehouseRepo := WarehouseRepositoryImpl{Client: supabaseClient}
+		storeStockRepo := NewStoreStockRepositoryImpl(gormClient)
+		warehouseRepo := NewWarehouseRepositoryImpl(gormClient)
 
 		// Flow: warehouse -transfer-> store_stock
 		dummyItem := &model.Item{
@@ -223,8 +226,8 @@ func TestStoreStockRepository(t *testing.T) {
 			Stocks:    100,
 			TenantId:  TenantId,
 			StockType: model.StockTypeTracked,
-			// IsActive: , -> by default is active when inserting into DB
 		}
+
 		_dummyItemsFromDB, err := warehouseRepo.CreateItem([]*model.Item{dummyItem})
 		require.Nil(t, err, "Failed not allowed !")
 
@@ -232,46 +235,51 @@ func TestStoreStockRepository(t *testing.T) {
 		require.Equal(t, 100, dummyItemFromDB.Stocks)
 
 		// stocks = 100 - 5
-		err = storeStockRepo.TransferStockToStoreStock(5, dummyItemFromDB.ItemId, StoreId, TenantId)
+		err = storeStockRepo.TransferStockToStoreStock(
+			5,
+			dummyItemFromDB.ItemId,
+			StoreId,
+			TenantId,
+		)
 		require.Nil(t, err)
 
-		// Get the transferred item
-		rData, _, _ := supabaseClient.From(StoreStockTable).
-			Select("*", "", false).
-			Eq("item_id", strconv.Itoa(dummyItemFromDB.ItemId)).
-			Eq("tenant_id", strconv.Itoa(dummyItem.TenantId)).
-			Eq("store_id", strconv.Itoa(StoreId)).
-			Single().Execute()
-		var storeStockDummyFromDB = new(model.StoreStock)
-		err = json.Unmarshal(rData, storeStockDummyFromDB)
+		// Get the transferred item using GORM
+		var storeStockDummyFromDB model.StoreStock
+		err = gormClient.
+			Where("item_id = ?", dummyItemFromDB.ItemId).
+			Where("tenant_id = ?", dummyItemFromDB.TenantId).
+			Where("store_id = ?", StoreId).
+			First(&storeStockDummyFromDB).Error
 		require.Nil(t, err)
 
-		assert.Equal(t, 0, storeStockDummyFromDB.Price) // Current item never exist before, so the price will be 0
+		assert.Equal(t, 0, storeStockDummyFromDB.Price) // item never existed before
 		assert.Equal(t, 5, storeStockDummyFromDB.Stocks)
 		assert.Equal(t, StoreId, storeStockDummyFromDB.StoreId)
 		assert.Equal(t, dummyItemFromDB.ItemId, storeStockDummyFromDB.ItemId)
 		assert.Equal(t, dummyItemFromDB.TenantId, storeStockDummyFromDB.TenantId)
 
 		// TEST: not enough stock to store_stock from warehouse
-		err = storeStockRepo.TransferStockToStoreStock(999, dummyItemFromDB.ItemId, StoreId, TenantId)
+		err = storeStockRepo.TransferStockToStoreStock(
+			999,
+			dummyItemFromDB.ItemId,
+			StoreId,
+			TenantId,
+		)
 		assert.NotNil(t, err)
-		assert.Equal(t, "\"[ERROR] Not enough stock\"", err.Error())
+		assert.Equal(t, "[ERROR] Not enough stock", err.Error())
 
-		// Delete the data
-		// store_stock
-		_, _, err = supabaseClient.From(StoreStockTable).
-			Delete("", "").
-			Eq("id", fmt.Sprint(storeStockDummyFromDB.Id)).
-			Eq("item_id", fmt.Sprint(storeStockDummyFromDB.ItemId)).
-			Eq("store_id", fmt.Sprint(storeStockDummyFromDB.StoreId)).
-			Execute()
+		// Clean up
+
+		// Delete store_stock
+		err = gormClient.
+			Where("id = ?", storeStockDummyFromDB.Id).
+			Delete(&model.StoreStock{}).Error
 		require.Nil(t, err, "Failed not allowed ! Because test data will persist !")
 
-		// warehouse
-		_, _, err = supabaseClient.From(WarehouseTable).
-			Delete("", "").
-			Eq("item_id", fmt.Sprint(dummyItemFromDB.ItemId)).
-			Execute()
+		// Delete warehouse item
+		err = gormClient.
+			Where("item_id = ?", dummyItemFromDB.ItemId).
+			Delete(&model.Item{}).Error
 		require.Nil(t, err, "Failed not allowed ! Because test data will persist !")
 	})
 }

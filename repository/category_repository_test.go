@@ -3,19 +3,17 @@ package repository
 import (
 	"cashier-api/helper/client"
 	"cashier-api/model"
-	"fmt"
-	"strconv"
 	"testing"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
+	"gorm.io/gorm"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/supabase-community/supabase-go"
 )
 
 func TestCategoryRepository(t *testing.T) {
-	var supabaseClient *supabase.Client = client.CreateSupabaseClient()
+	var gormClient *gorm.DB = client.CreateGormClient()
 
 	const (
 		CategoryTable  string = "category"
@@ -25,12 +23,12 @@ func TestCategoryRepository(t *testing.T) {
 	)
 
 	t.Run("CreateCategoryRepositoryImplByNewFn", func(t *testing.T) {
-		categoryRepositoryImpl := NewCategoryRepositoryImpl(supabaseClient)
+		categoryRepositoryImpl := NewCategoryRepositoryImpl(gormClient)
 		assert.NotNil(t, categoryRepositoryImpl)
 	})
 
 	t.Run("GetItemsByCategory", func(t *testing.T) {
-		categoryRepositoryImpl := &CategoryRepositoryImpl{Client: supabaseClient}
+		categoryRepositoryImpl := NewCategoryRepositoryImpl(gormClient)
 
 		t.Run("NormalGet", func(t *testing.T) {
 			/*
@@ -75,7 +73,7 @@ func TestCategoryRepository(t *testing.T) {
 	})
 
 	t.Run("GetCategoryWithItems", func(t *testing.T) {
-		categoryRepositoryImpl := &CategoryRepositoryImpl{Client: supabaseClient}
+		categoryRepositoryImpl := NewCategoryRepositoryImpl(gormClient)
 
 		t.Run("NormalGet", func(t *testing.T) {
 			page := 1
@@ -90,14 +88,15 @@ func TestCategoryRepository(t *testing.T) {
 			page := 2 // overflow
 			pagePerContent := 100
 			categoryWithItemFromDB, count, err := categoryRepositoryImpl.GetCategoryWithItems(TenantId, page-1, pagePerContent)
-			assert.Nil(t, err)
+			// Gorm treat overflow as nothing to return
+			assert.NoError(t, err)
 			assert.Equal(t, 0, count)
 			assert.NotNil(t, categoryWithItemFromDB)
 		})
 	})
 
 	t.Run("Get", func(t *testing.T) {
-		categoryRepositoryImpl := &CategoryRepositoryImpl{Client: supabaseClient}
+		categoryRepositoryImpl := NewCategoryRepositoryImpl(gormClient)
 
 		t.Run("NormalGetAll", func(t *testing.T) {
 			page := 1
@@ -123,34 +122,29 @@ func TestCategoryRepository(t *testing.T) {
 			pagePerContent = 999
 			categories, count, err = categoryRepositoryImpl.Get(TenantId, page-1, pagePerContent, "")
 
-			assert.Equal(t, 0, count)
-			assert.NotNil(t, err)
-			assert.Equal(t, "(PGRST103) Requested range not satisfiable", err.Error())
-			assert.Nil(t, categories)
+			assert.Equal(t, 2, count)
+			//assert.Equal(t, "(PGRST103) Requested range not satisfiable", err.Error())
+			assert.NoError(t, err)
+			assert.NotNil(t, categories)
 		})
 
 		t.Run("GetByNameQuery", func(t *testing.T) {
 			uniqueString := uuid.NewString()
 			dummyCategories := []*model.Category{
 				{
-					// Id: ,
 					CategoryName: "Test_GetByNameQuery 1 " + uniqueString,
 					TenantId:     TenantId,
 				},
 				{
-					// Id: ,
 					CategoryName: "Test_GetByNameQuery 2_" + uniqueString,
 					TenantId:     TenantId,
 				},
 			}
 
 			// Manually insert without using another repository method
-			var expectedDummyData []*model.Category
-			_, err := supabaseClient.From(CategoryTable).
-				Insert(dummyCategories, false, "", "representation", "").
-				ExecuteTo(&expectedDummyData)
+			err := gormClient.Create(&dummyCategories).Error
 			require.NoError(t, err)
-			require.NotNil(t, expectedDummyData)
+			require.NotNil(t, dummyCategories)
 
 			page := 1
 			categories, count, err := categoryRepositoryImpl.Get(TenantId, 1, page-1, "Test_GetByNameQuery")
@@ -158,18 +152,16 @@ func TestCategoryRepository(t *testing.T) {
 			assert.NotNil(t, categories)
 			assert.Equal(t, len(dummyCategories), count)
 			for i, category := range categories {
-				assert.Equal(t, expectedDummyData[i].CategoryName, category.CategoryName)
-				assert.Equal(t, expectedDummyData[i].TenantId, category.TenantId)
+				assert.Equal(t, dummyCategories[i].CategoryName, category.CategoryName)
+				assert.Equal(t, dummyCategories[i].TenantId, category.TenantId)
 				assert.NotEqual(t, 0, category.Id)
 				assert.NotNil(t, category.CreatedAt)
 			}
 
 			t.Cleanup(func() {
-				_, _, err := supabaseClient.From(CategoryTable).
-					Delete("", "").
-					Eq("tenant_id", fmt.Sprint(TenantId)).
-					In("id", []string{fmt.Sprint(expectedDummyData[0].Id), fmt.Sprint(expectedDummyData[1].Id)}).
-					Execute()
+				ids := []int{dummyCategories[0].Id, dummyCategories[1].Id}
+				err := gormClient.Where("tenant_id = ? AND id IN ?", TenantId, ids).
+					Delete(&model.Category{}).Error
 				errorName := "TestCategoryRepository/Get/GetByNameQuery"
 				require.NoErrorf(t, err, "If this fail then delete immediately, %s", errorName)
 			})
@@ -177,7 +169,7 @@ func TestCategoryRepository(t *testing.T) {
 	})
 
 	t.Run("Create", func(t *testing.T) {
-		categoryRepositoryImpl := NewCategoryRepositoryImpl(supabaseClient)
+		categoryRepositoryImpl := NewCategoryRepositoryImpl(gormClient)
 
 		t.Run("CreateOne", func(t *testing.T) {
 			dummyData := &model.Category{
@@ -191,40 +183,25 @@ func TestCategoryRepository(t *testing.T) {
 			assert.Equal(t, dummyData.CategoryName, createdDummyCategoryFromDB[0].CategoryName)
 
 			// Check using Get method if the data really placed in DB
-			var actualCategory *model.Category
-			_, err = supabaseClient.From(CategoryTable).Select("*", "", false).Eq("id", strconv.Itoa(createdDummyCategoryFromDB[0].Id)).Single().ExecuteTo(&actualCategory)
+			var actualCategory model.Category
+			err = gormClient.Where("id", createdDummyCategoryFromDB[0].Id).Take(&actualCategory).Error
 			require.Nil(t, err)
 			assert.Equal(t, createdDummyCategoryFromDB[0].Id, actualCategory.Id)
 			assert.Equal(t, createdDummyCategoryFromDB[0].CategoryName, actualCategory.CategoryName)
 
 			// Clean up
-			_, count, err := supabaseClient.From(CategoryTable).Delete("", "exact").Eq("category_name", dummyData.CategoryName).Execute()
-			require.Nil(t, err, "Data test persist")
-			require.Equal(t, 1, int(count))
+			result := gormClient.Where("category_name", dummyData.CategoryName).Delete(&model.Category{})
+			require.Nil(t, result.Error, "Data test persist")
+			require.Equal(t, 1, int(result.RowsAffected))
 		})
 
 		t.Run("CreateMultiple", func(t *testing.T) {
 			dataDummies := []*model.Category{
-				{
-					TenantId:     TenantId,
-					CategoryName: "Test_CategoryRepositoryImpl_Update_CreateMultiple 1",
-				},
-				{
-					TenantId:     TenantId,
-					CategoryName: "Test_CategoryRepositoryImpl_Update_CreateMultiple 2",
-				},
-				{
-					TenantId:     TenantId,
-					CategoryName: "Test_CategoryRepositoryImpl_Update_CreateMultiple 3",
-				},
-				{
-					TenantId:     TenantId,
-					CategoryName: "Test_CategoryRepositoryImpl_Update_CreateMultiple 4",
-				},
-				{
-					TenantId:     TenantId,
-					CategoryName: "Test_CategoryRepositoryImpl_Update_CreateMultiple 5",
-				},
+				{TenantId: TenantId, CategoryName: "Test_CategoryRepositoryImpl_Update_CreateMultiple 1"},
+				{TenantId: TenantId, CategoryName: "Test_CategoryRepositoryImpl_Update_CreateMultiple 2"},
+				{TenantId: TenantId, CategoryName: "Test_CategoryRepositoryImpl_Update_CreateMultiple 3"},
+				{TenantId: TenantId, CategoryName: "Test_CategoryRepositoryImpl_Update_CreateMultiple 4"},
+				{TenantId: TenantId, CategoryName: "Test_CategoryRepositoryImpl_Update_CreateMultiple 5"},
 			}
 
 			_createdDummyCategoryDB, err := categoryRepositoryImpl.Create(TenantId, dataDummies)
@@ -235,7 +212,7 @@ func TestCategoryRepository(t *testing.T) {
 				assert.Equal(t, dataDummies[i].CategoryName, createdDummy.CategoryName)
 				assert.Equal(t, dataDummies[i].TenantId, createdDummy.TenantId)
 
-				_, _, err = supabaseClient.From(CategoryTable).Delete("", "exact").Eq("category_name", createdDummy.CategoryName).Execute()
+				err = gormClient.Where("category_name", createdDummy.CategoryName).Delete(&model.Category{}).Error
 				require.Nil(t, err, "If this fail, immediately delete the test data; Create/CreatedMultiple")
 			}
 		})
@@ -251,19 +228,20 @@ func TestCategoryRepository(t *testing.T) {
 			require.NotEqual(t, 0, len(createdDummyCategoryFromDB))
 			require.Equal(t, dummyData.CategoryName, createdDummyCategoryFromDB[0].CategoryName)
 
-			// Begin test; Assigning Id to Category is illegal insert,
+			// Begin test; Assigning Id to Category is illegal insert
 			duplicateData := &model.Category{
 				Id:           createdDummyCategoryFromDB[0].Id,
 				TenantId:     TenantId,
 				CategoryName: "Test_CategoryRepositoryImpl_Update_CreateMultiple 1",
 			}
 			duplicateDataFromDB, err := categoryRepositoryImpl.Create(TenantId, []*model.Category{duplicateData})
-			assert.NotNil(t, err)
 			assert.Nil(t, duplicateDataFromDB)
-			assert.Equal(t, "(23505) duplicate key value violates unique constraint \"category_pkey\"", err.Error())
+			if assert.Error(t, err) {
+				assert.Contains(t, err.Error(), "23505")
+			}
 
 			// Clean up
-			_, _, err = supabaseClient.From(CategoryTable).Delete("", "").Eq("category_name", dummyData.CategoryName).Execute()
+			err = gormClient.Where("category_name = ?", dummyData.CategoryName).Delete(&model.Category{}).Error
 			require.Nil(t, err, "If this fail, immediately delete the test data; Create/CreatedMultiple")
 		})
 
@@ -279,28 +257,25 @@ func TestCategoryRepository(t *testing.T) {
 			require.Equal(t, dummyData.CategoryName, createdDummyCategoryFromDB[0].CategoryName)
 
 			// Begin test; Exact category name is not allowed
-			// example Fruits == Fruits
-			// Lower case but the same mean is allowed
-			// example Fruits != fruits
 			duplicateData := &model.Category{
 				TenantId:     TenantId,
 				CategoryName: "Test_CategoryRepositoryImpl_Update_CreateWithExactCategoryName 1",
 			}
 			duplicateDataFromDB, err := categoryRepositoryImpl.Create(TenantId, []*model.Category{duplicateData})
-			assert.NotNil(t, err)
 			assert.Nil(t, duplicateDataFromDB)
-			assert.Equal(t, "(23505) duplicate key value violates unique constraint \"unique_tenant_category_name\"", err.Error())
+			if assert.Error(t, err) {
+				assert.Contains(t, err.Error(), "23505")
+			}
 
 			// Clean up
-			_, _, err = supabaseClient.From(CategoryTable).Delete("", "").Eq("category_name", dummyData.CategoryName).Execute()
+			err = gormClient.Where("category_name", dummyData.CategoryName).Delete(&model.Category{}).Error
 			require.Nil(t, err, "If this fail, immediately delete the test data; Create/CreatedMultiple")
 		})
 	})
 
 	t.Run("Register", func(t *testing.T) {
-		// This is special insert, because category is many to many into warehouse
-		categoryRepositoryImpl := NewCategoryRepositoryImpl(supabaseClient)
-		warehouseRepositoryImpl := WarehouseRepositoryImpl{Client: supabaseClient}
+		categoryRepositoryImpl := NewCategoryRepositoryImpl(gormClient)
+		warehouseRepositoryImpl := NewWarehouseRepositoryImpl(gormClient)
 
 		t.Run("NormalRegister", func(t *testing.T) {
 			// Create warehouse item
@@ -315,7 +290,6 @@ func TestCategoryRepository(t *testing.T) {
 			require.Nil(t, err)
 			require.Equal(t, 1, len(_dummyItemFromDB))
 
-			// warehouse item
 			dummyItemFromDB := _dummyItemFromDB[0]
 
 			// Create the Category
@@ -328,7 +302,6 @@ func TestCategoryRepository(t *testing.T) {
 			require.Nil(t, err)
 			require.Equal(t, 1, len(_createdDummyCategoryFromDB))
 
-			// category
 			createdDummyCategoryFromDB := _createdDummyCategoryFromDB[0]
 
 			dummyCategoryMtmWarehouse := []*model.CategoryMtmWarehouse{
@@ -343,12 +316,19 @@ func TestCategoryRepository(t *testing.T) {
 			assert.Nil(t, err)
 
 			// Clean up
-			_, _, err = supabaseClient.From("category_mtm_warehouse").Delete("", "").Eq("category_id", strconv.Itoa(createdDummyCategoryFromDB.Id)).Eq("item_id", strconv.Itoa(dummyItemFromDB.ItemId)).Execute()
-			require.Nil(t, err, "If this fail, immediately delete the test data; Register/NormalRegister 1")
-			_, _, err = supabaseClient.From(CategoryTable).Delete("", "").Eq("category_name", createdDummyCategoryFromDB.CategoryName).Execute()
-			require.Nil(t, err, "If this fail, immediately delete the test data; Register/NormalRegister 2")
-			_, _, err = supabaseClient.From(WarehouseTable).Delete("", "").Eq("item_name", dummyItemFromDB.ItemName).Execute()
-			require.Nil(t, err, "If this fail, immediately delete the test data; Register/NormalRegister 3")
+			t.Cleanup(func() {
+				err = gormClient.Where("category_id = ? AND item_id = ?", createdDummyCategoryFromDB.Id, dummyItemFromDB.ItemId).
+					Delete(&model.CategoryMtmWarehouse{}).Error
+				require.Nil(t, err, "If this fail, immediately delete the test data; Register/NormalRegister 1")
+
+				err = gormClient.Where("category_name", createdDummyCategoryFromDB.CategoryName).
+					Delete(&model.Category{}).Error
+				require.Nil(t, err, "If this fail, immediately delete the test data; Register/NormalRegister 2")
+
+				err = gormClient.Where("item_name", dummyItemFromDB.ItemName).
+					Delete(&model.Item{}).Error
+				require.Nil(t, err, "If this fail, immediately delete the test data; Register/NormalRegister 3")
+			})
 		})
 
 		t.Run("DuplicateRegister", func(t *testing.T) {
@@ -364,7 +344,6 @@ func TestCategoryRepository(t *testing.T) {
 			require.Nil(t, err)
 			require.Equal(t, 1, len(_dummyItemFromDB))
 
-			// warehouse item
 			dummyItemFromDB := _dummyItemFromDB[0]
 
 			// Create the Category
@@ -377,7 +356,6 @@ func TestCategoryRepository(t *testing.T) {
 			require.Nil(t, err)
 			require.Equal(t, 1, len(_createdDummyCategoryFromDB))
 
-			// category
 			createdDummyCategoryFromDB := _createdDummyCategoryFromDB[0]
 
 			dummyCategoryMtmWarehouse := []*model.CategoryMtmWarehouse{
@@ -392,26 +370,32 @@ func TestCategoryRepository(t *testing.T) {
 			assert.Nil(t, err)
 
 			err = categoryRepositoryImpl.Register(dummyCategoryMtmWarehouse)
-			assert.NotNil(t, err)
-			assert.Equal(t, "(23505) duplicate key value violates unique constraint \"unique_category_mtm_warehouse_category_id_and_item_id\"", err.Error())
+			if assert.Error(t, err) {
+				assert.Contains(t, err.Error(), "23505")
+			}
 
 			// Clean up
-			_, _, err = supabaseClient.From("category_mtm_warehouse").Delete("", "").Eq("category_id", strconv.Itoa(createdDummyCategoryFromDB.Id)).Eq("item_id", strconv.Itoa(dummyItemFromDB.ItemId)).Execute()
-			require.Nil(t, err, "If this fail, immediately delete the test data; Register/DuplicateRegister 1")
-			_, _, err = supabaseClient.From(CategoryTable).Delete("", "").Eq("category_name", createdDummyCategoryFromDB.CategoryName).Execute()
-			require.Nil(t, err, "If this fail, immediately delete the test data; Register/DuplicateRegister 2")
-			_, _, err = supabaseClient.From(WarehouseTable).Delete("", "").Eq("item_name", dummyItemFromDB.ItemName).Execute()
-			require.Nil(t, err, "If this fail, immediately delete the test data; Register/DuplicateRegister 3")
+			t.Cleanup(func() {
+				err = gormClient.Where("category_id = ? AND item_id = ?", createdDummyCategoryFromDB.Id, dummyItemFromDB.ItemId).
+					Delete(&model.CategoryMtmWarehouse{}).Error
+				require.Nil(t, err, "If this fail, immediately delete the test data; Register/DuplicateRegister 1")
+
+				err = gormClient.Where("category_name", createdDummyCategoryFromDB.CategoryName).
+					Delete(&model.Category{}).Error
+				require.Nil(t, err, "If this fail, immediately delete the test data; Register/DuplicateRegister 2")
+
+				err = gormClient.Where("item_name", dummyItemFromDB.ItemName).
+					Delete(&model.Item{}).Error
+				require.Nil(t, err, "If this fail, immediately delete the test data; Register/DuplicateRegister 3")
+			})
 		})
 	})
 
 	t.Run("Unregister", func(t *testing.T) {
-		// This is special insert, because category is many to many into warehouse
-		categoryRepositoryImpl := NewCategoryRepositoryImpl(supabaseClient)
-		warehouseRepositoryImpl := WarehouseRepositoryImpl{Client: supabaseClient}
+		categoryRepositoryImpl := NewCategoryRepositoryImpl(gormClient)
+		warehouseRepositoryImpl := NewWarehouseRepositoryImpl(gormClient)
 
 		t.Run("NormalUnregister", func(t *testing.T) {
-			// START:
 			// Create warehouse item
 			dummyItem := &model.Item{
 				ItemName:  "Test_CategoryRepositoryImpl_Register_NormalUnregister 1",
@@ -424,7 +408,6 @@ func TestCategoryRepository(t *testing.T) {
 			require.Nil(t, err)
 			require.Equal(t, 1, len(_dummyItemFromDB))
 
-			// warehouse item
 			dummyItemFromDB := _dummyItemFromDB[0]
 
 			// Create the Category
@@ -437,7 +420,6 @@ func TestCategoryRepository(t *testing.T) {
 			require.Nil(t, err)
 			require.Equal(t, 1, len(_createdDummyCategoryFromDB))
 
-			// category
 			createdDummyCategoryFromDB := _createdDummyCategoryFromDB[0]
 
 			dummyCategoryMtmWarehouse := []*model.CategoryMtmWarehouse{
@@ -447,7 +429,6 @@ func TestCategoryRepository(t *testing.T) {
 				},
 			}
 
-			// END: Until here, is the same as the code above
 			err = categoryRepositoryImpl.Register(dummyCategoryMtmWarehouse)
 			assert.Nil(t, err)
 
@@ -460,12 +441,15 @@ func TestCategoryRepository(t *testing.T) {
 			assert.Nil(t, err)
 
 			// Clean up
-			// _, _, err = supabaseClient.From("category_mtm_warehouse").Delete("", "").Eq("category_id", strconv.Itoa(createdDummyCategoryFromDB.Id)).Eq("item_id", strconv.Itoa(dummyItemFromDB.ItemId)).Execute()
-			// require.Nil(t, err, "If this fail, immediately delete the test data; Register/NormalUnregister 1")
-			_, _, err = supabaseClient.From(CategoryTable).Delete("", "").Eq("category_name", createdDummyCategoryFromDB.CategoryName).Execute()
-			require.Nil(t, err, "If this fail, immediately delete the test data; Register/NormalUnregister 2")
-			_, _, err = supabaseClient.From(WarehouseTable).Delete("", "").Eq("item_name", dummyItemFromDB.ItemName).Execute()
-			require.Nil(t, err, "If this fail, immediately delete the test data; Register/NormalUnregister 3")
+			t.Cleanup(func() {
+				err = gormClient.Where("category_name", createdDummyCategoryFromDB.CategoryName).
+					Delete(&model.Category{}).Error
+				require.Nil(t, err, "If this fail, immediately delete the test data; Register/NormalUnregister 2")
+
+				err = gormClient.Where("item_name", dummyItemFromDB.ItemName).
+					Delete(&model.Item{}).Error
+				require.Nil(t, err, "If this fail, immediately delete the test data; Register/NormalUnregister 3")
+			})
 		})
 
 		t.Run("UnregisterThatUnregistered", func(t *testing.T) {
@@ -489,10 +473,13 @@ func TestCategoryRepository(t *testing.T) {
 	})
 
 	t.Run("EditItemCategory", func(t *testing.T) {
-		categoryRepositoryImpl := NewCategoryRepositoryImpl(supabaseClient)
-		warehouseRepositoryImpl := NewWarehouseRepositoryImpl(supabaseClient)
-
 		t.Run("NormalEditItemCategory", func(t *testing.T) {
+			tx := gormClient.Begin()
+			defer tx.Rollback()
+
+			categoryRepositoryImpl := NewCategoryRepositoryImpl(tx)
+			warehouseRepositoryImpl := NewWarehouseRepositoryImpl(tx)
+
 			// START:
 			// Create warehouse item
 			dummyItem := &model.Item{
@@ -547,25 +534,22 @@ func TestCategoryRepository(t *testing.T) {
 			err = categoryRepositoryImpl.EditItemCategory(TenantId, tobeUpdateItemCategory)
 			assert.NoError(t, err)
 
-			// Delete the data
-			// No need to unregister because when category deleted then all the data will be deleted
-
 			// Clean up
-			_, count, err := supabaseClient.From(CategoryTable).
-				Delete("", "exact").
-				In("id", []string{fmt.Sprint(createdDummyCategoryFromDB1.Id), fmt.Sprint(createdDummyCategoryFromDB2.Id)}).
-				Execute()
-			require.Nil(t, err, "If this fail, immediately delete the test data; EditItemCategory/NormalEditItemCategory 1")
-			require.Equal(t, 2, int(count))
-			_, _, err = supabaseClient.From(WarehouseTable).
-				Delete("", "").
-				Eq("item_name", dummyItemFromDB.ItemName).
-				Eq("item_id", fmt.Sprint(dummyItemFromDB.ItemId)).
-				Execute()
-			require.Nil(t, err, "If this fail, immediately delete the test data; EditItemCategory/NormalEditItemCategory 2")
+			// // No need to unregister category_mtm_warehouse — cascade delete handles it
+			// categoryResult := gormClient.
+			// 	Where("id IN ?", []int{createdDummyCategoryFromDB1.Id, createdDummyCategoryFromDB2.Id}).
+			// 	Delete(&model.Category{})
+			// require.NoError(t, categoryResult.Error, "If this fail, immediately delete the test data; EditItemCategory/NormalEditItemCategory 1")
+			// require.Equal(t, int64(2), categoryResult.RowsAffected)
+
+			// itemResult := gormClient.
+			// 	Where("item_id = ? AND item_name = ?", dummyItemFromDB.ItemId, dummyItemFromDB.ItemName).
+			// 	Delete(&model.Item{})
+			// require.NoError(t, itemResult.Error, "If this fail, immediately delete the test data; EditItemCategory/NormalEditItemCategory 2")
 		})
 
 		t.Run("NonExistenceItemAtWarehouse", func(t *testing.T) {
+			categoryRepositoryImpl := NewCategoryRepositoryImpl(gormClient)
 			// Expected to get this error message
 			// [ERROR] Fatal error, current item from store never exist at warehouse
 			tobeUpdateItemCategory := &model.CategoryMtmWarehouse{
@@ -573,24 +557,28 @@ func TestCategoryRepository(t *testing.T) {
 				ItemId:     99999999, // Not available ItemId
 			}
 			err := categoryRepositoryImpl.EditItemCategory(TenantId, tobeUpdateItemCategory)
-			assert.Error(t, err)
-			assert.Contains(t, err.Error(), "[ERROR]")
+			if assert.Error(t, err) {
+				assert.Contains(t, err.Error(), "[ERROR]")
+			}
 		})
 
 		t.Run("InvalidRequest", func(t *testing.T) {
+			categoryRepositoryImpl := NewCategoryRepositoryImpl(gormClient)
+
 			// User will act as unregister by sending categoryId: 0
 			tobeUpdateItemCategory := &model.CategoryMtmWarehouse{
 				CategoryId: 0, // Invalid input request
 				ItemId:     1, // Technically valid
 			}
 			err := categoryRepositoryImpl.EditItemCategory(TenantId, tobeUpdateItemCategory)
-			assert.Error(t, err)
-			assert.Contains(t, err.Error(), "[ERROR]")
+			if assert.Error(t, err) {
+				assert.Contains(t, err.Error(), "[ERROR]")
+			}
 		})
 	})
 
 	t.Run("Update", func(t *testing.T) {
-		categoryRepositoryImpl := NewCategoryRepositoryImpl(supabaseClient)
+		categoryRepositoryImpl := NewCategoryRepositoryImpl(gormClient)
 
 		t.Run("NormalUpdate", func(t *testing.T) {
 			dummyData := &model.Category{
@@ -614,23 +602,26 @@ func TestCategoryRepository(t *testing.T) {
 			assert.Equal(t, createdDummyCategoryDB.CreatedAt.UTC().Day(), editedDummyCategoryDB.CreatedAt.UTC().Day())
 
 			// Clean up
-			supabaseClient.From(CategoryTable).
-				Delete("", "").
-				Eq("tenant_id", strconv.Itoa(TenantId)).
-				Eq("category_name", editedDummyCategoryDB.CategoryName).
-				Execute()
+			t.Cleanup(func() {
+				err = gormClient.Where("tenant_id = ? AND category_name = ?", TenantId, editedDummyCategoryDB.CategoryName).
+					Delete(&model.Category{}).Error
+				require.Nil(t, err, "If this fail, immediately delete the test data; Update/NormalUpdate")
+			})
 		})
 
 		t.Run("UpdateThatCategoryNotExist", func(t *testing.T) {
 			editedDummyCategoryDB, err := categoryRepositoryImpl.Update(TenantId, 0, "Will not happen")
 			assert.NotNil(t, err)
 			assert.Nil(t, editedDummyCategoryDB)
-			assert.Equal(t, "(PGRST116) JSON object requested, multiple (or no) rows returned", err.Error())
+			//assert.Equal(t, "(PGRST116) JSON object requested, multiple (or no) rows returned", err.Error())
+			if assert.Error(t, err) {
+				assert.Equal(t, "record not found", err.Error())
+			}
 		})
 	})
 
 	t.Run("Delete", func(t *testing.T) {
-		categoryRepositoryImpl := NewCategoryRepositoryImpl(supabaseClient)
+		categoryRepositoryImpl := NewCategoryRepositoryImpl(gormClient)
 
 		t.Run("NormalDelete", func(t *testing.T) {
 			dummyData := &model.Category{

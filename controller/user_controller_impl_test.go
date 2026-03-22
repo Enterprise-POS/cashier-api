@@ -24,7 +24,8 @@ func TestUserControllerImpl(t *testing.T) {
 	}
 
 	supabaseClient := client.CreateSupabaseClient()
-	userRepository := repository.NewUserRepositoryImpl(supabaseClient)
+	gormClient := client.CreateGormClient()
+	userRepository := repository.NewUserRepositoryImpl(gormClient)
 	userService := service.NewUserServiceImpl(userRepository)
 	userController := NewUserControllerImpl(userService)
 	app := fiber.New()

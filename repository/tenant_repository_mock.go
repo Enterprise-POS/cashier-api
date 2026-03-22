@@ -57,13 +57,7 @@ func (repository *TenantRepositoryMock) GetTenantWithUser(userId int) ([]*model.
 // NewTenant implements TenantRepository.
 func (repository *TenantRepositoryMock) NewTenant(tenant *model.Tenant) error {
 	args := repository.Mock.Called(tenant)
-
-	if args.Get(0) != nil {
-		return args.Error(1)
-	}
-
-	// Normal condition
-	return nil
+	return args.Error(0)
 }
 
 // RemoveUserFromTenant implements TenantRepository.

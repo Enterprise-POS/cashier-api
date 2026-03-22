@@ -12,7 +12,6 @@ import (
 func TestDefaultProperties(t *testing.T) {
 	var item = new(Item)
 	assert.Equal(t, 0, item.ItemId)
-	assert.Nil(t, item.CreatedAt)
 
 	fmt.Println(os.Getenv("MODE"))
 }
@@ -24,7 +23,7 @@ func TestDefinedProperties(t *testing.T) {
 		ItemName:  "Hello World",
 		Stocks:    999,
 		TenantId:  1,
-		CreatedAt: &now,
+		CreatedAt: now,
 		IsActive:  true,
 	}
 

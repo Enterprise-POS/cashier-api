@@ -2,22 +2,19 @@ package repository
 
 import (
 	"cashier-api/model"
-	"encoding/json"
 	"errors"
-	"strconv"
 	"strings"
 
-	log "github.com/sirupsen/logrus"
-	"github.com/supabase-community/supabase-go"
+	"gorm.io/gorm"
 )
 
 const WarehouseTable string = "warehouse"
 
 type WarehouseRepositoryImpl struct {
-	Client *supabase.Client
+	Client *gorm.DB
 }
 
-func NewWarehouseRepositoryImpl(client *supabase.Client) WarehouseRepository {
+func NewWarehouseRepositoryImpl(client *gorm.DB) WarehouseRepository {
 	return &WarehouseRepositoryImpl{
 		Client: client,
 	}
@@ -25,123 +22,124 @@ func NewWarehouseRepositoryImpl(client *supabase.Client) WarehouseRepository {
 
 // GetActiveItem implements WarehouseRepository.
 func (warehouse *WarehouseRepositoryImpl) GetActiveItem(tenantId int, limit int, page int, nameQuery string) ([]*model.Item, int, error) {
-	start := page * limit
-	end := start + limit - 1
 
-	var itemsList []*model.Item
-	query := warehouse.Client.
-		From("warehouse").
-		Select("*", "exact", false).
-		Eq("is_active", "TRUE"). // Only get is_active=TRUE warehouse item
-		Eq("tenant_id", strconv.Itoa(tenantId)).
-		Range(start, end, "").
-		Limit(limit, "")
+	var items []*model.Item
+	var total int64
+
+	offset := page * limit
+
+	query := warehouse.Client.Model(&model.Item{}).
+		Where("tenant_id = ?", tenantId).
+		Where("is_active = ?", true)
 
 	if nameQuery != "" {
-		query = query.Like("item_name", nameQuery+"%")
+		query = query.Where("item_name LIKE ?", nameQuery+"%")
 	}
 
-	count, err := query.ExecuteTo(&itemsList)
-	if err != nil {
+	// Get total count first
+	if err := query.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
 
-	return itemsList, int(count), nil
+	// Get paginated result
+	if err := query.
+		Limit(limit).
+		Offset(offset).
+		Find(&items).Error; err != nil {
+		return nil, 0, err
+	}
+
+	return items, int(total), nil
 }
 
 func (warehouse *WarehouseRepositoryImpl) Get(tenantId int, limit int, page int, nameQuery string) ([]*model.Item, int, error) {
-	start := page * limit
-	end := start + limit - 1
+	var items = make([]*model.Item, 0)
+	var total int64
 
-	var itemsList []*model.Item
-	query := warehouse.Client.
-		From("warehouse").
-		Select("*", "exact", false).
-		Eq("tenant_id", strconv.Itoa(tenantId)).
-		Range(start, end, "").
-		Limit(limit, "")
+	offset := page * limit
+
+	query := warehouse.Client.Model(&model.Item{}).
+		Where("tenant_id = ?", tenantId)
 
 	if nameQuery != "" {
-		query = query.Like("item_name", nameQuery+"%")
+		query = query.Where("item_name LIKE ?", nameQuery+"%")
 	}
 
-	count, err := query.ExecuteTo(&itemsList)
-	if err != nil {
+	if err := query.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
 
-	return itemsList, int(count), nil
+	if err := query.
+		Limit(limit).
+		Offset(offset).
+		Find(&items).Error; err != nil {
+		return nil, 0, err
+	}
+
+	return items, int(total), nil
 }
 
 func (warehouse *WarehouseRepositoryImpl) FindById(itemId int, tenantId int) (*model.Item, error) {
 	var item model.Item
-	_, err := warehouse.Client.
-		From("warehouse").
-		Select("*", "exact", false).
-		Eq("item_id", strconv.Itoa(itemId)).
-		Eq("tenant_id", strconv.Itoa(tenantId)).
-		Single().ExecuteTo(&item)
-	if err != nil {
-		if strings.Contains(err.Error(), "(PGRST116)") {
-			log.Warnf("Warning ! Handled error, id not found for item with id: %d", itemId)
-		} else {
-			log.Error("Error fetching warehouse item:", err)
-		}
+
+	err := warehouse.Client.
+		Where("item_id = ?", itemId).
+		Where("tenant_id = ?", tenantId).
+		First(&item).Error
+
+	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, err
 	}
 
-	return &item, err
+	if err != nil {
+		return nil, err
+	}
+
+	return &item, nil
 }
 
 func (warehouse *WarehouseRepositoryImpl) CreateItem(items []*model.Item) ([]*model.Item, error) {
-	result, _, err := warehouse.Client.From("warehouse").Insert(items, false, "", "representation", "").Execute()
-	if err != nil {
+	if err := warehouse.Client.Create(&items).Error; err != nil {
 		return nil, err
 	}
 
-	// fmt.Println("message ->", reflect.TypeOf(string(result)).Name())
-
-	var itemsList []*model.Item
-	err = json.Unmarshal(result, &itemsList)
-	if err != nil {
-		return nil, err
-	}
-
-	return itemsList, nil
+	return items, nil
 }
 
 func (warehouse *WarehouseRepositoryImpl) Edit(quantity int, item *model.Item) error {
-	message := warehouse.Client.Rpc("edit_warehouse_item", "", map[string]interface{}{
-		"p_quantity":   quantity,      // int
-		"p_item_name":  item.ItemName, // string
-		"p_stock_type": item.StockType,
-		"p_base_price": item.BasePrice,
+	var result string
+	err := warehouse.Client.Raw("SELECT edit_warehouse_item(?, ?, ?, ?, ?, ?)",
+		quantity,
+		item.ItemName,
+		item.StockType,
+		item.BasePrice,
+		item.ItemId,
+		item.TenantId,
+	).Scan(&result).Error
 
-		"p_item_id":   item.ItemId,   // int
-		"p_tenant_id": item.TenantId, // int
-	})
-
-	if strings.Contains(message, "[ERROR]") {
-		return errors.New(message)
+	if err != nil {
+		return err
 	}
 
-	// We don't need to return the item, because we already know before
+	if strings.Contains(result, "[ERROR]") {
+		return errors.New(result)
+	}
+
 	return nil
 }
 
 func (warehouse *WarehouseRepositoryImpl) SetActivate(tenantId, itemId int, setInto bool) error {
-	tobeUpdatedValue := map[string]interface{}{
-		"is_active": setInto,
+	result := warehouse.Client.Model(&model.Item{}).
+		Where("tenant_id = ?", tenantId).
+		Where("item_id = ?", itemId).
+		Update("is_active", setInto)
+
+	if result.Error != nil {
+		return result.Error
 	}
 
-	_, _, err := warehouse.Client.From(WarehouseTable).
-		Update(tobeUpdatedValue, "", "").
-		Eq("tenant_id", strconv.Itoa(tenantId)).
-		Eq("item_id", strconv.Itoa(itemId)).
-		Single().
-		Execute()
-	if err != nil {
-		return err
+	if result.RowsAffected == 0 {
+		return errors.New("ITEM_NOT_FOUND")
 	}
 
 	return nil
@@ -149,24 +147,25 @@ func (warehouse *WarehouseRepositoryImpl) SetActivate(tenantId, itemId int, setI
 
 // FindCompleteById implements WarehouseRepository.
 func (warehouse *WarehouseRepositoryImpl) FindCompleteById(itemId int, tenantId int) (*model.CategoryWithItem, error) {
-	result := warehouse.Client.Rpc("find_complete_by_id", "", map[string]interface{}{
-		"p_item_id":   itemId,   // int
-		"p_tenant_id": tenantId, // int
-	})
+	var result model.CategoryWithItem
 
-	var items []*model.CategoryWithItem
-	err := json.Unmarshal([]byte(result), &items)
+	err := warehouse.Client.Raw(`
+		SELECT * FROM find_complete_by_id(?, ?)
+	`, tenantId, itemId).
+		Scan(&result).Error
+
 	if err != nil {
-		if strings.Contains(result, "NO_DATA_FOUND") {
+		// Preserve original PostgreSQL error codes
+		if strings.Contains(err.Error(), "NO_DATA_FOUND") {
 			return nil, errors.New("NO_DATA_FOUND")
 		}
 
-		if strings.Contains(result, "CARDINALITY_VIOLATION") {
+		if strings.Contains(err.Error(), "CARDINALITY_VIOLATION") {
 			return nil, errors.New("CARDINALITY_VIOLATION")
 		}
 
 		return nil, err
 	}
 
-	return items[0], err
+	return &result, nil
 }

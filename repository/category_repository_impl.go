@@ -2,24 +2,22 @@ package repository
 
 import (
 	"cashier-api/model"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"strconv"
 	"strings"
 
 	log "github.com/sirupsen/logrus"
-	"github.com/supabase-community/supabase-go"
+	"gorm.io/gorm"
 )
 
 type CategoryRepositoryImpl struct {
-	Client *supabase.Client
+	Client *gorm.DB
 }
 
 const CategoryTable string = "category"
 const CategoryMtmWarehouseTable string = "category_mtm_warehouse"
 
-func NewCategoryRepositoryImpl(client *supabase.Client) CategoryRepository {
+func NewCategoryRepositoryImpl(client *gorm.DB) CategoryRepository {
 	return &CategoryRepositoryImpl{
 		Client: client,
 	}
@@ -27,46 +25,32 @@ func NewCategoryRepositoryImpl(client *supabase.Client) CategoryRepository {
 
 func (repository *CategoryRepositoryImpl) GetItemsByCategoryId(tenantId int, categoryId int, limit int, page int) ([]*model.CategoryWithItem, int, error) {
 	start := page * limit
-	// end := start + limit - 1
 
-	/*
-		Original query:
-
-		-- Get items base on category (id)
-			SELECT
-				category.id AS category_id, category.category_name,
-				warehouse.item_id, warehouse.item_name, warehouse.stocks
-			FROM warehouse
-			INNER JOIN category_mtm_warehouse ON category_mtm_warehouse.item_id=warehouse.item_id
-			INNER JOIN category ON category.id=category_mtm_warehouse.category_id
-			WHERE warehouse.tenant_id=p_tenant_id AND category.id=p_category_id;
-	*/
-
-	data := repository.Client.Rpc("get_items_by_category", "", map[string]interface{}{
-		"p_tenant_id":   tenantId,
-		"p_category_id": categoryId,
-		"p_limit":       limit,
-		"p_offset":      start,
-	})
-
-	/*
-		Example return
-
-		[
-			{"category_id":1,"category_name":"Fruits","item_id":1,"item_name":"Apple","stocks":358},
-			{"category_id":1,"category_name":"Fruits","item_id":267,"item_name":"Durian","stocks":10}
-		]
-	*/
 	var results []*model.CategoryWithItem
-	err := json.Unmarshal([]byte(data), &results)
+	err := repository.Client.
+		Model(&model.Item{}).
+		Select(`
+			category.id AS category_id,
+			category.category_name,
+			warehouse.item_id,
+			warehouse.item_name,
+			warehouse.stocks,
+			warehouse.base_price,
+			COUNT(*) OVER() AS total_count
+		`).
+		Joins("INNER JOIN category_mtm_warehouse ON category_mtm_warehouse.item_id = warehouse.item_id").
+		Joins("INNER JOIN category ON category.id = category_mtm_warehouse.category_id").
+		Where("warehouse.tenant_id = ? AND category.id = ?", tenantId, categoryId).
+		Limit(limit).
+		Offset(start).
+		Scan(&results).Error
 	if err != nil {
-		log.Errorf("ERROR ! While unmarshaling data at CategoryRepositoryImpl.GetItemsByCategory. tenantId: %d, categoryId: %d", tenantId, categoryId)
 		return nil, 0, err
 	}
 
 	countResult := 0
 	if len(results) > 0 {
-		countResult = results[0].TotalCount // Same value for all rows
+		countResult = results[0].TotalCount
 	}
 
 	return results, countResult, nil
@@ -74,51 +58,32 @@ func (repository *CategoryRepositoryImpl) GetItemsByCategoryId(tenantId int, cat
 
 func (repository *CategoryRepositoryImpl) GetCategoryWithItems(tenantId, page, limit int) ([]*model.CategoryWithItem, int, error) {
 	start := page * limit
-	// end := start + limit - 1
 
-	/*
-		Example join using bare bone supabase method.
-
-		results, _, err := repository.Client.From("category").
-			Select("id, category_name, category_mtm_warehouse(warehouse(item_id))", "", false).
-			Limit(limit, "category_mtm_warehouse(warehouse(item_id))").
-			Range(start, end, "category_mtm_warehouse(warehouse(item_id))").
-			Eq("tenant_id", strconv.Itoa(tenantId)).
-			Execute()
-
-		Instead will be using Rpc with the same query as above
-	*/
-
-	/*
-		Return
-		- category_id
-		- category_name
-		- warehouse.item_id
-		- warehouse.item_name
-		- warehouse.stocks
-	*/
-	data := repository.Client.Rpc("get_category_with_items", "", map[string]interface{}{
-		"p_tenant_id": tenantId,
-		"p_limit":     limit,
-		"p_offset":    start,
-	})
-	var results []*model.CategoryWithItem
-	err := json.Unmarshal([]byte(data), &results)
+	var results = make([]*model.CategoryWithItem, 0)
+	err := repository.Client.
+		Model(&model.Item{}).
+		Select(`
+			category.id AS category_id,
+			category.category_name,
+			warehouse.item_id,
+			warehouse.item_name,
+			warehouse.stocks,
+			warehouse.base_price,
+			COUNT(*) OVER() AS total_count
+		`).
+		Joins("INNER JOIN category_mtm_warehouse ON category_mtm_warehouse.item_id = warehouse.item_id").
+		Joins("INNER JOIN category ON category.id = category_mtm_warehouse.category_id").
+		Where("warehouse.tenant_id = ?", tenantId).
+		Limit(limit).
+		Offset(start).
+		Scan(&results).Error
 	if err != nil {
-		// If the query fails, most likely return string
-		var errorMessage string
-		err = json.Unmarshal([]byte(data), &errorMessage)
-		if err != nil {
-			return nil, 0, errors.New("Fatal Error, something gone wrong with the server")
-		}
-
-		// Return error message from rpc
 		return nil, 0, err
 	}
 
 	countResult := 0
 	if len(results) > 0 {
-		countResult = results[0].TotalCount // same value for all rows
+		countResult = results[0].TotalCount
 	}
 
 	return results, countResult, nil
@@ -126,25 +91,26 @@ func (repository *CategoryRepositoryImpl) GetCategoryWithItems(tenantId, page, l
 
 func (repository *CategoryRepositoryImpl) Get(tenantId, page, limit int, nameQuery string) ([]*model.Category, int, error) {
 	start := page * limit
-	end := start + limit - 1
 
-	var results []*model.Category
-	query := repository.Client.From(CategoryTable).
-		Select("*", "exact", false).
-		Eq("tenant_id", strconv.Itoa(tenantId)).
-		Range(start, end, "").
-		Limit(limit, "")
+	var results = make([]*model.Category, 0)
+	var totalCount int64
+
+	query := repository.Client.Model(&model.Category{}).Where("tenant_id = ?", tenantId)
 
 	if nameQuery != "" {
-		query = query.Like("category_name", nameQuery+"%")
+		query = query.Where("category_name LIKE ?", nameQuery+"%")
 	}
 
-	count, err := query.ExecuteTo(&results)
-	if err != nil {
+	// Get total count before applying pagination
+	if err := query.Count(&totalCount).Error; err != nil {
 		return nil, 0, err
 	}
 
-	return results, int(count), nil
+	if err := query.Offset(start).Limit(limit).Find(&results).Error; err != nil {
+		return nil, 0, err
+	}
+
+	return results, int(totalCount), nil
 }
 
 func (repository *CategoryRepositoryImpl) Create(tenantId int, categories []*model.Category) ([]*model.Category, error) {
@@ -153,44 +119,38 @@ func (repository *CategoryRepositoryImpl) Create(tenantId int, categories []*mod
 		return nil, fmt.Errorf("CategoryRepositoryImpl.Create called with empty table. probably didn't use New Fn for create CategoryRepositoryImpl. TenantId: %d", tenantId)
 	}
 
-	var results []*model.Category
-	_, err := repository.Client.From(CategoryTable).
-		Insert(categories, false, "", "", "").
-		Eq("tenant_id", strconv.Itoa(tenantId)).
-		ExecuteTo(&results)
-	if err != nil {
+	// Ensure all categories belong to the given tenant
+	for _, c := range categories {
+		c.TenantId = tenantId
+	}
+
+	if err := repository.Client.Create(&categories).Error; err != nil {
 		return nil, err
 	}
 
-	return results, nil
+	return categories, nil
 }
 
 func (repository *CategoryRepositoryImpl) Register(tobeRegisters []*model.CategoryMtmWarehouse) error {
-	var results []*model.CategoryMtmWarehouse
-
-	_, err := repository.Client.From(CategoryMtmWarehouseTable).Insert(tobeRegisters, false, "", "", "").ExecuteTo(&results)
-	if err != nil {
+	if err := repository.Client.Create(&tobeRegisters).Error; err != nil {
 		return err
 	}
-
 	return nil
 }
 
 func (repository *CategoryRepositoryImpl) Unregister(toUnregister *model.CategoryMtmWarehouse) error {
-	_, count, err := repository.Client.From(CategoryMtmWarehouseTable).
-		Delete("", "exact").
-		Eq("category_id", strconv.Itoa(toUnregister.CategoryId)).
-		Eq("item_id", strconv.Itoa(toUnregister.ItemId)).
-		Execute()
-	if err != nil {
-		return err
+	result := repository.Client.
+		Where("category_id = ? AND item_id = ?", toUnregister.CategoryId, toUnregister.ItemId).
+		Delete(&model.CategoryMtmWarehouse{})
+
+	if result.Error != nil {
+		return result.Error
 	}
-	if count > 1 {
+	if result.RowsAffected > 1 {
 		log.Errorf("FATAL ERROR multiple categories deleted from categoryId: %d, itemId: %d", toUnregister.CategoryId, toUnregister.ItemId)
 		return errors.New("FATAL ERROR multiple categories deleted")
 	}
-
-	if count == 0 {
+	if result.RowsAffected == 0 {
 		log.Warnf("Warning ! Handled error, no data deleted from categoryId: %d, itemId: %d", toUnregister.CategoryId, toUnregister.ItemId)
 		return errors.New("[WARN] No data deleted")
 	}
@@ -199,17 +159,46 @@ func (repository *CategoryRepositoryImpl) Unregister(toUnregister *model.Categor
 }
 
 func (repository *CategoryRepositoryImpl) EditItemCategory(tenantId int, editedItemCategory *model.CategoryMtmWarehouse) error {
-	data := repository.Client.Rpc("edit_warehouse_item_category", "", map[string]interface{}{
-		"p_category_id": editedItemCategory.CategoryId,
-		"p_item_id":     editedItemCategory.ItemId,
-		"p_tenant_id":   tenantId,
-	})
-
-	if strings.Contains(data, "[ERROR]") {
-		return errors.New(data)
+	if editedItemCategory.CategoryId <= 0 || editedItemCategory.ItemId <= 0 {
+		return errors.New("[ERROR] Invalid request: invalid category_id or item_id")
 	}
 
-	return nil
+	return repository.Client.Transaction(func(tx *gorm.DB) error {
+		// SELECT EXISTS (SELECT 1 FROM warehouse WHERE item_id = p_item_id AND tenant_id = p_tenant_id)
+		err := tx.Model(&model.Item{}).
+			Where("item_id = ? AND tenant_id = ?", editedItemCategory.ItemId, tenantId).
+			First(&model.Item{}).Error
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return errors.New("[ERROR] Fatal error, current item from store never exist at warehouse")
+		}
+		if err != nil {
+			return err
+		}
+
+		// SELECT COUNT(*) = 1 FROM category_mtm_warehouse WHERE item_id = p_item_id
+		var linkCount int64
+		if err := tx.Model(&model.CategoryMtmWarehouse{}).
+			Where("item_id = ?", editedItemCategory.ItemId).
+			Count(&linkCount).Error; err != nil {
+			return err
+		}
+		if linkCount != 1 {
+			return errors.New("[ERROR] Item has multiple categories either not registered by any category")
+		}
+
+		// UPDATE category_mtm_warehouse SET category_id = p_category_id WHERE item_id = p_item_id
+		result := tx.Model(&model.CategoryMtmWarehouse{}).
+			Where("item_id = ?", editedItemCategory.ItemId).
+			Update("category_id", editedItemCategory.CategoryId)
+		if result.Error != nil {
+			if strings.Contains(result.Error.Error(), "foreign key") {
+				return errors.New("[ERROR] Update failed: category (id) does not exist")
+			}
+			return errors.New("[ERROR] Unexpected database error")
+		}
+
+		return nil
+	})
 }
 
 func (repository *CategoryRepositoryImpl) Update(tenantId int, categoryId int, tobeChangeCategoryName string) (*model.Category, error) {
@@ -220,22 +209,23 @@ func (repository *CategoryRepositoryImpl) Update(tenantId int, categoryId int, t
 		- created_at (x)
 		- tenant_id (x)
 	*/
-	tobeUpdatedValue := map[string]interface{}{
-		"category_name": tobeChangeCategoryName,
-	}
+	var updatedCategory model.Category
 
-	var updatedCategory *model.Category
-	_, err := repository.Client.From(CategoryTable).
-		Update(tobeUpdatedValue, "", ""). // Do not use 'exact' for returning parameter
-		Eq("tenant_id", strconv.Itoa(tenantId)).
-		Eq("id", strconv.Itoa(categoryId)).
-		Single().
-		ExecuteTo(&updatedCategory)
+	err := repository.Client.Model(&updatedCategory).
+		Where("tenant_id = ? AND id = ?", tenantId, categoryId).
+		Update("category_name", tobeChangeCategoryName).Error
 	if err != nil {
 		return nil, err
 	}
 
-	return updatedCategory, nil
+	// Fetch the updated record to return it
+	if err := repository.Client.
+		Where("tenant_id = ? AND id = ?", tenantId, categoryId).
+		First(&updatedCategory).Error; err != nil {
+		return nil, err
+	}
+
+	return &updatedCategory, nil
 }
 
 func (repository *CategoryRepositoryImpl) Delete(category *model.Category) error {
@@ -244,20 +234,18 @@ func (repository *CategoryRepositoryImpl) Delete(category *model.Category) error
 		When category deleted then category_mtm_warehouse that have the
 		same deleted category id will be automatically deleted
 	*/
-	_, count, err := repository.Client.From(CategoryTable).
-		Delete("", "exact").
-		Eq("tenant_id", strconv.Itoa(category.TenantId)).
-		Eq("id", strconv.Itoa(category.Id)).
-		Execute()
-	if err != nil {
-		return err
+	result := repository.Client.
+		Where("tenant_id = ? AND id = ?", category.TenantId, category.Id).
+		Delete(&model.Category{})
+
+	if result.Error != nil {
+		return result.Error
 	}
-	if count > 1 {
+	if result.RowsAffected > 1 {
 		log.Errorf("FATAL ERROR multiple categories deleted from categoryId: %d, tenantId: %d", category.Id, category.TenantId)
 		return errors.New("FATAL ERROR multiple categories deleted")
 	}
-
-	if count == 0 {
+	if result.RowsAffected == 0 {
 		log.Warnf("Warning ! Handled error, no data deleted from categoryId: %d, tenantId: %d", category.Id, category.TenantId)
 		return errors.New("[WARN] No data deleted")
 	}

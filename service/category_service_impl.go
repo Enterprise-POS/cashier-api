@@ -97,11 +97,11 @@ func (service *CategoryServiceImpl) Register(tobeRegisters []*model.CategoryMtmW
 
 	err := service.Repository.Register(tobeRegisters)
 	if err != nil {
-		if strings.Contains(err.Error(), "(23505)") {
+		if strings.Contains(err.Error(), "23505") {
 			return errors.New("Error, Current items with category already added")
 		}
 
-		if strings.Contains(err.Error(), "(23503)") {
+		if strings.Contains(err.Error(), "23503") {
 			return errors.New("Forbidden action ! non exist category id or item id")
 		}
 
@@ -156,11 +156,11 @@ func (service *CategoryServiceImpl) Update(tenantId int, categoryId int, tobeCha
 	if err != nil {
 		// 23505: unique_violation
 		// https://www.postgresql.org/docs/current/errcodes-appendix.html
-		if strings.Contains(err.Error(), "(23505)") {
+		if strings.Contains(err.Error(), "23505") {
 			return nil, fmt.Errorf("Update failed: category name %q already exists", tobeChangeCategoryName)
 		}
 
-		if strings.Contains(err.Error(), "(PGRST116)") {
+		if strings.Contains(err.Error(), "record not found") {
 			return nil, fmt.Errorf("Nothing is updated from category_id: %d, tenant_id: %d", categoryId, tenantId)
 		}
 		return nil, err

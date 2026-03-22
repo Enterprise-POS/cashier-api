@@ -4,20 +4,20 @@ import (
 	"cashier-api/helper/client"
 	"cashier-api/model"
 	"reflect"
-	"strconv"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/supabase-community/supabase-go"
+	"gorm.io/gorm"
 )
 
 func TestWarehouseRepository(t *testing.T) {
-	var supabaseClient *supabase.Client = client.CreateSupabaseClient()
+	var gormClient *gorm.DB = client.CreateGormClient()
+
+	warehouseRepo := NewWarehouseRepositoryImpl(gormClient)
 
 	t.Run("TestWarehouseRepository_FindById", func(t *testing.T) {
-		warehouseRepo := NewWarehouseRepositoryImpl(supabaseClient)
 
 		// TEST: normal search
 		// Create item first
@@ -49,17 +49,16 @@ func TestWarehouseRepository(t *testing.T) {
 		itemNotFound, err := warehouseRepo.FindById(0, 1)
 		assert.Nil(t, itemNotFound)
 		assert.NotNil(t, err)
-		assert.Equal(t, "(PGRST116) JSON object requested, multiple (or no) rows returned", err.Error())
+		//assert.Equal(t, "(PGRST116) JSON object requested, multiple (or no) rows returned", err.Error())
+		assert.Equal(t, "record not found", err.Error())
 
 		// Clean up
 		// Delete the dummy data
-		_, _, err = supabaseClient.From("warehouse").
-			Delete("", "").
-			Eq("tenant_id", strconv.Itoa(dummyItemFromDB.TenantId)).
-			Eq("item_name", dummyItemFromDB.ItemName).Execute()
-		if err != nil {
-			t.Fatal("unexpected error while testing to delete dummy data _CreateItem")
-		}
+		err = gormClient.
+			Where("tenant_id", dummyItemFromDB.TenantId).
+			Where("item_name", dummyItemFromDB.ItemName).
+			Delete(&dummyItemFromDB).Error
+		require.NoError(t, err, "Unexpected error while testing to delete dummy data _FindById")
 	})
 
 	t.Run("TestWarehouseRepository_CreateItem", func(t *testing.T) {
@@ -71,7 +70,6 @@ func TestWarehouseRepository(t *testing.T) {
 		}
 
 		// Create new data
-		warehouseRepo := NewWarehouseRepositoryImpl(supabaseClient)
 		_dummyItemFromDB, err := warehouseRepo.CreateItem([]*model.Item{dummyItem})
 		assert.Nil(t, err)
 		assert.Equal(t, 1, len(_dummyItemFromDB))
@@ -88,87 +86,86 @@ func TestWarehouseRepository(t *testing.T) {
 		// dummyItemFromDB contain item_id, so it's allowed to create own id
 		dataNil, err := warehouseRepo.CreateItem([]*model.Item{dummyItemFromDB})
 		assert.NotNil(t, err)
-		assert.Equal(t, "(23505) duplicate key value violates unique constraint \"stock_pkey\"", err.Error())
+		//assert.Equal(t, "(23505) duplicate key value violates unique constraint \"stock_pkey\"", err.Error())
+		assert.Contains(t, err.Error(), "23505")
 		assert.Nil(t, dataNil)
 
 		// Delete the dummy data
-		_, _, err = supabaseClient.From("warehouse").
-			Delete("", "").
-			Eq("item_id", strconv.Itoa(dummyItemFromDB.ItemId)).
-			Eq("tenant_id", strconv.Itoa(dummyItemFromDB.TenantId)).Execute()
-		if err != nil {
-			t.Fatal("unexpected error while testing to delete dummy data _CreateItem")
-		}
+		err = gormClient.
+			Where("item_id", dummyItemFromDB.ItemId).
+			Where("tenant_id", dummyItemFromDB.TenantId).
+			Delete(&dummyItemFromDB).Error
+		require.NoError(t, err, "Unexpected error while testing to delete dummy data _CreateItem")
 	})
 
 	t.Run("TestWarehouseRepository_Edit", func(t *testing.T) {
-		warehouseRepo := NewWarehouseRepositoryImpl(supabaseClient)
+		tx := gormClient.Begin()
+		defer tx.Rollback()
 
-		// Create dummy data first
+		// Initialize repo with the transaction instead of the main client
+		warehouseRepo := NewWarehouseRepositoryImpl(tx)
+
+		// Create dummy data with initial stock of 20
 		var dummyItem = &model.Item{
-			ItemName:  "Test Name2",
+			ItemName:  "Test Item Original",
 			Stocks:    20,
 			TenantId:  1,
 			IsActive:  true,
 			StockType: model.StockTypeTracked,
+			BasePrice: 1000,
 		}
 
-		_dummyItemFromDB, err := warehouseRepo.CreateItem([]*model.Item{dummyItem})
-		assert.Equal(t, 1, len(_dummyItemFromDB))
-		assert.Nil(t, err)
+		createdItems, err := warehouseRepo.CreateItem([]*model.Item{dummyItem})
+		assert.NoError(t, err)
+		assert.Equal(t, 1, len(createdItems))
 
-		dummyItemFromDB := _dummyItemFromDB[0]
-		dummyItemFromDB.ItemName = "Edit Name2"
-		dummyItemFromDB.Stocks = 15
-		dummyItemFromDB.StockType = model.StockTypeTracked
+		// This is our source of truth from the DB
+		itemInDB := createdItems[0]
 
-		// In the front this code below should be applied
-		// Decrement -
-		err = warehouseRepo.Edit(-(dummyItem.Stocks - dummyItemFromDB.Stocks), dummyItemFromDB)
-		assert.Nil(t, err)
+		// Decrement stock (-5) ---
+		// Goal: 20 -> 15
+		deltaDecrement := -5
+		itemInDB.ItemName = "Name After Decrement"
 
-		// Check if edited item is exist
-		editedDummyItemFromDB, err := warehouseRepo.FindById(dummyItemFromDB.ItemId, dummyItemFromDB.TenantId)
-		assert.Nil(t, err)
-		assert.NotNil(t, editedDummyItemFromDB)
-		assert.Equal(t, dummyItemFromDB.ItemId, editedDummyItemFromDB.ItemId)
-		assert.Equal(t, dummyItemFromDB.ItemName, editedDummyItemFromDB.ItemName)
-		assert.Equal(t, dummyItemFromDB.Stocks, editedDummyItemFromDB.Stocks)
+		err = warehouseRepo.Edit(deltaDecrement, itemInDB)
+		assert.NoError(t, err)
 
-		// Increment +
-		editedDummyItemFromDB.ItemName = "Edit Name 2"
-		editedDummyItemFromDB.Stocks = 100
-		err = warehouseRepo.Edit(-(dummyItemFromDB.Stocks - editedDummyItemFromDB.Stocks), editedDummyItemFromDB)
-		assert.Nil(t, err)
+		// Verify change
+		afterDec, err := warehouseRepo.FindById(itemInDB.ItemId, itemInDB.TenantId)
+		assert.NoError(t, err)
+		assert.Equal(t, 15, afterDec.Stocks, "Stock should be 20 - 5 = 15")
+		assert.Equal(t, "Name After Decrement", afterDec.ItemName)
 
-		editIncrementDummyItemFromDB, err := warehouseRepo.FindById(editedDummyItemFromDB.ItemId, editedDummyItemFromDB.TenantId)
-		assert.Nil(t, err)
-		assert.NotNil(t, editIncrementDummyItemFromDB)
-		assert.Equal(t, editedDummyItemFromDB.ItemId, editIncrementDummyItemFromDB.ItemId)
-		assert.Equal(t, editedDummyItemFromDB.ItemName, editIncrementDummyItemFromDB.ItemName)
-		assert.Equal(t, editedDummyItemFromDB.Stocks, editIncrementDummyItemFromDB.Stocks)
+		// Increment stock
+		// Goal: 15 -> 100
+		deltaIncrement := 85
+		afterDec.ItemName = "Name After Increment"
 
-		// Delete the dummy data
-		_, _, err = supabaseClient.From("warehouse").
-			Delete("", "").
-			Eq("item_id", strconv.Itoa(editIncrementDummyItemFromDB.ItemId)).
-			Eq("tenant_id", strconv.Itoa(editIncrementDummyItemFromDB.TenantId)).Execute()
-		if err != nil {
-			t.Fatal("unexpected error while testing to delete dummy data _CreateItem")
-		}
+		err = warehouseRepo.Edit(deltaIncrement, afterDec)
+		assert.NoError(t, err)
 
-		// If the items never even exist handle
+		// Verify change
+		afterInc, err := warehouseRepo.FindById(itemInDB.ItemId, itemInDB.TenantId)
+		assert.NoError(t, err)
+		assert.Equal(t, 100, afterInc.Stocks, "Stock should be 15 + 85 = 100")
+		assert.Equal(t, "Name After Increment", afterInc.ItemName)
+
+		//Negative stock protection
+		// Attempting to subtract 101 from 100 should fail based on your SQL logic
+		err = warehouseRepo.Edit(-101, afterInc)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "Invalid quantities")
+
+		// Non existent item
 		var notExistItem = &model.Item{
-			ItemId:    0,
-			ItemName:  "Test TestWarehouseRepository_Edit Not exist item",
-			Stocks:    99,
+			ItemId:    999999, // Random ID
+			ItemName:  "Ghost Item",
 			TenantId:  1,
 			StockType: model.StockTypeTracked,
 		}
 		err = warehouseRepo.Edit(-1, notExistItem)
-		assert.NotNil(t, err)
-		assert.Contains(t, err.Error(), "[ERROR]")
-		assert.Equal(t, "\"[ERROR] Fatal error, current item from store never exist at warehouse\"", err.Error())
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "never exist at warehouse")
 	})
 
 	t.Run("TestWarehouseRepository_Get", func(t *testing.T) {
@@ -199,7 +196,6 @@ func TestWarehouseRepository(t *testing.T) {
 
 		dummies := []*model.Item{dummy1, dummy2, dummy3, dummy4}
 
-		warehouseRepo := NewWarehouseRepositoryImpl(supabaseClient)
 		_dummiesFromDB, err := warehouseRepo.CreateItem(dummies)
 		assert.Nil(t, err)
 		assert.Equal(t, 4, len(_dummiesFromDB))
@@ -221,30 +217,30 @@ func TestWarehouseRepository(t *testing.T) {
 		// Check page that not even exist
 		currentPage += 999
 		items, _, err = warehouseRepo.Get(1, itemPerPage, currentPage, "")
-		assert.NotNil(t, err)
-		assert.Equal(t, "(PGRST103) Requested range not satisfiable", err.Error())
+		assert.NoError(t, err)
+		assert.NotNil(t, items)
 		assert.Equal(t, 0, len(items))
 
 		for _, dummy := range dummies {
-			supabaseClient.From("warehouse").Delete("", "").Eq("item_name", dummy.ItemName).Execute()
+			gormClient.Where("item_name = ?", dummy.ItemName).Delete(&model.Item{})
 		}
 	})
 
 	t.Run("Get", func(t *testing.T) {
-		warehouseRepo := NewWarehouseRepositoryImpl(supabaseClient)
+		warehouseRepo := NewWarehouseRepositoryImpl(gormClient)
 
 		t.Run("TenantIdNotExist", func(t *testing.T) {
 			items, count, err := warehouseRepo.Get(0, 5, 1, "")
-			assert.NotNil(t, err)
-			assert.Equal(t, "(PGRST103) Requested range not satisfiable", err.Error())
+			// Because the nature how gorm handle the range, it will not return error
+			//assert.Equal(t, "(PGRST103) Requested range not satisfiable", err.Error())
+			assert.NoError(t, err)
 			assert.Equal(t, 0, len(items))
-			assert.Nil(t, items)
+			assert.NotNil(t, items)
 			assert.Equal(t, 0, count)
 		})
 	})
 
 	t.Run("FindCompleteById", func(t *testing.T) {
-		warehouseRepo := NewWarehouseRepositoryImpl(supabaseClient)
 		t.Run("NormalFindCompleteById", func(t *testing.T) {
 
 			var dummyItem = &model.Item{
@@ -269,13 +265,11 @@ func TestWarehouseRepository(t *testing.T) {
 			t.Cleanup(func() {
 				// Clean up
 				// Delete the dummy data
-				_, _, err := supabaseClient.From("warehouse").
-					Delete("", "").
-					Eq("tenant_id", strconv.Itoa(dummyItemFromDB.TenantId)).
-					Eq("item_name", dummyItemFromDB.ItemName).Execute()
-				if err != nil {
-					t.Fatal("unexpected error while testing to delete dummy data _CreateItem")
-				}
+				err := gormClient.
+					Where("tenant_id", dummyItemFromDB.TenantId).
+					Where("item_name", dummyItemFromDB.ItemName).
+					Delete(dummyItemFromDB).Error
+				require.NoError(t, err, "Unexpected error while testing to delete dummy data _CreateItem")
 			})
 		})
 
@@ -289,89 +283,75 @@ func TestWarehouseRepository(t *testing.T) {
 	})
 
 	t.Run("SetActivate", func(t *testing.T) {
-		warehouseRepo := NewWarehouseRepositoryImpl(supabaseClient)
 
 		t.Run("NormalDeactivate", func(t *testing.T) {
-			dummyItem := &model.Item{
-				ItemName:  "Test_TestWarehouseRepository_SetActivate_NormalActivate 1",
+
+			tx := gormClient.Begin()
+			defer tx.Rollback()
+
+			repo := NewWarehouseRepositoryImpl(tx)
+
+			dummy := &model.Item{
+				ItemName:  "Test_SetActivate_Deactivate",
 				TenantId:  1,
 				IsActive:  true,
 				Stocks:    10,
 				StockType: model.StockTypeTracked,
 			}
-			_createdItemsFromDB, err := warehouseRepo.CreateItem([]*model.Item{dummyItem})
+
+			created, err := repo.CreateItem([]*model.Item{dummy})
 			require.Nil(t, err)
 
-			createdItemFromDB := _createdItemsFromDB[0]
+			item := created[0]
 
-			// Set into false
-			createdItemFromDB.IsActive = false
+			// deactivate
+			err = repo.SetActivate(item.TenantId, item.ItemId, false)
+			require.Nil(t, err)
 
-			// This what we test
-			err = warehouseRepo.SetActivate(createdItemFromDB.TenantId, createdItemFromDB.ItemId, createdItemFromDB.IsActive)
-			assert.Nil(t, err)
+			// verify
+			var dbItem model.Item
+			err = tx.First(&dbItem, "item_id = ? AND tenant_id = ?", item.ItemId, item.TenantId).Error
+			require.Nil(t, err)
 
-			// Check if the data at database correct
-			var testItem *model.Item
-			_, err = supabaseClient.From(WarehouseTable).Select("*", "", false).Eq("item_id", strconv.Itoa(createdItemFromDB.ItemId)).Single().ExecuteTo(&testItem)
-			require.Nil(t, err, "If this error, data persist at warehouse table, delete immediately")
-
-			assert.NotNil(t, testItem)
-			assert.Equal(t, createdItemFromDB.ItemId, testItem.ItemId)
-			assert.Equal(t, createdItemFromDB.ItemName, testItem.ItemName)
-			assert.Equal(t, createdItemFromDB.Stocks, testItem.Stocks)
-			assert.Equal(t, createdItemFromDB.TenantId, testItem.TenantId)
-			assert.NotEqual(t, dummyItem.IsActive, testItem.IsActive)
-
-			_, _, err = supabaseClient.From(WarehouseTable).Delete("", "").Eq("item_id", strconv.Itoa(testItem.ItemId)).Eq("tenant_id", strconv.Itoa(testItem.TenantId)).Execute()
-			require.Nilf(t, err, "If this error, data persist at warehouse table itemId: %d, tenantId: %d; TestWarehouse/SetActivate/NormalDeactivate", testItem.ItemId, testItem.TenantId)
+			assert.False(t, dbItem.IsActive)
 		})
 
 		t.Run("NormalActivate", func(t *testing.T) {
-			dummyItem := &model.Item{
-				ItemName:  "Test_TestWarehouseRepository_SetActivate_NormalActivate 1",
+
+			tx := gormClient.Begin()
+			defer tx.Rollback()
+
+			repo := NewWarehouseRepositoryImpl(tx)
+
+			dummy := &model.Item{
+				ItemName:  "Test_SetActivate_Activate",
 				TenantId:  1,
-				IsActive:  true,
+				IsActive:  false,
 				Stocks:    10,
 				StockType: model.StockTypeTracked,
 			}
-			_createdItemsFromDB, err := warehouseRepo.CreateItem([]*model.Item{dummyItem})
+
+			created, err := repo.CreateItem([]*model.Item{dummy})
 			require.Nil(t, err)
 
-			createdItemFromDB := _createdItemsFromDB[0]
+			item := created[0]
 
-			// Set into false
-			createdItemFromDB.IsActive = false
+			// activate
+			err = repo.SetActivate(item.TenantId, item.ItemId, true)
+			require.Nil(t, err)
 
-			// This what we test
-			err = warehouseRepo.SetActivate(createdItemFromDB.TenantId, createdItemFromDB.ItemId, createdItemFromDB.IsActive)
-			assert.Nil(t, err)
+			var dbItem model.Item
+			err = tx.First(&dbItem, "item_id = ? AND tenant_id = ?", item.ItemId, item.TenantId).Error
+			require.Nil(t, err)
 
-			// Check if the data at database correct
-			var testItem *model.Item
-			_, err = supabaseClient.From(WarehouseTable).Select("*", "", false).Eq("item_id", strconv.Itoa(createdItemFromDB.ItemId)).Single().ExecuteTo(&testItem)
-			require.Nil(t, err, "If this error, data persist at warehouse table, delete immediately")
-
-			assert.NotNil(t, testItem)
-			assert.Equal(t, createdItemFromDB.ItemId, testItem.ItemId)
-			assert.Equal(t, createdItemFromDB.ItemName, testItem.ItemName)
-			assert.Equal(t, createdItemFromDB.Stocks, testItem.Stocks)
-			assert.Equal(t, createdItemFromDB.TenantId, testItem.TenantId)
-			assert.NotEqual(t, dummyItem.IsActive, testItem.IsActive)
-
-			_, _, err = supabaseClient.From(WarehouseTable).Delete("", "").Eq("item_id", strconv.Itoa(testItem.ItemId)).Eq("tenant_id", strconv.Itoa(testItem.TenantId)).Execute()
-			require.Nilf(t, err, "If this error, data persist at warehouse table itemId: %d, tenantId: %d; TestWarehouse/SetActivate/NormalDeactivate", testItem.ItemId, testItem.TenantId)
+			assert.True(t, dbItem.IsActive)
 		})
 
 		t.Run("DeactivateThatNotExist", func(t *testing.T) {
-			var (
-				itemId   = 0
-				tenantId = 0
-			)
-			err := warehouseRepo.SetActivate(tenantId, itemId, false)
-			assert.NotNil(t, err)
-			assert.Contains(t, err.Error(), "(PGRST116)")
-			assert.Equal(t, "(PGRST116) JSON object requested, multiple (or no) rows returned", err.Error())
+			err := warehouseRepo.SetActivate(9999, 9999, false)
+
+			require.NotNil(t, err)
+			assert.Equal(t, "ITEM_NOT_FOUND", err.Error())
 		})
 	})
 
@@ -407,7 +387,6 @@ func TestWarehouseRepository(t *testing.T) {
 
 		dummies := []*model.Item{dummy1, dummy2, dummy3, dummy4}
 
-		warehouseRepo := NewWarehouseRepositoryImpl(supabaseClient)
 		_dummiesFromDB, err := warehouseRepo.CreateItem(dummies)
 		assert.NoError(t, err)
 		assert.Equal(t, 4, len(_dummiesFromDB))
@@ -435,12 +414,13 @@ func TestWarehouseRepository(t *testing.T) {
 		// Check page that not even exist
 		currentPage += 999
 		items, _, err = warehouseRepo.GetActiveItem(1, itemPerPage, currentPage, "")
-		assert.NotNil(t, err)
-		assert.Equal(t, "(PGRST103) Requested range not satisfiable", err.Error())
+		assert.NoError(t, err)
+		assert.NotNil(t, items)
 		assert.Equal(t, 0, len(items))
 
+		// Delete warehouse items
 		for _, dummy := range dummies {
-			supabaseClient.From("warehouse").Delete("", "").Eq("item_name", dummy.ItemName).Execute()
+			gormClient.Where("item_name", dummy.ItemName).Delete(&dummy)
 		}
 	})
 }

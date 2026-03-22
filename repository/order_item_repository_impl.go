@@ -1,46 +1,35 @@
 package repository
 
 import (
-	"cashier-api/exception"
 	common "cashier-api/helper"
 	"cashier-api/helper/query"
 	"cashier-api/model"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"strconv"
 	"strings"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgconn"
 	log "github.com/sirupsen/logrus"
-	"github.com/supabase-community/postgrest-go"
-	"github.com/supabase-community/supabase-go"
+	"gorm.io/gorm"
 )
 
 const OrderItemTable string = "order_item"
 
 type OrderItemRepositoryImpl struct {
-	Client *supabase.Client
+	Client *gorm.DB
 }
 
-func NewOrderItemRepositoryImpl(client *supabase.Client) OrderItemRepository {
+func NewOrderItemRepositoryImpl(client *gorm.DB) OrderItemRepository {
 	return &OrderItemRepositoryImpl{
 		Client: client,
 	}
 }
 
 func (repository *OrderItemRepositoryImpl) PlaceOrderItem(orderItem *model.OrderItem) (*model.OrderItem, error) {
-	var createdOrderItem *model.OrderItem
-	_, err := repository.Client.From(OrderItemTable).
-		Insert(orderItem, false, "", "representation", "").
+	err := repository.Client.Create(orderItem).Error
 
-		// By default insert can put multiple OrderItem
-		// But in this method only one,
-		// .Single will return *model.OrderItem data not []*model.OrderItem
-		Single().
-
-		// Supabase will handle the json.Unmarshal
-		ExecuteTo(&createdOrderItem)
 	if err != nil {
 		if strings.Contains(err.Error(), "(23514)") {
 			// Example violation error: (23514) new row for relation \"order_item\" violates check constraint \"order_item_quantity_check\"
@@ -55,7 +44,7 @@ func (repository *OrderItemRepositoryImpl) PlaceOrderItem(orderItem *model.Order
 		return nil, err
 	}
 
-	return createdOrderItem, nil
+	return orderItem, nil
 }
 
 /*
@@ -76,17 +65,16 @@ func (repository *OrderItemRepositoryImpl) Get(
 	dateFilter *query.DateFilter,
 ) ([]*model.OrderItem, int, error) {
 	start := page * limit
-	end := start + limit - 1
+	//end := start + limit - 1
 
 	var results []*model.OrderItem
-	filterBuilder := repository.Client.From(OrderItemTable).
-		Select("*", "exact", false).
-		Eq("tenant_id", strconv.Itoa(tenantId))
+	var totalCount int64
 
-	// User / Front end application allowed to specify either to get all order or not
-	// When store id <= 0 will be handled by service
+	db := repository.Client.Model(&model.OrderItem{}).
+		Where("tenant_id = ?", tenantId)
+
 	if storeId > 0 {
-		filterBuilder = filterBuilder.Eq("store_id", strconv.Itoa(storeId))
+		db = db.Where("store_id = ?", storeId)
 	}
 
 	// Apply date filter
@@ -97,71 +85,79 @@ func (repository *OrderItemRepositoryImpl) Get(
 		if dateFilter.StartDate != nil && dateFilter.EndDate != nil {
 			// Range: 1 Dec 2025 - 31 Dec 2025
 			// fmt.Println(common.EpochToRFC3339(*dateFilter.StartDate), common.EpochToRFC3339(*dateFilter.EndDate))
-			filterBuilder = filterBuilder.And(
-				fmt.Sprintf(
-					"%s.gte.%s,%s.lt.%s",
-					dateFilter.Column, common.EpochToRFC3339(*dateFilter.StartDate),
-					dateFilter.Column, common.EpochToRFC3339(*dateFilter.EndDate),
-				),
-				"",
-			)
+			startDate := common.EpochToRFC3339(*dateFilter.StartDate)
+			endDate := common.EpochToRFC3339(*dateFilter.EndDate)
+			db = db.Where("created_at >= ? AND created_at < ?", startDate, endDate)
 		} else if dateFilter.StartDate != nil {
 			// Only start date (from 1 Dec 2025 onwards)
-			filterBuilder = filterBuilder.
-				Gte(dateFilter.Column, common.EpochToRFC3339(*dateFilter.StartDate))
+			startDate := common.EpochToRFC3339(*dateFilter.StartDate)
+			db = db.Where("created_at >= ?", startDate)
 		} else if dateFilter.EndDate != nil {
 			// Only end date (up to 31 Dec 2025)
-			filterBuilder = filterBuilder.
-				Lte(dateFilter.Column, common.EpochToRFC3339(*dateFilter.EndDate))
+			endDate := common.EpochToRFC3339(*dateFilter.EndDate)
+			db = db.Where("created_at <= ?", endDate)
 		}
 	}
+
+	// Count total available for this request
+	db.Count(&totalCount)
 
 	// Apply filter
 	for _, filter := range filters {
+		// ORDER BY
 		if filter.Column == "" {
 			log.Warnf("WARN ! handled error, some filter is an empty string. from tenantId: %d", tenantId)
 			return nil, 0, fmt.Errorf("WARN ! handled error, some filter is an empty string. from tenantId: %d", tenantId)
-		} else {
-			filterBuilder = filterBuilder.Order(filter.Column, &postgrest.OrderOpts{Ascending: filter.Ascending})
 		}
+
+		// DESC / ASCENDING
+		direction := "DESC"
+		if filter.Ascending {
+			direction = "ASC"
+		}
+		db = db.Order(fmt.Sprintf("%s %s", filter.Column, direction))
 	}
 
-	filterBuilder = filterBuilder.Range(start, end, "")
-
-	// Execute / request to DB
-	count, err := filterBuilder.ExecuteTo(&results)
-	if err != nil {
-		return nil, 0, err
+	// Apply pagination
+	result := db.Limit(limit).Offset(start).Find(&results)
+	if result.Error != nil {
+		return nil, 0, result.Error
 	}
 
-	return results, int(count), nil
+	return results, int(totalCount), nil
 }
 
 // Transactions implements OrderItemRepository.
 func (repository *OrderItemRepositoryImpl) Transactions(params *CreateTransactionParams) (int, error) {
-	response := repository.Client.Rpc("transactions", "", map[string]any{
-		"p_purchased_price": params.PurchasedPrice,
-		"p_total_quantity":  params.TotalQuantity,
-		"p_total_amount":    params.TotalAmount,
-		"p_discount_amount": params.DiscountAmount,
-		"p_subtotal":        params.SubTotal,
-
-		"p_items": params.Items,
-
-		"p_user_id":   params.UserId,
-		"p_tenant_id": params.TenantId,
-		"p_store_id":  params.StoreId,
-	})
-
-	var pgErr exception.PostgreSQLException
-	if err := json.Unmarshal([]byte(response), &pgErr); err == nil && pgErr.Code != "" {
-		// If "code" is not empty -> it's an error JSON
-		return 0, &pgErr
+	itemsJSON, err := json.Marshal(params.Items)
+	if err != nil {
+		return 0, fmt.Errorf("failed to serialize items: %w", err)
 	}
 
-	createdOrderItemId, err := strconv.Atoi(response)
-	if err != nil {
-		return 0, err
+	var createdOrderItemId int
+	result := repository.Client.Raw("SELECT transactions($1, $2, $3, $4, $5, $6::JSONB, $7, $8, $9)",
+		params.PurchasedPrice,
+		params.TotalQuantity,
+		params.TotalAmount,
+		params.DiscountAmount,
+		params.SubTotal,
+
+		string(itemsJSON), // cast to JSONB in the query
+
+		params.UserId,
+		params.TenantId,
+		params.StoreId,
+	).Scan(&createdOrderItemId)
+
+	if result.Error != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(result.Error, &pgErr) {
+			log.Warnf("PostgreSQL error during transaction: code=%s, message=%s", pgErr.Code, pgErr.Message)
+			return 0, fmt.Errorf(pgErr.Message) // return clean message to caller (service layer)
+		}
+
+		log.Errorf("Unexpected error during transaction: %v", result.Error)
+		return 0, result.Error
 	}
 
 	return createdOrderItemId, nil
@@ -169,41 +165,30 @@ func (repository *OrderItemRepositoryImpl) Transactions(params *CreateTransactio
 
 // FindById implements OrderItemRepository.
 func (repository *OrderItemRepositoryImpl) FindById(orderItemId int, tenantId int) (*model.OrderItem, []*model.PurchasedItem, error) {
-	response := repository.Client.Rpc("get_order_item_details_by_id", "", map[string]any{
-		"p_order_item_id": orderItemId,
-		"p_tenant_id":     tenantId,
-	})
-
-	var pgErr exception.PostgreSQLException
-	if err := json.Unmarshal([]byte(response), &pgErr); err == nil && pgErr.Code != "" {
-		// If "code" is not empty -> it's an error JSON
-		return nil, nil, &pgErr
-	}
-
 	var results []struct {
 		// PurchasedItem fields
-		Id                   int    `json:"id"`
-		ItemId               int    `json:"item_id"`
-		StorePriceSnapshot   int    `json:"store_price_snapshot"`
-		BasePriceSnapshot    int    `json:"base_price_snapshot"`
-		Quantity             int    `json:"quantity"`
-		DiscountAmount       int    `json:"discount_amount"`
-		TotalAmount          int    `json:"total_amount"`
-		ItemNameSnapshot     string `json:"item_name_snapshot"`
+		Id                 int    `gorm:"column:id"`
+		ItemId             int    `gorm:"column:item_id"`
+		StorePriceSnapshot int    `gorm:"column:store_price_snapshot"`
+		BasePriceSnapshot  int    `gorm:"column:base_price_snapshot"`
+		Quantity           int    `gorm:"column:quantity"`
+		DiscountAmount     int    `gorm:"column:discount_amount"`
+		TotalAmount        int    `gorm:"column:total_amount"`
+		ItemNameSnapshot   string `gorm:"column:item_name_snapshot"`
 
-		// OrderItem fields (with order_item_ prefix)
-		OrderItemId                  int        `json:"order_item_id"`
-		OrderItemStorePurchasedPrice int        `json:"order_item_purchased_price"`
-		OrderItemSubtotal            int        `json:"order_item_subtotal"`
-		OrderItemTotalQuantity       int        `json:"order_item_total_quantity"`
-		OrderItemTotalAmount         int        `json:"order_item_total_amount"`
-		OrderItemCreatedAt           *time.Time `json:"order_item_created_at"`
-		OrderItemStoreId             int        `json:"order_item_store_id"`
+		// OrderItem fields
+		OrderItemId                  int       `gorm:"column:order_item_id"`
+		OrderItemStorePurchasedPrice int       `gorm:"column:order_item_purchased_price"`
+		OrderItemSubtotal            int       `gorm:"column:order_item_subtotal"`
+		OrderItemTotalQuantity       int       `gorm:"column:order_item_total_quantity"`
+		OrderItemTotalAmount         int       `gorm:"column:order_item_total_amount"`
+		OrderItemCreatedAt           time.Time `gorm:"column:order_item_created_at"`
+		OrderItemStoreId             int       `gorm:"column:order_item_store_id"`
 	}
 
-	err := json.Unmarshal([]byte(response), &results) // Added &
-	if err != nil {
-		return nil, nil, err
+	result := repository.Client.Raw("SELECT * FROM get_order_item_details_by_id(?, ?)", orderItemId, tenantId).Scan(&results)
+	if result.Error != nil {
+		return nil, nil, result.Error
 	}
 	if len(results) == 0 {
 		return nil, nil, errors.New("no data found")
@@ -226,14 +211,14 @@ func (repository *OrderItemRepositoryImpl) FindById(orderItemId int, tenantId in
 	var purchasedItemList []*model.PurchasedItem
 	for _, row := range results {
 		purchasedItemList = append(purchasedItemList, &model.PurchasedItem{
-			Id:                   row.Id,
-			ItemId:               row.ItemId,
-			StorePriceSnapshot:   row.StorePriceSnapshot,
-			BasePriceSnapshot:    row.BasePriceSnapshot,
-			Quantity:             row.Quantity,
-			DiscountAmount:       row.DiscountAmount,
-			TotalAmount:          row.TotalAmount,
-			ItemNameSnapshot:     row.ItemNameSnapshot,
+			Id:                 row.Id,
+			ItemId:             row.ItemId,
+			StorePriceSnapshot: row.StorePriceSnapshot,
+			BasePriceSnapshot:  row.BasePriceSnapshot,
+			Quantity:           row.Quantity,
+			DiscountAmount:     row.DiscountAmount,
+			TotalAmount:        row.TotalAmount,
+			ItemNameSnapshot:   row.ItemNameSnapshot,
 
 			// We don't request the order_item_id because
 			// we already know if the data return it's guaranteed
@@ -247,44 +232,35 @@ func (repository *OrderItemRepositoryImpl) FindById(orderItemId int, tenantId in
 
 // GetReport implements OrderItemRepository.
 func (repository *OrderItemRepositoryImpl) GetSalesReport(tenantId int, storeId int, dateFilter *query.DateFilter) (*SalesReport, error) {
-	var response string
+	var salesReport []*SalesReport
+
+	var result *gorm.DB
 	if dateFilter != nil {
 		if dateFilter.StartDate != nil && dateFilter.EndDate != nil {
-			response = repository.Client.Rpc("sales_report", "", map[string]any{
-				"p_tenant_id":        tenantId,
-				"p_store_id":         storeId,
-				"p_start_date_epoch": *dateFilter.StartDate,
-				"p_end_date_epoch":   *dateFilter.EndDate,
-			})
+			result = repository.Client.Raw("SELECT * FROM sales_report(?, ?, ?, ?)",
+				tenantId, storeId, *dateFilter.StartDate, *dateFilter.EndDate).Scan(&salesReport)
 		} else if dateFilter.StartDate != nil {
-			response = repository.Client.Rpc("sales_report", "", map[string]any{
-				"p_tenant_id":        tenantId,
-				"p_store_id":         storeId,
-				"p_start_date_epoch": *dateFilter.StartDate,
-			})
+			result = repository.Client.Raw("SELECT * FROM sales_report(?, ?, ?, NULL)",
+				tenantId, storeId, *dateFilter.StartDate).Scan(&salesReport)
 		} else if dateFilter.EndDate != nil {
-			response = repository.Client.Rpc("sales_report", "", map[string]any{
-				"p_tenant_id":      tenantId,
-				"p_store_id":       storeId,
-				"p_end_date_epoch": *dateFilter.EndDate,
-			})
+			result = repository.Client.Raw("SELECT * FROM sales_report(?, ?, NULL, ?)",
+				tenantId, storeId, *dateFilter.EndDate).Scan(&salesReport)
+		} else {
+			result = repository.Client.Raw("SELECT * FROM sales_report(?, ?)",
+				tenantId, storeId).Scan(&salesReport)
 		}
 	} else {
-		response = repository.Client.Rpc("sales_report", "", map[string]any{
-			"p_tenant_id": tenantId,
-			"p_store_id":  storeId,
-		})
+		result = repository.Client.Raw("SELECT * FROM sales_report(?, ?)",
+			tenantId, storeId).Scan(&salesReport)
 	}
 
-	var salesReport []*SalesReport
-	err := json.Unmarshal([]byte(response), &salesReport)
-	if err != nil {
-		return nil, err
+	if result.Error != nil {
+		return nil, result.Error
 	}
 
 	if len(salesReport) == 0 {
-		log.Errorf("Sales report return nil. Failed to Unmarshal the json. response from server: %s", response)
-		return nil, errors.New("Unexpected error while requesting sales report. Please try again later")
+		log.Errorf("Sales report return nil. tenantId: %d, storeId: %d", tenantId, storeId)
+		return nil, errors.New("unexpected error while requesting sales report. Please try again later")
 	}
 
 	return salesReport[0], nil

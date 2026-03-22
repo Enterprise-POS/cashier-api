@@ -15,7 +15,7 @@ func TestTenant(t *testing.T) {
 		Id:          1,
 		Name:        "Test tenant",
 		OwnerUserId: 1,
-		CreatedAt:   &now,
+		CreatedAt:   now,
 		// IsActive:    false,
 	}
 

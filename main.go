@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/middleware/recover"
+	"github.com/gofiber/fiber/v2/middleware/cors"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -44,16 +44,16 @@ func main() {
 	})
 
 	// DB client
-	supabaseClient := client.CreateSupabaseClient()
+	gormClient := client.CreateGormClient()
 
 	// 02 Middleware, Security
-	// app.Use(cors.New(cors.Config{
-	// 	AllowOrigins:     "http://localhost:3000",
-	// 	AllowCredentials: true,
-	// }))
-	// app.Use(middleware.RequestDebug())
+	app.Use(cors.New(cors.Config{
+		AllowOrigins:     "http://localhost:3000,https://enterprisepos.vercel.app",
+		AllowCredentials: true,
+	}))
+	app.Use(middleware.RequestDebug())
 
-	app.Use(recover.New(recover.Config{EnableStackTrace: true}))
+	// app.Use(recover.New(recover.Config{EnableStackTrace: true}))
 
 	app.Use(middleware.RateLimiter())
 
@@ -68,7 +68,7 @@ func main() {
 	})
 
 	// public
-	userRepository := repository.NewUserRepositoryImpl(supabaseClient)
+	userRepository := repository.NewUserRepositoryImpl(gormClient)
 	userService := service.NewUserServiceImpl(userRepository)
 	userController := controller.NewUserControllerImpl(userService)
 
@@ -79,7 +79,7 @@ func main() {
 	// protected only login user
 	apiV1.Use(middleware.ProtectedRoute)
 
-	tenantRepository := repository.NewTenantRepositoryImpl(supabaseClient)
+	tenantRepository := repository.NewTenantRepositoryImpl(gormClient)
 	tenantService := service.NewTenantServiceImpl(tenantRepository)
 	tenantController := controller.NewTenantControllerImpl(tenantService)
 
@@ -90,9 +90,9 @@ func main() {
 	apiV1.Delete("/tenants/remove_user", tenantController.RemoveUserFromTenant)
 
 	// restrict by tenantId
-	tenantRestriction := middleware.RestrictByTenant(supabaseClient)
+	tenantRestriction := middleware.RestrictByTenant(gormClient)
 
-	warehouseRepository := repository.NewWarehouseRepositoryImpl(supabaseClient)
+	warehouseRepository := repository.NewWarehouseRepositoryImpl(gormClient)
 	warehouseService := service.NewWarehouseServiceImpl(warehouseRepository)
 	warehouseController := controller.NewWarehouseControllerImpl(warehouseService)
 
@@ -105,7 +105,7 @@ func main() {
 	apiV1.Put("/warehouses/edit/:tenantId", tenantRestriction, warehouseController.Edit)
 	apiV1.Put("/warehouses/activate/:tenantId", tenantRestriction, warehouseController.SetActivate)
 
-	categoryRepository := repository.NewCategoryRepositoryImpl(supabaseClient)
+	categoryRepository := repository.NewCategoryRepositoryImpl(gormClient)
 	categoryService := service.NewCategoryServiceImpl(categoryRepository)
 	categoryController := controller.NewCategoryControllerImpl(categoryService)
 
@@ -120,7 +120,7 @@ func main() {
 	apiV1.Delete("/categories/unregister/:tenantId", tenantRestriction, categoryController.Unregister)
 	apiV1.Delete("/categories/:tenantId", tenantRestriction, categoryController.Delete)
 
-	storeRepository := repository.NewStoreRepositoryImpl(supabaseClient)
+	storeRepository := repository.NewStoreRepositoryImpl(gormClient)
 	storeService := service.NewStoreServiceImpl(storeRepository)
 	storeController := controller.NewStoreControllerImpl(storeService)
 	apiV1.Post("/stores/:tenantId", tenantRestriction, storeController.Create)
@@ -128,7 +128,7 @@ func main() {
 	apiV1.Put("/stores/:tenantId", tenantRestriction, storeController.Edit)
 	apiV1.Put("/stores/set_activate/:tenantId", tenantRestriction, storeController.SetActivate)
 
-	storeStockRepository := repository.NewStoreStockRepositoryImpl(supabaseClient)
+	storeStockRepository := repository.NewStoreStockRepositoryImpl(gormClient)
 	storeStockService := service.NewStoreStockServiceImpl(storeStockRepository)
 	storeStockController := controller.NewStoreStockControllerImpl(storeStockService)
 
@@ -140,7 +140,7 @@ func main() {
 	apiV1.Put("/store_stocks/transfer_to_store_stock/:tenantId", tenantRestriction, storeStockController.TransferStockToStoreStock)
 	apiV1.Put("/store_stocks/transfer_to_warehouse/:tenantId", tenantRestriction, storeStockController.TransferStockToWarehouse)
 
-	orderItemRepository := repository.NewOrderItemRepositoryImpl(supabaseClient)
+	orderItemRepository := repository.NewOrderItemRepositoryImpl(gormClient)
 	orderItemService := service.NewOrderItemServiceImpl(orderItemRepository)
 	orderItemController := controller.NewOrderItemControllerImpl(orderItemService)
 

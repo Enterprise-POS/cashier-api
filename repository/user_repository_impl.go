@@ -3,16 +3,16 @@ package repository
 import (
 	"cashier-api/model"
 
-	"github.com/supabase-community/supabase-go"
+	"gorm.io/gorm"
 )
 
 type UserRepositoryImpl struct {
-	Client *supabase.Client
+	Client *gorm.DB
 }
 
 const UserTable string = "user"
 
-func NewUserRepositoryImpl(client *supabase.Client) UserRepository {
+func NewUserRepositoryImpl(client *gorm.DB) UserRepository {
 	return &UserRepositoryImpl{
 		Client: client,
 	}
@@ -25,55 +25,23 @@ UserRepositoryImpl
 	we want copy
 */
 func (repository *UserRepositoryImpl) CreateWithEmailAndPassword(newUser model.User, password string) (*model.User, error) {
-	// // Create user via supabase authentication
-	// signUpResponse, err := repository.Client.Auth.Signup(types.SignupRequest{
-	// 	Email:    newUser.Email,
-	// 	Password: password,
-	// })
-	// if err != nil {
-	// 	return nil, err
-	// }
+	newUser.Password = password // assign the (pre-hashed) password
 
-	// Mutate copy of new user data
-	// We still left id because id is SQL auto_increment
-	// newUser.UserUuid = signUpResponse.ID.String()
-	// newUser.CreatedAt = &signUpResponse.CreatedAt
-
-	userForm := &model.UserRegisterForm{
-		Name:     newUser.Name,
-		Email:    newUser.Email,
-		Password: password, // only insert encrypted password here
-		UserUuid: newUser.UserUuid,
+	result := repository.Client.Create(&newUser)
+	if result.Error != nil {
+		return nil, result.Error
 	}
 
-	var newCreatedUser *model.User
-	_, err := repository.Client.From(UserTable).
-		Insert(userForm, false, "", "representation", "").
-		Single().
-		ExecuteTo(&newCreatedUser)
-	if err != nil {
-		// If while creating registering user into table then delete user from authentication
-		// err = repository.Client.Auth.AdminDeleteUser(types.AdminDeleteUserRequest{
-		// 	UserID: signUpResponse.User.ID})
-		// if err != nil {
-		// 	log.Error("Fatal Error ! Fatal error while registering new user and could not delete the user from authentication !")
-		// 	log.Errorf("Admin should handle this error immediately. User should be registered recently name: %s, email: %s", newUser.Name, newUser.Email)
-		// 	return nil, fmt.Errorf("call admin immediately for this error. User should be registered recently name: %s, email: %s", newUser.Name, newUser.Email)
-		// }
-
-		return nil, err
-	}
-
-	// success
-	return newCreatedUser, nil
+	return &newUser, nil
 }
 
-func (repository *UserRepositoryImpl) GetByEmail(email string) (*model.UserRegisterForm, error) {
-	var user *model.UserRegisterForm
-	_, err := repository.Client.From("user").Select("*", "", false).Eq("email", email).Single().ExecuteTo(&user)
-	if err != nil {
-		return nil, err
+func (repository *UserRepositoryImpl) GetByEmail(email string) (*model.User, error) {
+	var user model.User
+
+	result := repository.Client.Take(&user, "email = ?", email)
+	if result.Error != nil {
+		return nil, result.Error
 	}
 
-	return user, nil
+	return &user, nil
 }
