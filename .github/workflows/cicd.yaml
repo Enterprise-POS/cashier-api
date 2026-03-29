@@ -8,7 +8,7 @@ env:
   JWT_S: ${{ secrets.JWT_S }}
   SUPABASE_API_URL: ${{ secrets.SUPABASE_API_URL }}
   PROJECT_ID: logam-enterprise
-  DOCKER_IMAGE_URL: asia-southeast2-docker.pkg.dev/logam-enterprise/enterprise-pos-be-jakarta
+  DOCKER_IMAGE_URL: asia-southeast2-docker.pkg.dev/logam-enterprise/enterprise-pos-be-jakarta/enterprise-pos
   REGION: asia-southeast2
   SERVICE_NAME: enterprise-pos-be-jakarta
 
