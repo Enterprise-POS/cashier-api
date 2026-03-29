@@ -71,6 +71,17 @@ type SalesReport struct {
 	SumDiscountAmount int `json:"sum_discount_amount"`
 	SumSubtotal       int `json:"sum_subtotal"`
 	SumTransactions   int `json:"sum_transactions"`
+	SumProfit         int `json:"sum_profit"`
+}
+
+type ProfitReportRow struct {
+	ItemId        int    `json:"item_id"        gorm:"column:item_id"`
+	ItemName      string `json:"item_name"      gorm:"column:item_name"`
+	TotalQuantity int    `json:"total_quantity" gorm:"column:total_quantity"`
+	TotalRevenue  int    `json:"total_revenue"  gorm:"column:total_revenue"`
+	TotalCogs     int    `json:"total_cogs"     gorm:"column:total_cogs"`
+	TotalDiscount int    `json:"total_discount" gorm:"column:total_discount"`
+	TotalProfit   int    `json:"total_profit"   gorm:"column:total_profit"`
 }
 
 type ProfitReportRow struct {

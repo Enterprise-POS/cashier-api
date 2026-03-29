@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/middleware/recover"
+	"github.com/gofiber/fiber/v2/middleware/cors"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -47,13 +47,13 @@ func main() {
 	gormClient := client.CreateGormClient()
 
 	// 02 Middleware, Security
-	// app.Use(cors.New(cors.Config{
-	// 	AllowOrigins:     "http://localhost:3000",
-	// 	AllowCredentials: true,
-	// }))
-	// app.Use(middleware.RequestDebug())
+	app.Use(cors.New(cors.Config{
+		AllowOrigins:     "http://localhost:3000,https://enterprisepos.vercel.app",
+		AllowCredentials: true,
+	}))
+	app.Use(middleware.RequestDebug())
 
-	app.Use(recover.New(recover.Config{EnableStackTrace: true}))
+	// app.Use(recover.New(recover.Config{EnableStackTrace: true}))
 
 	app.Use(middleware.RateLimiter())
 

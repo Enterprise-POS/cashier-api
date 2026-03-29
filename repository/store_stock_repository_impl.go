@@ -41,25 +41,82 @@ func (repository *StoreStockRepositoryImpl) Get(tenantId int, storeId int, limit
 }
 
 // GetV2 implements StoreStockRepository.
-func (repository *StoreStockRepositoryImpl) GetV2(tenantId int, storeId int, limit int, page int, nameQuery string) ([]*model.StoreStockV2, int, error) {
-	start := page * limit
-
+func (repository *StoreStockRepositoryImpl) GetV2(
+	tenantId int,
+	storeId int,
+	limit int,
+	page int,
+	nameQuery string,
+	categoryId int,
+) ([]*model.StoreStockV2, int, error) {
+	offset := page * limit
 	var results []*model.StoreStockV2
-	err := repository.Client.Raw(
-		"SELECT * FROM get_store_stocks(?, ?, ?, ?, ?)",
-		tenantId, storeId, limit, start, nameQuery,
-	).Scan(&results).Error
+
+	baseQuery := func() *gorm.DB {
+		q := repository.Client.
+			Table("store_stock").
+			Joins("INNER JOIN warehouse ON warehouse.item_id = store_stock.item_id").
+			Joins("LEFT JOIN category_mtm_warehouse ON category_mtm_warehouse.item_id = warehouse.item_id").
+			Joins("LEFT JOIN category ON category.id = category_mtm_warehouse.category_id").
+			Where("store_stock.tenant_id = ? AND store_stock.store_id = ?", tenantId, storeId)
+
+		if nameQuery != "" {
+			q = q.Where("LOWER(warehouse.item_name) LIKE LOWER(?)", "%"+nameQuery+"%")
+		}
+
+		if categoryId != 0 {
+			q = q.Where("category_mtm_warehouse.category_id = ?", categoryId)
+		} else if categoryId == -1 {
+			q = q.Where("category_mtm_warehouse.category_id IS NULL")
+		}
+
+		return q
+	}
+
+	var totalCount int64
+	err := baseQuery().
+		Select("store_stock.id"). // select minimal for count
+		Count(&totalCount).Error
 	if err != nil {
-		log.Errorf("ERROR ! While querying data at StoreStockRepositoryImpl.GetV2. tenantId: %d, storeId: %d", tenantId, storeId)
+		log.Errorf(
+			"ERROR! StoreStockRepositoryImpl.GetV2 count query — tenantId: %d, storeId: %d — %s",
+			tenantId, storeId, err.Error(),
+		)
 		return nil, 0, err
 	}
 
-	countResult := 0
-	if len(results) > 0 {
-		countResult = results[0].TotalCount // Same value for all rows
+	// Early return if no results — skip data query entirely
+	if totalCount == 0 {
+		return []*model.StoreStockV2{}, 0, nil
 	}
 
-	return results, countResult, nil
+	err = baseQuery().
+		Select(`
+			store_stock.id,
+			store_stock.price,
+			store_stock.stocks,
+			store_stock.created_at,
+			warehouse.item_id,
+			warehouse.item_name,
+			warehouse.stock_type,
+			warehouse.base_price,
+			warehouse.is_active,
+			COALESCE(category.id, 0)             AS category_id,
+			COALESCE(category.category_name, '') AS category_name
+		`).
+		Limit(limit).
+		Offset(offset).
+		Scan(&results).Error
+
+	if err != nil {
+		log.Errorf(
+			"ERROR! StoreStockRepositoryImpl.GetV2 tenantId: %d, storeId: %d, categoryId: %d — %s",
+			tenantId, storeId, categoryId, err.Error(),
+		)
+		return nil, 0, err
+	}
+
+	return results, int(totalCount), nil
 }
 
 /*

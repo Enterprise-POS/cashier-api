@@ -33,7 +33,7 @@ func TestStoreStockRepository(t *testing.T) {
 	t.Run("GetV2", func(t *testing.T) {
 		t.Run("NormalGetV2", func(t *testing.T) {
 			storeStockRepo := NewStoreStockRepositoryImpl(gormClient)
-			storeStocks, count, err := storeStockRepo.GetV2(TenantId, StoreId, 1, 1, "")
+			storeStocks, count, err := storeStockRepo.GetV2(TenantId, StoreId, 1, 1, "", 0)
 			assert.NoError(t, err)
 			assert.NotNil(t, storeStocks)
 			assert.Greater(t, count, 0)
@@ -42,10 +42,10 @@ func TestStoreStockRepository(t *testing.T) {
 
 		t.Run("NotExistItemAtStoreStock", func(t *testing.T) {
 			storeStockRepo := NewStoreStockRepositoryImpl(gormClient)
-			storeStocks, count, err := storeStockRepo.GetV2(TenantId, 99, 1, 1, "")
-			assert.Error(t, err)
+			storeStocks, count, err := storeStockRepo.GetV2(TenantId, 99, 1, 1, "", 0)
+			assert.NoError(t, err)
 			assert.Equal(t, 0, count)
-			assert.Nil(t, storeStocks)
+			assert.NotNil(t, storeStocks)
 
 			// _, ok := err.(*exception.PostgreSQLException)
 			// assert.True(t, ok)
