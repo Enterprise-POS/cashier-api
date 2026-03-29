@@ -34,6 +34,17 @@ type OrderItemRepository interface {
 		Using aggregate function from SQL to get report
 	*/
 	GetSalesReport(tenantId int, storeId int, dateFilter *query.DateFilter) (*SalesReport, error)
+
+	/*
+		Get per-item profit data for Excel export
+	*/
+	GetProfitReport(tenantId int, storeId int, dateFilter *query.DateFilter) ([]*ProfitReportRow, error)
+
+	/*
+		Get tenant name and store name for display purposes.
+		If storeId is 0, storeName will be "All Stores".
+	*/
+	GetTenantAndStoreName(tenantId int, storeId int) (tenantName string, storeName string, err error)
 }
 
 type CreateTransactionParams struct {
@@ -61,4 +72,24 @@ type SalesReport struct {
 	SumSubtotal       int `json:"sum_subtotal"`
 	SumTransactions   int `json:"sum_transactions"`
 	SumProfit         int `json:"sum_profit"`
+}
+
+type ProfitReportRow struct {
+	ItemId        int    `json:"item_id"        gorm:"column:item_id"`
+	ItemName      string `json:"item_name"      gorm:"column:item_name"`
+	TotalQuantity int    `json:"total_quantity" gorm:"column:total_quantity"`
+	TotalRevenue  int    `json:"total_revenue"  gorm:"column:total_revenue"`
+	TotalCogs     int    `json:"total_cogs"     gorm:"column:total_cogs"`
+	TotalDiscount int    `json:"total_discount" gorm:"column:total_discount"`
+	TotalProfit   int    `json:"total_profit"   gorm:"column:total_profit"`
+}
+
+type ProfitReportRow struct {
+	ItemId        int    `json:"item_id"        gorm:"column:item_id"`
+	ItemName      string `json:"item_name"      gorm:"column:item_name"`
+	TotalQuantity int    `json:"total_quantity" gorm:"column:total_quantity"`
+	TotalRevenue  int    `json:"total_revenue"  gorm:"column:total_revenue"`
+	TotalCogs     int    `json:"total_cogs"     gorm:"column:total_cogs"`
+	TotalDiscount int    `json:"total_discount" gorm:"column:total_discount"`
+	TotalProfit   int    `json:"total_profit"   gorm:"column:total_profit"`
 }

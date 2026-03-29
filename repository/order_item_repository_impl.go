@@ -230,6 +230,74 @@ func (repository *OrderItemRepositoryImpl) FindById(orderItemId int, tenantId in
 	return orderItem, purchasedItemList, nil
 }
 
+// GetProfitReport implements OrderItemRepository.
+func (repository *OrderItemRepositoryImpl) GetProfitReport(tenantId int, storeId int, dateFilter *query.DateFilter) ([]*ProfitReportRow, error) {
+	db := repository.Client.Table("purchased_item_list pil").
+		Select(`
+			pil.item_id,
+			MAX(pil.item_name_snapshot) AS item_name,
+			SUM(pil.quantity) AS total_quantity,
+			SUM(pil.total_amount) AS total_revenue,
+			SUM(pil.base_price_snapshot * pil.quantity) AS total_cogs,
+			SUM(pil.discount_amount * pil.quantity) AS total_discount,
+			SUM(pil.total_amount) - SUM(pil.base_price_snapshot * pil.quantity) AS total_profit
+		`).
+		Joins("JOIN order_item oi ON oi.id = pil.order_item_id").
+		Where("oi.tenant_id = ?", tenantId).
+		Group("pil.item_id").
+		Order("total_profit DESC")
+
+	if storeId > 0 {
+		db = db.Where("oi.store_id = ?", storeId)
+	}
+
+	if dateFilter != nil {
+		if dateFilter.StartDate != nil && dateFilter.EndDate != nil {
+			startDate := common.EpochToRFC3339(*dateFilter.StartDate)
+			endDate := common.EpochToRFC3339(*dateFilter.EndDate)
+			db = db.Where("oi.created_at >= ? AND oi.created_at < ?", startDate, endDate)
+		} else if dateFilter.StartDate != nil {
+			startDate := common.EpochToRFC3339(*dateFilter.StartDate)
+			db = db.Where("oi.created_at >= ?", startDate)
+		} else if dateFilter.EndDate != nil {
+			endDate := common.EpochToRFC3339(*dateFilter.EndDate)
+			db = db.Where("oi.created_at < ?", endDate)
+		}
+	}
+
+	var rows []*ProfitReportRow
+	if err := db.Scan(&rows).Error; err != nil {
+		return nil, err
+	}
+
+	return rows, nil
+}
+
+// GetTenantAndStoreName implements OrderItemRepository.
+func (repository *OrderItemRepositoryImpl) GetTenantAndStoreName(tenantId int, storeId int) (string, string, error) {
+	var tenantName string
+	if err := repository.Client.Model(&model.Tenant{}).
+		Select("name").
+		Where("id = ?", tenantId).
+		Scan(&tenantName).Error; err != nil {
+		return "", "", err
+	}
+
+	if storeId <= 0 {
+		return tenantName, "All Stores", nil
+	}
+
+	var storeName string
+	if err := repository.Client.Model(&model.Store{}).
+		Select("name").
+		Where("id = ? AND tenant_id = ?", storeId, tenantId).
+		Scan(&storeName).Error; err != nil {
+		return "", "", err
+	}
+
+	return tenantName, storeName, nil
+}
+
 // GetReport implements OrderItemRepository.
 func (repository *OrderItemRepositoryImpl) GetSalesReport(tenantId int, storeId int, dateFilter *query.DateFilter) (*SalesReport, error) {
 	var salesReport []*SalesReport

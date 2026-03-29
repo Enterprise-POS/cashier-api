@@ -60,3 +60,13 @@ func (service *OrderItemServiceMock) GetSalesReport(tenantId int, storeId int, d
 
 	return args.Get(0).(*repository.SalesReport), nil
 }
+
+// ExportProfitExcel implements OrderItemService.
+func (service *OrderItemServiceMock) ExportProfitExcel(tenantId int, storeId int, dateFilter *query.DateFilter) ([]byte, error) {
+	args := service.Mock.Called(tenantId, storeId, dateFilter)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+
+	return args.Get(0).([]byte), nil
+}
