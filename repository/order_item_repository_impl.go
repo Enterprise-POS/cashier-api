@@ -153,7 +153,7 @@ func (repository *OrderItemRepositoryImpl) Transactions(params *CreateTransactio
 		var pgErr *pgconn.PgError
 		if errors.As(result.Error, &pgErr) {
 			log.Warnf("PostgreSQL error during transaction: code=%s, message=%s", pgErr.Code, pgErr.Message)
-			return 0, fmt.Errorf(pgErr.Message) // return clean message to caller (service layer)
+			return 0, errors.New(pgErr.Message) // return clean message to caller (service layer)
 		}
 
 		log.Errorf("Unexpected error during transaction: %v", result.Error)
