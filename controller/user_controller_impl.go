@@ -61,10 +61,11 @@ func (controller *UserControllerImpl) SignUpWithEmailAndPassword(ctx *fiber.Ctx)
 	cookie := &fiber.Cookie{
 		Name:     constant.EnterprisePOS,
 		Value:    tokenString,
-		Expires:  time.Now().Add(oneMonthFromNow), // This is cookie expiration time not jwt exp
-		SameSite: "None",
-		Secure:   true,
+		Expires:  time.Now().Add(oneMonthFromNow),
 		HTTPOnly: true,
+		Secure:   true,
+		SameSite: "None",
+		Path:     "/",
 	}
 
 	// Set cookie
@@ -125,10 +126,11 @@ func (controller *UserControllerImpl) SignInWithEmailAndPassword(ctx *fiber.Ctx)
 	cookie := &fiber.Cookie{
 		Name:     constant.EnterprisePOS,
 		Value:    tokenString,
-		Expires:  time.Now().Add(oneMonthFromNow), // This is cookie expiration time not jwt exp
-		SameSite: "None",
-		Secure:   true,
+		Expires:  time.Now().Add(oneMonthFromNow),
 		HTTPOnly: true,
+		Secure:   true,
+		SameSite: "None",
+		Path:     "/",
 	}
 
 	// Set cookie
@@ -156,10 +158,10 @@ func (controller *UserControllerImpl) SignOut(ctx *fiber.Ctx) error {
 		ctx.Cookie(&fiber.Cookie{
 			Name:     constant.EnterprisePOS,
 			Value:    "",
-			Expires:  time.Unix(0, 0), // Unix epoch time
+			Expires:  time.Unix(0, 0),
 			MaxAge:   -1,
 			HTTPOnly: true,
-			Secure:   true, // Set to true if using HTTPS
+			Secure:   true,
 			SameSite: "None",
 			Path:     "/",
 		})
