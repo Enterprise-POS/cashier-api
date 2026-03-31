@@ -50,6 +50,8 @@ func main() {
 	app.Use(cors.New(cors.Config{
 		AllowOrigins:     "http://localhost:3000,https://enterprisepos.vercel.app",
 		AllowCredentials: true,
+		AllowHeaders:     "Origin, Content-Type, Cookie",
+		AllowMethods:     "GET, POST, PUT, DELETE, OPTIONS",
 	}))
 	app.Use(middleware.RequestDebug())
 
