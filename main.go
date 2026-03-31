@@ -48,7 +48,18 @@ func main() {
 
 	// 02 Middleware, Security
 	app.Use(cors.New(cors.Config{
-		AllowOrigins:     "http://localhost:3000,https://enterprisepos.vercel.app",
+		AllowOriginsFunc: func(origin string) bool {
+			allowed := []string{
+				"http://localhost:3000",
+				"https://enterprisepos.vercel.app",
+			}
+			for _, o := range allowed {
+				if o == origin {
+					return true
+				}
+			}
+			return false
+		},
 		AllowCredentials: true,
 		AllowHeaders:     "Origin, Content-Type, Cookie",
 		AllowMethods:     "GET, POST, PUT, DELETE, OPTIONS",
