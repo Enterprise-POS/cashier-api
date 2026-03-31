@@ -4,6 +4,7 @@ import (
 	common "cashier-api/helper"
 	constant "cashier-api/helper/constant/cookie"
 	"fmt"
+	"strings"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v5"
@@ -11,18 +12,31 @@ import (
 )
 
 func ProtectedRoute(ctx *fiber.Ctx) error {
+	var tokenString string
+
 	// Check user cookie, if user cookie not available immediately return unauthorized
 	enterprisePOSCookie := ctx.Cookies(constant.EnterprisePOS)
-	if enterprisePOSCookie == "" {
-		return ctx.Status(fiber.StatusUnauthorized).
-			JSON(common.NewWebResponseError(401, common.StatusError, "Sign in to access this route"))
+	if enterprisePOSCookie != "" {
+		tokenString = enterprisePOSCookie
+	} else {
+		// Fall back to Authorization header
+		authHeader := ctx.Get("Authorization")
+		if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
+			return ctx.Status(fiber.StatusUnauthorized).
+				JSON(common.NewWebResponseError(401, common.StatusError, "Sign in to access this route"))
+		}
+		tokenString = strings.TrimPrefix(authHeader, "Bearer ")
+		if tokenString == "" {
+			return ctx.Status(fiber.StatusUnauthorized).
+				JSON(common.NewWebResponseError(401, common.StatusError, "Sign in to access this route"))
+		}
 	}
 
 	// Check user jwt token validity
 	claims := jwt.MapClaims{}
 
 	// Parse and validate the token
-	token, err := common.ClaimJWT(enterprisePOSCookie, &claims)
+	token, err := common.ClaimJWT(tokenString, &claims)
 
 	if err != nil {
 		log.Warnf("Malformed JWT detected, reason: %s", err.Error())
@@ -55,22 +69,3 @@ func ProtectedRoute(ctx *fiber.Ctx) error {
 	// If ok then go to next handler
 	return ctx.Next()
 }
-
-/*
-enterprisePOSCookie := ctx.Cookies(constant.EnterprisePOS)
-	if enterprisePOSCookie != "" {
-		tokenString = enterprisePOSCookie
-	} else {
-		// Fall back to Authorization header
-		authHeader := ctx.Get("Authorization")
-		if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
-			return ctx.Status(fiber.StatusUnauthorized).
-				JSON(common.NewWebResponseError(401, common.StatusError, "Sign in to access this route"))
-		}
-		tokenString = strings.TrimPrefix(authHeader, "Bearer ")
-		if tokenString == "" {
-			return ctx.Status(fiber.StatusUnauthorized).
-				JSON(common.NewWebResponseError(401, common.StatusError, "Sign in to access this route"))
-		}
-	}
-*/
