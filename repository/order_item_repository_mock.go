@@ -50,14 +50,14 @@ func (repository *OrderItemRepositoryMock) Transactions(params *CreateTransactio
 }
 
 // FindById implements OrderItemRepository.
-func (repository *OrderItemRepositoryMock) FindById(itemId int, tenantId int) (*model.OrderItem, []*model.PurchasedItem, error) {
+func (repository *OrderItemRepositoryMock) FindById(itemId int, tenantId int) (*model.OrderItemWithStore, []*model.PurchasedItem, error) {
 	args := repository.Mock.Called(itemId, tenantId)
 
 	if args.Get(0) == nil || args.Get(1) == nil {
 		return nil, nil, args.Error(2)
 	}
 
-	return args.Get(0).(*model.OrderItem), args.Get(1).([]*model.PurchasedItem), nil
+	return args.Get(0).(*model.OrderItemWithStore), args.Get(1).([]*model.PurchasedItem), nil
 }
 
 // GetSalesReport implements OrderItemRepository.

@@ -22,7 +22,7 @@ type OrderItemService interface {
 	/*
 		Always minus page by 1 because PostgreSQL start index from 0
 	*/
-	FindById(orderItemid int, tenantId int) (*model.OrderItem, []*model.PurchasedItem, error)
+	FindById(orderItemid int, tenantId int) (*model.OrderItemWithStore, []*model.PurchasedItem, error)
 
 	// CreateItem(item []*model.Item) error
 	// Edit(quantity int, item *model.Item) error

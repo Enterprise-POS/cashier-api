@@ -93,7 +93,7 @@ func (controller *OrderItemControllerImpl) FindById(ctx *fiber.Ctx) error {
 			JSON(common.NewWebResponseError(400, common.StatusError, errorMsg))
 	}
 
-	orderItem, purchasedItemList, err := controller.Service.FindById(orderItemId, tenantId)
+	orderItemWithStore, purchasedItemList, err := controller.Service.FindById(orderItemId, tenantId)
 	if err != nil {
 		return ctx.Status(fiber.StatusBadRequest).
 			JSON(common.NewWebResponseError(400, common.StatusError, err.Error()))
@@ -102,7 +102,7 @@ func (controller *OrderItemControllerImpl) FindById(ctx *fiber.Ctx) error {
 	return ctx.Status(fiber.StatusOK).
 		JSON(common.NewWebResponse(200, common.StatusSuccess, fiber.Map{
 			"requested_order_item_id": orderItemId,
-			"order_item":              orderItem,
+			"order_item":              orderItemWithStore,
 			"purchased_item_list":     purchasedItemList,
 		}))
 }

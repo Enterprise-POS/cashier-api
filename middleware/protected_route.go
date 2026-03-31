@@ -55,3 +55,22 @@ func ProtectedRoute(ctx *fiber.Ctx) error {
 	// If ok then go to next handler
 	return ctx.Next()
 }
+
+/*
+enterprisePOSCookie := ctx.Cookies(constant.EnterprisePOS)
+	if enterprisePOSCookie != "" {
+		tokenString = enterprisePOSCookie
+	} else {
+		// Fall back to Authorization header
+		authHeader := ctx.Get("Authorization")
+		if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
+			return ctx.Status(fiber.StatusUnauthorized).
+				JSON(common.NewWebResponseError(401, common.StatusError, "Sign in to access this route"))
+		}
+		tokenString = strings.TrimPrefix(authHeader, "Bearer ")
+		if tokenString == "" {
+			return ctx.Status(fiber.StatusUnauthorized).
+				JSON(common.NewWebResponseError(401, common.StatusError, "Sign in to access this route"))
+		}
+	}
+*/

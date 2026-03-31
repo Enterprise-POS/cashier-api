@@ -164,67 +164,96 @@ func (repository *OrderItemRepositoryImpl) Transactions(params *CreateTransactio
 }
 
 // FindById implements OrderItemRepository.
-func (repository *OrderItemRepositoryImpl) FindById(orderItemId int, tenantId int) (*model.OrderItem, []*model.PurchasedItem, error) {
-	var results []struct {
-		// PurchasedItem fields
-		Id                 int    `gorm:"column:id"`
-		ItemId             int    `gorm:"column:item_id"`
-		StorePriceSnapshot int    `gorm:"column:store_price_snapshot"`
-		BasePriceSnapshot  int    `gorm:"column:base_price_snapshot"`
-		Quantity           int    `gorm:"column:quantity"`
-		DiscountAmount     int    `gorm:"column:discount_amount"`
-		TotalAmount        int    `gorm:"column:total_amount"`
-		ItemNameSnapshot   string `gorm:"column:item_name_snapshot"`
+func (repository *OrderItemRepositoryImpl) FindById(orderItemId int, tenantId int) (*model.OrderItemWithStore, []*model.PurchasedItem, error) {
+	type row struct {
+		// purchased_item
+		PurchasedItemId             int    `gorm:"column:purchased_item_id"`
+		ItemId                      int    `gorm:"column:item_id"`
+		StorePriceSnapshot          int    `gorm:"column:store_price_snapshot"`
+		BasePriceSnapshot           int    `gorm:"column:base_price_snapshot"`
+		Quantity                    int    `gorm:"column:quantity"`
+		PurchasedItemDiscountAmount int    `gorm:"column:purchased_item_discount_amount"`
+		PurchasedItemTotalAmount    int    `gorm:"column:purchased_item_total_amount"`
+		ItemNameSnapshot            string `gorm:"column:item_name_snapshot"`
 
-		// OrderItem fields
-		OrderItemId                  int       `gorm:"column:order_item_id"`
-		OrderItemStorePurchasedPrice int       `gorm:"column:order_item_purchased_price"`
-		OrderItemSubtotal            int       `gorm:"column:order_item_subtotal"`
-		OrderItemTotalQuantity       int       `gorm:"column:order_item_total_quantity"`
-		OrderItemTotalAmount         int       `gorm:"column:order_item_total_amount"`
-		OrderItemCreatedAt           time.Time `gorm:"column:order_item_created_at"`
-		OrderItemStoreId             int       `gorm:"column:order_item_store_id"`
+		// order_item
+		OrderItemId             int       `gorm:"column:order_item_id"`
+		PurchasedPrice          int       `gorm:"column:purchased_price"`
+		Subtotal                int       `gorm:"column:subtotal"`
+		TotalQuantity           int       `gorm:"column:total_quantity"`
+		OrderItemTotalAmount    int       `gorm:"column:order_item_total_amount"`
+		OrderItemDiscountAmount int       `gorm:"column:order_item_discount_amount"`
+		CreatedAt               time.Time `gorm:"column:created_at"`
+		StoreId                 int       `gorm:"column:store_id"`
+
+		// store
+		StoreName string `gorm:"column:store_name"`
 	}
 
-	result := repository.Client.Raw("SELECT * FROM get_order_item_details_by_id(?, ?)", orderItemId, tenantId).Scan(&results)
-	if result.Error != nil {
-		return nil, nil, result.Error
+	var rows []row // local struct
+
+	err := repository.Client.
+		Table("order_item").
+		Select(`
+			purchased_item_list.id                  AS purchased_item_id,
+			purchased_item_list.item_id,
+			purchased_item_list.store_price_snapshot,
+			purchased_item_list.base_price_snapshot,
+			purchased_item_list.quantity,
+			purchased_item_list.discount_amount     AS purchased_item_discount_amount,
+			purchased_item_list.total_amount        AS purchased_item_total_amount,
+			purchased_item_list.item_name_snapshot,
+			order_item.id                           AS order_item_id,
+			order_item.purchased_price,
+			order_item.subtotal,
+			order_item.total_quantity,
+			order_item.total_amount                 AS order_item_total_amount,
+			order_item.discount_amount              AS order_item_discount_amount,
+			order_item.created_at,
+			order_item.store_id,
+			store.name                              AS store_name
+		`).
+		Joins("INNER JOIN purchased_item_list ON purchased_item_list.order_item_id = order_item.id").
+		Joins("LEFT JOIN store ON store.id = order_item.store_id").
+		Where("order_item.tenant_id = ? AND order_item.id = ?", tenantId, orderItemId).
+		Scan(&rows).Error
+
+	if err != nil {
+		return nil, nil, fmt.Errorf("FindById query failed: %w", err)
 	}
-	if len(results) == 0 {
-		return nil, nil, errors.New("no data found")
+	if len(rows) == 0 {
+		return nil, nil, fmt.Errorf("order item %d not found for tenant %d", orderItemId, tenantId)
 	}
 
 	// Extract OrderItem from first row (since it's the same for all rows)
-	orderItem := &model.OrderItem{
-		Id:             results[0].OrderItemId,
-		PurchasedPrice: results[0].OrderItemStorePurchasedPrice,
-		Subtotal:       results[0].OrderItemSubtotal,
-		TotalQuantity:  results[0].OrderItemTotalQuantity,
-		TotalAmount:    results[0].OrderItemTotalAmount,
-		CreatedAt:      results[0].OrderItemCreatedAt,
+	first := rows[0]
+	orderItem := &model.OrderItemWithStore{
+		Id:             first.OrderItemId,
+		PurchasedPrice: first.PurchasedPrice,
+		Subtotal:       first.Subtotal,
+		TotalQuantity:  first.TotalQuantity,
+		TotalAmount:    first.OrderItemTotalAmount,
+		DiscountAmount: first.OrderItemDiscountAmount,
+		CreatedAt:      first.CreatedAt,
+		StoreId:        first.StoreId,
 		TenantId:       tenantId,
-		DiscountAmount: 0,
-		StoreId:        results[0].OrderItemStoreId,
+		StoreName:      first.StoreName,
 	}
 
 	// Extract all PurchasedItems
-	var purchasedItemList []*model.PurchasedItem
-	for _, row := range results {
-		purchasedItemList = append(purchasedItemList, &model.PurchasedItem{
-			Id:                 row.Id,
-			ItemId:             row.ItemId,
-			StorePriceSnapshot: row.StorePriceSnapshot,
-			BasePriceSnapshot:  row.BasePriceSnapshot,
-			Quantity:           row.Quantity,
-			DiscountAmount:     row.DiscountAmount,
-			TotalAmount:        row.TotalAmount,
-			ItemNameSnapshot:   row.ItemNameSnapshot,
-
-			// We don't request the order_item_id because
-			// we already know if the data return it's guaranteed
-			// that the order_item_id is from parameter is correct
-			OrderItemId: orderItemId,
-		})
+	purchasedItemList := make([]*model.PurchasedItem, len(rows))
+	for i, r := range rows {
+		purchasedItemList[i] = &model.PurchasedItem{
+			Id:                 r.PurchasedItemId,
+			ItemId:             r.ItemId,
+			StorePriceSnapshot: r.StorePriceSnapshot,
+			BasePriceSnapshot:  r.BasePriceSnapshot,
+			Quantity:           r.Quantity,
+			DiscountAmount:     r.PurchasedItemDiscountAmount,
+			TotalAmount:        r.PurchasedItemTotalAmount,
+			ItemNameSnapshot:   r.ItemNameSnapshot,
+			OrderItemId:        orderItemId,
+		}
 	}
 
 	return orderItem, purchasedItemList, nil

@@ -21,7 +21,7 @@ type OrderItemRepository interface {
 	/*
 
 	 */
-	FindById(orderItemid int, tenantId int) (*model.OrderItem, []*model.PurchasedItem, error)
+	FindById(orderItemid int, tenantId int) (*model.OrderItemWithStore, []*model.PurchasedItem, error)
 
 	/*
 		This method will insert into 2 table

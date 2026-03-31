@@ -187,7 +187,7 @@ func (service *OrderItemServiceImpl) Transactions(params *repository.CreateTrans
 }
 
 // FindById implements OrderItemService.
-func (service *OrderItemServiceImpl) FindById(orderItemid int, tenantId int) (*model.OrderItem, []*model.PurchasedItem, error) {
+func (service *OrderItemServiceImpl) FindById(orderItemid int, tenantId int) (*model.OrderItemWithStore, []*model.PurchasedItem, error) {
 	if tenantId <= 0 || orderItemid <= 0 {
 		return nil, nil, errors.New("Tenant id or Order item id Required !")
 	}
@@ -420,8 +420,8 @@ func (service *OrderItemServiceImpl) ExportProfitExcel(tenantId int, storeId int
 	f.NewSheet(summarySheet)
 
 	labelStyle, _ := f.NewStyle(&excelize.Style{
-		Font:  &excelize.Font{Bold: true},
-		Fill:  excelize.Fill{Type: "pattern", Color: []string{"EBF0FA"}, Pattern: 1},
+		Font:      &excelize.Font{Bold: true},
+		Fill:      excelize.Fill{Type: "pattern", Color: []string{"EBF0FA"}, Pattern: 1},
 		Alignment: &excelize.Alignment{Horizontal: "left"},
 	})
 	valueStyle, _ := f.NewStyle(&excelize.Style{

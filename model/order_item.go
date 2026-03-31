@@ -20,6 +20,19 @@ func (orderItem *OrderItem) TableName() string {
 	return "order_item"
 }
 
+type OrderItemWithStore struct {
+	Id             int       `json:"id"`
+	PurchasedPrice int       `json:"purchased_price"`
+	CreatedAt      time.Time `json:"created_at"`
+	TotalQuantity  int       `json:"total_quantity"`
+	TotalAmount    int       `json:"total_amount"`
+	DiscountAmount int       `json:"discount_amount"`
+	Subtotal       int       `json:"subtotal"`
+	StoreId        int       `json:"store_id"`
+	TenantId       int       `json:"tenant_id"`
+	StoreName      string    `json:"store_name"` // Joined field
+}
+
 /*
 Go automatically checks if OrderItem has a custom UnmarshalJSON method.
 If it does, that method is called instead of the default unmarshaling.
