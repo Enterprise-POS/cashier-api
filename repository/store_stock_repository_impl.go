@@ -166,20 +166,77 @@ TransferStockToStoreStock:
 	TODO: resolve security alert from supabase, 'search_path'
 */
 func (repository *StoreStockRepositoryImpl) TransferStockToStoreStock(quantity int, itemId int, storeId int, tenantId int) error {
-	var message string
-	err := repository.Client.Raw(
-		"SELECT transfer_stocks_to_store_stock(?, ?, ?, ?)",
-		quantity, itemId, storeId, tenantId,
-	).Scan(&message).Error
-	if err != nil {
-		return err
-	}
+	return repository.Client.Transaction(func(tx *gorm.DB) error {
 
-	if strings.Contains(message, "[ERROR]") {
-		return errors.New(message)
-	}
+		// Validate item exists in warehouse and store is valid
+		var itemCount int64
+		err := tx.Model(&model.Item{}).
+			Joins("JOIN store ON store.tenant_id = warehouse.tenant_id").
+			Where("warehouse.item_id = ? AND warehouse.tenant_id = ? AND store.id = ?", itemId, tenantId, storeId).
+			Count(&itemCount).Error
+		if err != nil {
+			return err
+		}
+		if itemCount == 0 {
+			return errors.New("not exist item at the warehouse or invalid item")
+		}
 
-	return nil
+		// Lock warehouse row and get current stock
+		var currentStocks int
+		err = tx.Raw(`
+			SELECT stocks FROM warehouse
+			WHERE item_id = ? AND tenant_id = ?
+			FOR UPDATE
+		`, itemId, tenantId).Scan(&currentStocks).Error
+		if err != nil {
+			return err
+		}
+
+		realizedWarehouseStock := currentStocks - quantity
+		if realizedWarehouseStock < 0 {
+			return errors.New("not enough stock")
+		}
+
+		// Check if store stock row already exists
+		var storeStock model.StoreStock
+		err = tx.Where("item_id = ? AND tenant_id = ? AND store_id = ?", itemId, tenantId, storeId).
+			Take(&storeStock).Error
+		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+			return err
+		}
+
+		if storeStock.Id != 0 {
+			// Update existing store stock
+			err = tx.Model(&storeStock).
+				Update("stocks", gorm.Expr("stocks + ?", quantity)).Error
+			if err != nil {
+				return err
+			}
+		} else {
+			if quantity < 0 {
+				return errors.New("invalid quantity for new stock")
+			}
+			err = tx.Create(&model.StoreStock{
+				ItemId:   itemId,
+				Stocks:   quantity,
+				StoreId:  storeId,
+				TenantId: tenantId,
+			}).Error
+			if err != nil {
+				return err
+			}
+		}
+
+		// Deduct warehouse stock
+		err = tx.Model(&model.Item{}).
+			Where("item_id = ? AND tenant_id = ?", itemId, tenantId).
+			Update("stocks", realizedWarehouseStock).Error
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
 }
 
 // Edit implements StoreStockRepository.
