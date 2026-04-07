@@ -93,7 +93,7 @@ func (controller *OrderItemControllerImpl) FindById(ctx *fiber.Ctx) error {
 			JSON(common.NewWebResponseError(400, common.StatusError, errorMsg))
 	}
 
-	orderItem, purchasedItemList, err := controller.Service.FindById(orderItemId, tenantId)
+	orderItemWithStore, purchasedItemList, err := controller.Service.FindById(orderItemId, tenantId)
 	if err != nil {
 		return ctx.Status(fiber.StatusBadRequest).
 			JSON(common.NewWebResponseError(400, common.StatusError, err.Error()))
@@ -102,7 +102,7 @@ func (controller *OrderItemControllerImpl) FindById(ctx *fiber.Ctx) error {
 	return ctx.Status(fiber.StatusOK).
 		JSON(common.NewWebResponse(200, common.StatusSuccess, fiber.Map{
 			"requested_order_item_id": orderItemId,
-			"order_item":              orderItem,
+			"order_item":              orderItemWithStore,
 			"purchased_item_list":     purchasedItemList,
 		}))
 }
@@ -170,6 +170,36 @@ func (controller *OrderItemControllerImpl) Transactions(ctx *fiber.Ctx) error {
 		JSON(common.NewWebResponse(200, common.StatusSuccess, fiber.Map{
 			"transaction_id": transactionId,
 		}))
+}
+
+// ExportProfitExcel implements OrderItemController.
+func (controller *OrderItemControllerImpl) ExportProfitExcel(ctx *fiber.Ctx) error {
+	tenantId, err := strconv.Atoi(ctx.Params("tenantId"))
+	if err != nil {
+		return ctx.Status(fiber.StatusBadRequest).
+			JSON(common.NewWebResponseError(400, common.StatusError, "Invalid tenant ID"))
+	}
+
+	var body struct {
+		StoreId    int               `json:"store_id"`
+		DateFilter *query.DateFilter `json:"date_filter"`
+	}
+	if err := ctx.BodyParser(&body); err != nil {
+		return ctx.Status(fiber.StatusBadRequest).
+			JSON(common.NewWebResponseError(400, common.StatusError, "Something gone wrong ! The request body is malformed"))
+	}
+
+	xlsxBytes, err := controller.Service.ExportProfitExcel(tenantId, body.StoreId, body.DateFilter)
+	if err != nil {
+		return ctx.Status(fiber.StatusInternalServerError).
+			JSON(common.NewWebResponseError(500, common.StatusError, err.Error()))
+	}
+
+	filename := fmt.Sprintf("profit_report_tenant_%d.xlsx", tenantId)
+	ctx.Set("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+	ctx.Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, filename))
+	ctx.Set("Content-Length", strconv.Itoa(len(xlsxBytes)))
+	return ctx.Status(fiber.StatusOK).Send(xlsxBytes)
 }
 
 // GetSalesReport implements OrderItemController.

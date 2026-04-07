@@ -258,7 +258,7 @@ func TestOrderItemServiceImpl(t *testing.T) {
 			orderItemRepo := repository.NewOrderItemRepositoryMock(&mock.Mock{}).(*repository.OrderItemRepositoryMock)
 			orderItemService := NewOrderItemServiceImpl(orderItemRepo)
 
-			expectedOrderItem := &model.OrderItem{
+			expectedOrderItem := &model.OrderItemWithStore{
 				Id:             1,
 				DiscountAmount: 0,
 				Subtotal:       10000,
@@ -268,6 +268,7 @@ func TestOrderItemServiceImpl(t *testing.T) {
 				StoreId:        STORE_ID,
 				TenantId:       TENANT_ID,
 				CreatedAt:      now,
+				StoreName:      "Test Store Name",
 			}
 
 			expectedPurchasedList := []*model.PurchasedItem{
@@ -299,6 +300,7 @@ func TestOrderItemServiceImpl(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Len(t, purchasedItemList, 2)
 			assert.NotNil(t, orderItem)
+			assert.Equal(t, expectedOrderItem.StoreName, orderItem.StoreName)
 			for i, purchasedItem := range purchasedItemList {
 				assert.Equal(t, expectedPurchasedList[i].Id, purchasedItem.Id)
 				assert.Equal(t, expectedPurchasedList[i].ItemId, purchasedItem.ItemId)

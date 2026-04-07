@@ -32,13 +32,13 @@ func (service *OrderItemServiceMock) PlaceOrderItem(*model.OrderItem) (*model.Or
 }
 
 // FindById implements OrderItemService.
-func (service *OrderItemServiceMock) FindById(orderItemid int, tenantId int) (*model.OrderItem, []*model.PurchasedItem, error) {
+func (service *OrderItemServiceMock) FindById(orderItemid int, tenantId int) (*model.OrderItemWithStore, []*model.PurchasedItem, error) {
 	args := service.Mock.Called(orderItemid, tenantId)
 	if args.Get(0) == nil || args.Get(1) == nil {
 		return nil, nil, args.Error(2)
 	}
 
-	return args.Get(0).(*model.OrderItem), args.Get(1).([]*model.PurchasedItem), nil
+	return args.Get(0).(*model.OrderItemWithStore), args.Get(1).([]*model.PurchasedItem), nil
 }
 
 // Transactions implements OrderItemService.
@@ -59,4 +59,14 @@ func (service *OrderItemServiceMock) GetSalesReport(tenantId int, storeId int, d
 	}
 
 	return args.Get(0).(*repository.SalesReport), nil
+}
+
+// ExportProfitExcel implements OrderItemService.
+func (service *OrderItemServiceMock) ExportProfitExcel(tenantId int, storeId int, dateFilter *query.DateFilter) ([]byte, error) {
+	args := service.Mock.Called(tenantId, storeId, dateFilter)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+
+	return args.Get(0).([]byte), nil
 }

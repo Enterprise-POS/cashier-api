@@ -22,7 +22,7 @@ type OrderItemService interface {
 	/*
 		Always minus page by 1 because PostgreSQL start index from 0
 	*/
-	FindById(orderItemid int, tenantId int) (*model.OrderItem, []*model.PurchasedItem, error)
+	FindById(orderItemid int, tenantId int) (*model.OrderItemWithStore, []*model.PurchasedItem, error)
 
 	// CreateItem(item []*model.Item) error
 	// Edit(quantity int, item *model.Item) error
@@ -36,4 +36,10 @@ type OrderItemService interface {
 		Using aggregate function from SQL to get report
 	*/
 	GetSalesReport(tenantId int, storeId int, dateFilter *query.DateFilter) (*repository.SalesReport, error)
+
+	/*
+		Build an Excel workbook with per-item profit breakdown and a summary sheet.
+		Returns the raw .xlsx bytes.
+	*/
+	ExportProfitExcel(tenantId int, storeId int, dateFilter *query.DateFilter) ([]byte, error)
 }

@@ -288,7 +288,7 @@ func TestOrderItemControllerImpl(t *testing.T) {
 			params.Add("order_item_id", "1")
 			parsedURL.RawQuery = params.Encode()
 
-			expectedOrderItem := &model.OrderItem{
+			expectedOrderItem := &model.OrderItemWithStore{
 				Id:             1,
 				Subtotal:       29_000,
 				PurchasedPrice: 30_000,
@@ -298,6 +298,7 @@ func TestOrderItemControllerImpl(t *testing.T) {
 				StoreId:        STORE_ID,
 				TenantId:       createdTestTenant.Id,
 				CreatedAt:      now,
+				StoreName:      "Test Store Name",
 			}
 
 			expectedPurchasedItemList := []*model.PurchasedItem{

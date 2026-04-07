@@ -29,4 +29,9 @@ type OrderItemController interface {
 		Using aggregate function from SQL to get report
 	*/
 	GetSalesReport(ctx *fiber.Ctx) error
+
+	/*
+		Generate and stream an Excel (.xlsx) profit report
+	*/
+	ExportProfitExcel(ctx *fiber.Ctx) error
 }

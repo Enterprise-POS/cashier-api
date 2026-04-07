@@ -1,11 +1,11 @@
 package middleware
 
 import (
-	"log"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
+	log "github.com/sirupsen/logrus"
 )
 
 func RequestDebug() fiber.Handler {
@@ -19,7 +19,7 @@ func RequestDebug() fiber.Handler {
 		}
 		c.Set("X-Request-ID", requestID)
 
-		log.Printf(
+		log.Debugf(
 			"[REQ START] id=%s method=%s path=%s ip=%s",
 			requestID,
 			c.Method(),
@@ -29,7 +29,7 @@ func RequestDebug() fiber.Handler {
 
 		err := c.Next()
 
-		log.Printf(
+		log.Debugf(
 			"[REQ END]   id=%s status=%d duration=%s",
 			requestID,
 			c.Response().StatusCode(),
