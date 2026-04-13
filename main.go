@@ -141,6 +141,7 @@ func main() {
 	apiV1.Put("/store_stocks/edit/:tenantId", tenantRestriction, storeStockController.Edit)
 	apiV1.Put("/store_stocks/transfer_to_store_stock/:tenantId", tenantRestriction, storeStockController.TransferStockToStoreStock)
 	apiV1.Put("/store_stocks/transfer_to_warehouse/:tenantId", tenantRestriction, storeStockController.TransferStockToWarehouse)
+	apiV1.Delete("/store_stocks/withdraw/:tenantId", tenantRestriction, storeStockController.Withdraw)
 
 	orderItemRepository := repository.NewOrderItemRepositoryImpl(gormClient)
 	orderItemService := service.NewOrderItemServiceImpl(orderItemRepository)

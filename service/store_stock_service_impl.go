@@ -1,11 +1,15 @@
 package service
 
 import (
+	"cashier-api/helper/query"
 	"cashier-api/model"
 	"cashier-api/repository"
 	"errors"
 	"fmt"
 	"regexp"
+	"strings"
+
+	log "github.com/sirupsen/logrus"
 )
 
 type StoreStockServiceImpl struct {
@@ -34,7 +38,7 @@ func (service *StoreStockServiceImpl) Get(
 		return nil, 0, fmt.Errorf("Limit could not less then 1 (limit >= 1). Given limit %d", limit)
 	}
 	if page < 1 {
-		return nil, 0, fmt.Errorf("page could not less then 1 (page >= 1). Given page %d", page)
+		return nil, 0, fmt.Errorf("Page could not less then 1 (page >= 1). Given page %d", page)
 	}
 	if storeId < 1 {
 		return nil, 0, errors.New("Store id could not be empty or fill with 0")
@@ -59,6 +63,7 @@ func (service *StoreStockServiceImpl) GetV2(
 	page int,
 	nameQuery string,
 	categoryId int,
+	queryFilters []*query.QueryFilter,
 ) ([]*model.StoreStockV2, int, error) {
 	if limit < 1 {
 		return nil, 0, fmt.Errorf("Limit could not less then 1 (limit >= 1). Given limit %d", limit)
@@ -79,11 +84,23 @@ func (service *StoreStockServiceImpl) GetV2(
 		}
 	}
 
-	if categoryId < 0 {
-		return nil, 0, errors.New("Tenant id could not be less than 0")
+	if categoryId < -1 {
+		return nil, 0, errors.New("Invalid category id input")
 	}
 
-	storeStocksV2, count, err := service.Repository.GetV2(tenantId, storeId, limit, page-1, nameQuery, categoryId)
+	var allowedSortColumns = map[query.ColumnName]bool{
+		query.CreatedAtColumn: true,
+		// future:
+		// query.PriceColumn: true,
+		// query.NameColumn: true,
+	}
+	for _, queryFilter := range queryFilters {
+		if !allowedSortColumns[queryFilter.Column] {
+			return nil, 0, fmt.Errorf("Invalid sort column: %s", queryFilter.Column)
+		}
+	}
+
+	storeStocksV2, count, err := service.Repository.GetV2(tenantId, storeId, limit, page-1, nameQuery, categoryId, queryFilters)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -188,4 +205,32 @@ func (service *StoreStockServiceImpl) LoadCashierData(tenantId int, storeId int)
 	}
 
 	return cashierData, nil
+}
+
+// Withdraw implements StoreStockService.
+func (service *StoreStockServiceImpl) Withdraw(storeStock *model.StoreStock) error {
+	if storeStock.ItemId < 1 {
+		return errors.New("Item id must be greater than 0")
+	}
+	if storeStock.StoreId < 1 {
+		return errors.New("Store id must be greater than 0")
+	}
+	if storeStock.TenantId < 1 {
+		return errors.New("Tenant id must be greater than 0")
+	}
+	if storeStock.Id < 1 {
+		return errors.New("Store stock id must be greater than 0")
+	}
+
+	err := service.Repository.Withdraw(storeStock)
+	if err != nil {
+		if strings.Contains(err.Error(), "ERROR") {
+			return err
+		} else {
+			log.Warning(err.Error())
+			return fmt.Errorf("Something went wrong while withdrawing store stock id %d", storeStock.Id)
+		}
+	}
+
+	return nil
 }

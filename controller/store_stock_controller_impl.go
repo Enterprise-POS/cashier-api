@@ -2,6 +2,7 @@ package controller
 
 import (
 	common "cashier-api/helper"
+	"cashier-api/helper/query"
 	"cashier-api/model"
 	"cashier-api/service"
 	"fmt"
@@ -65,6 +66,7 @@ func (controller *StoreStockControllerImpl) GetV2(ctx *fiber.Ctx) error {
 	paramStoreId := ctx.Query("store_id", "must specify")
 	nameQuery := ctx.Query("name_query", "")
 	paramCategoryId := ctx.Query("category_id", "0")
+	paramSorts := ctx.Query("sort", "created_at:desc") // GET /v2?sort=created_at:desc,price:asc
 
 	tenantId, _ := strconv.Atoi(ctx.Params("tenantId"))
 
@@ -92,7 +94,9 @@ func (controller *StoreStockControllerImpl) GetV2(ctx *fiber.Ctx) error {
 		return ctx.Status(fiber.StatusBadRequest).JSON(response)
 	}
 
-	storeStocks, count, err := controller.Service.GetV2(tenantId, storeId, limit, page, nameQuery, categoryId)
+	var queryFilters []*query.QueryFilter = common.ParseQueryFilterParam(paramSorts)
+
+	storeStocks, count, err := controller.Service.GetV2(tenantId, storeId, limit, page, nameQuery, categoryId, queryFilters)
 	if err != nil {
 		response := common.NewWebResponseError(fiber.StatusBadRequest, common.StatusError, err.Error())
 		return ctx.Status(fiber.StatusBadRequest).JSON(response)
@@ -217,4 +221,35 @@ func (controller *StoreStockControllerImpl) LoadCashierData(ctx *fiber.Ctx) erro
 		JSON(common.NewWebResponse(200, common.StatusSuccess, fiber.Map{
 			"cashier_data": cashierData,
 		}))
+}
+
+// Withdraw implements StoreStockController.
+func (controller *StoreStockControllerImpl) Withdraw(ctx *fiber.Ctx) error {
+	tenantId, _ := strconv.Atoi(ctx.Params("tenantId"))
+
+	type WithdrawProductFromStoreRequestBody struct {
+		ItemId       int `json:"item_id"`
+		StoreId      int `json:"store_id"`
+		StoreStockId int `json:"store_stock_id"`
+	}
+	var body WithdrawProductFromStoreRequestBody
+	err := ctx.BodyParser(&body)
+	if err != nil {
+		return ctx.Status(fiber.StatusBadRequest).
+			JSON(common.NewWebResponseError(400, common.StatusError, "Something gone wrong ! The request body is malformed"))
+	}
+
+	err = controller.Service.Withdraw(&model.StoreStock{
+		Id:       body.StoreStockId,
+		StoreId:  body.StoreId,
+		ItemId:   body.ItemId,
+		TenantId: tenantId,
+	})
+	if err != nil {
+		return ctx.Status(fiber.StatusBadRequest).
+			JSON(common.NewWebResponseError(400, common.StatusError, err.Error()))
+	}
+
+	// 204
+	return ctx.SendStatus(fiber.StatusNoContent)
 }

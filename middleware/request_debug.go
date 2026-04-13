@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"os"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -9,33 +10,37 @@ import (
 )
 
 func RequestDebug() fiber.Handler {
-	return func(c *fiber.Ctx) error {
-		start := time.Now()
-
-		// Generate or reuse request ID
-		requestID := c.Get("X-Request-ID")
-		if requestID == "" {
-			requestID = uuid.New().String()
+	if os.Getenv("MODE") == "prod" {
+		// Nothing to do
+		return func(ctx *fiber.Ctx) error {
+			return ctx.Next()
 		}
-		c.Set("X-Request-ID", requestID)
+	} else {
+		// Even in production mode, logrus already configured to not print
+		// any debug code, but we want to save compute time here
+		return func(ctx *fiber.Ctx) error {
+			start := time.Now()
 
-		log.Debugf(
-			"[REQ START] id=%s method=%s path=%s ip=%s",
-			requestID,
-			c.Method(),
-			c.OriginalURL(),
-			c.IP(),
-		)
+			// Generate or reuse request ID
+			requestID := ctx.Get("X-Request-ID")
+			if requestID == "" {
+				requestID = uuid.New().String()
+			}
+			ctx.Set("X-Request-ID", requestID)
 
-		err := c.Next()
+			method := ctx.Method()
+			path := ctx.OriginalURL()
+			ip := ctx.IP()
+			log.Debugf("[REQ START] id=%s method=%s path=%s ip=%s", requestID, method, path, ip)
 
-		log.Debugf(
-			"[REQ END]   id=%s status=%d duration=%s",
-			requestID,
-			c.Response().StatusCode(),
-			time.Since(start),
-		)
+			// Execute everything downstream, then come back here
+			err := ctx.Next()
 
-		return err
+			statusCode := ctx.Response().StatusCode()
+			duration := time.Since(start)
+			log.Debugf("[REQ END]   id=%s status=%d duration=%s", requestID, statusCode, duration)
+
+			return err
+		}
 	}
 }

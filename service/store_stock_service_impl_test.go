@@ -1,6 +1,7 @@
 package service
 
 import (
+	"cashier-api/helper/query"
 	"cashier-api/model"
 	"cashier-api/repository"
 	"errors"
@@ -139,7 +140,7 @@ func TestStoreStockServiceImpl(t *testing.T) {
 			storeStockRepository.Mock.
 				On("GetV2", testTenantId, testStoreId, limit, page-1).
 				Return(expectedStoreStocks, len(expectedStoreStocks), nil)
-			storeStocks, count, err := storeStockService.GetV2(testTenantId, testStoreId, limit, page, "", 0)
+			storeStocks, count, err := storeStockService.GetV2(testTenantId, testStoreId, limit, page, "", 0, []*query.QueryFilter{})
 			assert.NoError(t, err)
 			assert.Equal(t, len(expectedStoreStocks), count)
 			assert.Len(t, storeStocks, len(expectedStoreStocks))
@@ -153,55 +154,55 @@ func TestStoreStockServiceImpl(t *testing.T) {
 
 		t.Run("InvalidParam", func(t *testing.T) {
 			invalidLimit := -1
-			storeStocks, count, err := storeStockService.GetV2(testTenantId, testStoreId, invalidLimit, page, "", 0)
+			storeStocks, count, err := storeStockService.GetV2(testTenantId, testStoreId, invalidLimit, page, "", 0, []*query.QueryFilter{})
 			assert.Error(t, err)
 			assert.Equal(t, 0, count)
 			assert.Nil(t, storeStocks)
 
 			invalidLimit = 0
-			storeStocks, count, err = storeStockService.GetV2(testTenantId, testStoreId, invalidLimit, page, "", 0)
+			storeStocks, count, err = storeStockService.GetV2(testTenantId, testStoreId, invalidLimit, page, "", 0, []*query.QueryFilter{})
 			assert.Error(t, err)
 			assert.Equal(t, 0, count)
 			assert.Nil(t, storeStocks)
 
 			invalidPage := -1
-			storeStocks, count, err = storeStockService.GetV2(testTenantId, testStoreId, limit, invalidPage, "", 0)
+			storeStocks, count, err = storeStockService.GetV2(testTenantId, testStoreId, limit, invalidPage, "", 0, []*query.QueryFilter{})
 			assert.Error(t, err)
 			assert.Equal(t, 0, count)
 			assert.Nil(t, storeStocks)
 
 			invalidPage = 0
-			storeStocks, count, err = storeStockService.GetV2(testTenantId, testStoreId, limit, invalidPage, "", 0)
+			storeStocks, count, err = storeStockService.GetV2(testTenantId, testStoreId, limit, invalidPage, "", 0, []*query.QueryFilter{})
 			assert.Error(t, err)
 			assert.Equal(t, 0, count)
 			assert.Nil(t, storeStocks)
 
 			invalidTenantId := -1
-			storeStocks, count, err = storeStockService.GetV2(invalidTenantId, testStoreId, limit, page, "", 0)
+			storeStocks, count, err = storeStockService.GetV2(invalidTenantId, testStoreId, limit, page, "", 0, []*query.QueryFilter{})
 			assert.Error(t, err)
 			assert.Equal(t, 0, count)
 			assert.Nil(t, storeStocks)
 
 			invalidTenantId = 0
-			storeStocks, count, err = storeStockService.GetV2(invalidTenantId, testStoreId, limit, page, "", 0)
+			storeStocks, count, err = storeStockService.GetV2(invalidTenantId, testStoreId, limit, page, "", 0, []*query.QueryFilter{})
 			assert.Error(t, err)
 			assert.Equal(t, 0, count)
 			assert.Nil(t, storeStocks)
 
 			invalidStoreId := -1
-			storeStocks, count, err = storeStockService.GetV2(testTenantId, invalidStoreId, limit, page, "", 0)
+			storeStocks, count, err = storeStockService.GetV2(testTenantId, invalidStoreId, limit, page, "", 0, []*query.QueryFilter{})
 			assert.Error(t, err)
 			assert.Equal(t, 0, count)
 			assert.Nil(t, storeStocks)
 
 			invalidStoreId = 0
-			storeStocks, count, err = storeStockService.GetV2(testTenantId, invalidStoreId, limit, page, "", 0)
+			storeStocks, count, err = storeStockService.GetV2(testTenantId, invalidStoreId, limit, page, "", 0, []*query.QueryFilter{})
 			assert.Error(t, err)
 			assert.Equal(t, 0, count)
 			assert.Nil(t, storeStocks)
 
 			invalidNameQuery := "SELECT * FROM store_stock"
-			storeStocks, count, err = storeStockService.GetV2(testTenantId, invalidStoreId, limit, page, invalidNameQuery, 0)
+			storeStocks, count, err = storeStockService.GetV2(testTenantId, invalidStoreId, limit, page, invalidNameQuery, 0, []*query.QueryFilter{})
 			assert.Error(t, err)
 			assert.Equal(t, 0, count)
 			assert.Nil(t, storeStocks)
@@ -619,6 +620,110 @@ func TestStoreStockServiceImpl(t *testing.T) {
 			assert.NoError(t, err)
 			assert.NotNil(t, cashierData)
 			assert.Len(t, cashierData, 1000)
+		})
+	})
+
+	t.Run("Withdraw", func(t *testing.T) {
+		t.Run("NormalWithdraw", func(t *testing.T) {
+			storeStock := &model.StoreStock{
+				Id:       1,
+				StoreId:  1,
+				ItemId:   1,
+				TenantId: 1,
+			}
+
+			storeStockRepository.Mock = &mock.Mock{}
+			storeStockRepository.Mock.On("Withdraw", storeStock).Return(nil)
+			err := storeStockService.Withdraw(storeStock)
+			assert.NoError(t, err)
+		})
+
+		t.Run("WithdrawItemIdZero", func(t *testing.T) {
+			storeStock := &model.StoreStock{
+				Id:       1,
+				StoreId:  1,
+				ItemId:   0, // invalid
+				TenantId: 1,
+			}
+
+			storeStockRepository.Mock = &mock.Mock{}
+			err := storeStockService.Withdraw(storeStock)
+			assert.Error(t, err)
+			assert.Equal(t, "Item id must be greater than 0", err.Error())
+		})
+
+		t.Run("WithdrawStoreIdZero", func(t *testing.T) {
+			storeStock := &model.StoreStock{
+				Id:       1,
+				StoreId:  0, // invalid
+				ItemId:   1,
+				TenantId: 1,
+			}
+
+			storeStockRepository.Mock = &mock.Mock{}
+			err := storeStockService.Withdraw(storeStock)
+			assert.Error(t, err)
+			assert.Equal(t, "Store id must be greater than 0", err.Error())
+		})
+
+		t.Run("WithdrawTenantIdZero", func(t *testing.T) {
+			storeStock := &model.StoreStock{
+				Id:       1,
+				StoreId:  1,
+				ItemId:   1,
+				TenantId: 0, // invalid
+			}
+
+			storeStockRepository.Mock = &mock.Mock{}
+			err := storeStockService.Withdraw(storeStock)
+			assert.Error(t, err)
+			assert.Equal(t, "Tenant id must be greater than 0", err.Error())
+		})
+
+		t.Run("WithdrawStoreStockIdZero", func(t *testing.T) {
+			storeStock := &model.StoreStock{
+				Id:       0, // invalid
+				StoreId:  1,
+				ItemId:   1,
+				TenantId: 1,
+			}
+
+			storeStockRepository.Mock = &mock.Mock{}
+			err := storeStockService.Withdraw(storeStock)
+			assert.Error(t, err)
+			assert.Equal(t, "Store stock id must be greater than 0", err.Error())
+		})
+
+		t.Run("WithdrawRepositoryReturnsERROR", func(t *testing.T) {
+			// Repository returns a known [ERROR] prefixed error — should be passed through as-is
+			storeStock := &model.StoreStock{
+				Id:       1,
+				StoreId:  1,
+				ItemId:   1,
+				TenantId: 1,
+			}
+
+			storeStockRepository.Mock = &mock.Mock{}
+			storeStockRepository.Mock.On("Withdraw", storeStock).Return(errors.New("ERROR Store stock not found"))
+			err := storeStockService.Withdraw(storeStock)
+			assert.Error(t, err)
+			assert.Equal(t, "ERROR Store stock not found", err.Error())
+		})
+
+		t.Run("WithdrawRepositoryReturnsUnknownError", func(t *testing.T) {
+			// Repository returns a non-ERROR error — should be wrapped with generic message
+			storeStock := &model.StoreStock{
+				Id:       1,
+				StoreId:  1,
+				ItemId:   1,
+				TenantId: 1,
+			}
+
+			storeStockRepository.Mock = &mock.Mock{}
+			storeStockRepository.Mock.On("Withdraw", storeStock).Return(errors.New("some internal db error"))
+			err := storeStockService.Withdraw(storeStock)
+			assert.Error(t, err)
+			assert.Equal(t, "Something went wrong while withdrawing store stock id 1", err.Error())
 		})
 	})
 }

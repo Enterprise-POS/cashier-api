@@ -59,7 +59,8 @@ func (repository *StoreRepositoryImpl) Create(tenantId int, name string) (*model
 
 // SetActivate implements StoreRepository.
 func (repository *StoreRepositoryImpl) SetActivate(tenantId, storeId int, setInto bool) error {
-	result := repository.Client.Model(&model.Store{}).
+	// Struct with id definition will trigger auto update updated_at query
+	result := repository.Client.Model(&model.Store{Id: storeId}).
 		Where("tenant_id", tenantId).Where("id", storeId).
 		Update("is_active", setInto)
 
@@ -76,7 +77,8 @@ func (repository *StoreRepositoryImpl) SetActivate(tenantId, storeId int, setInt
 
 // Edit implements StoreRepository.
 func (repository *StoreRepositoryImpl) Edit(tobeEditStore *model.Store) (*model.Store, error) {
-	result := repository.Client.Model(&model.Store{}).
+	// Struct with id definition will trigger auto update updated_at query
+	result := repository.Client.Model(&model.Store{Id: tobeEditStore.Id}).
 		Where("tenant_id", tobeEditStore.TenantId).Where("id", tobeEditStore.Id).
 		Update("name", tobeEditStore.Name)
 

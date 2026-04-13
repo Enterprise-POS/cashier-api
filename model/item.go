@@ -28,6 +28,9 @@ type Item struct {
 	TenantId  int       `json:"tenant_id" gorm:"column:tenant_id"`
 	IsActive  bool      `json:"is_active" gorm:"column:is_active"`
 	CreatedAt time.Time `json:"created_at,omitempty" gorm:"column:created_at;<-:create"`
+	UpdatedAt time.Time `json:"updated_at,omitempty" gorm:"column:updated_at"`
+
+	StoreStocks []StoreStock `json:"store_stocks,omitempty" gorm:"foreignKey:ItemId;references:ItemId"`
 }
 
 func (Item) TableName() string {

@@ -23,6 +23,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/supabase-community/supabase-go"
+	"gorm.io/gorm"
 )
 
 func TestStoreStockControllerImpl(t *testing.T) {
@@ -122,6 +123,7 @@ func TestStoreStockControllerImpl(t *testing.T) {
 	app.Put("/store_stocks/edit/:tenantId", tenantRestriction, storeStockController.Edit)
 	app.Put("/store_stocks/transfer_to_store_stock/:tenantId", tenantRestriction, storeStockController.TransferStockToStoreStock)
 	app.Put("/store_stocks/transfer_to_warehouse/:tenantId", tenantRestriction, storeStockController.TransferStockToWarehouse)
+	app.Delete("/store_stocks/withdraw/:tenantId", tenantRestriction, storeStockController.Withdraw)
 
 	t.Run("Get", func(t *testing.T) {
 		// Create the warehouse item first
@@ -499,6 +501,145 @@ func TestStoreStockControllerImpl(t *testing.T) {
 
 	t.Run("LoadCashierData", func(t *testing.T) {
 
+	})
+
+	t.Run("Withdraw", func(t *testing.T) {
+		// Register route
+		app.Delete("/store_stocks/withdraw/:tenantId", tenantRestriction, storeStockController.Withdraw)
+
+		// Create warehouse item first
+		expectedItems := []*model.Item{
+			{
+				ItemName:  "Test StoreStock Withdraw 1",
+				Stocks:    10,
+				TenantId:  createdTestTenant.Id,
+				IsActive:  true,
+				StockType: model.StockTypeTracked,
+			},
+		}
+		createdTestItems, err := warehouseRepository.CreateItem(expectedItems)
+		require.NoError(t, err)
+		itemToWithdraw := createdTestItems[0]
+
+		// Transfer to store_stock first so we have something to withdraw
+		// warehouse: 10 - 5 = 5
+		// store_stock: 0 + 5 = 5
+		byteBody, err := json.Marshal(fiber.Map{
+			"quantity": 5,
+			"item_id":  itemToWithdraw.ItemId,
+			"store_id": createdTestStore.Id,
+		})
+		require.NoError(t, err)
+		requestBody := strings.NewReader(string(byteBody))
+		request := httptest.NewRequest("PUT", fmt.Sprintf("/store_stocks/transfer_to_store_stock/%d", createdTestTenant.Id), requestBody)
+		request.Header.Set("Content-Type", "application/json")
+		request.AddCookie(enterprisePOSCookie)
+		response, err := app.Test(request, testTimeout)
+		require.NoError(t, err)
+		require.Equal(t, http.StatusAccepted, response.StatusCode)
+
+		// Get the created store_stock id
+		var createdStoreStock model.StoreStock
+		err = gormClient.
+			Where("item_id = ? AND store_id = ? AND tenant_id = ?", itemToWithdraw.ItemId, createdTestStore.Id, createdTestTenant.Id).
+			Take(&createdStoreStock).Error
+		require.NoError(t, err)
+		require.Equal(t, 5, createdStoreStock.Stocks)
+
+		t.Run("NormalWithdraw", func(t *testing.T) {
+			byteBody, err := json.Marshal(fiber.Map{
+				"item_id":        itemToWithdraw.ItemId,
+				"store_id":       createdTestStore.Id,
+				"store_stock_id": createdStoreStock.Id,
+			})
+			require.NoError(t, err)
+			requestBody := strings.NewReader(string(byteBody))
+			request := httptest.NewRequest("DELETE", fmt.Sprintf("/store_stocks/withdraw/%d", createdTestTenant.Id), requestBody)
+			request.Header.Set("Content-Type", "application/json")
+			request.AddCookie(enterprisePOSCookie)
+			response, err := app.Test(request, testTimeout)
+			assert.NoError(t, err)
+			assert.Equal(t, http.StatusNoContent, response.StatusCode)
+
+			// store_stock row should be deleted
+			var deletedStoreStock model.StoreStock
+			err = gormClient.
+				Where("id = ?", createdStoreStock.Id).
+				Take(&deletedStoreStock).Error
+			assert.ErrorIs(t, err, gorm.ErrRecordNotFound)
+
+			// warehouse stocks should be restored: 5 + 5 = 10
+			var warehouseItemFromDB model.Item
+			err = gormClient.
+				Where("item_id = ?", itemToWithdraw.ItemId).
+				Take(&warehouseItemFromDB).Error
+			assert.NoError(t, err)
+			assert.Equal(t, 10, warehouseItemFromDB.Stocks)
+		})
+
+		t.Run("WrongStructure", func(t *testing.T) {
+			wrongStructure := map[string]interface{}{
+				"item_id": "not_a_number",
+			}
+			byteBody, _ := json.Marshal(&wrongStructure)
+			requestBody := strings.NewReader(string(byteBody))
+			request := httptest.NewRequest("DELETE", fmt.Sprintf("/store_stocks/withdraw/%d", createdTestTenant.Id), requestBody)
+			request.Header.Set("Content-Type", "application/json")
+			request.AddCookie(enterprisePOSCookie)
+			response, err := app.Test(request, testTimeout)
+			assert.NoError(t, err)
+			assert.Equal(t, http.StatusBadRequest, response.StatusCode)
+		})
+
+		t.Run("NonExistStoreStockId", func(t *testing.T) {
+			byteBody, err := json.Marshal(fiber.Map{
+				"item_id":        itemToWithdraw.ItemId,
+				"store_id":       createdTestStore.Id,
+				"store_stock_id": 3, // non-existent
+			})
+			require.NoError(t, err)
+			requestBody := strings.NewReader(string(byteBody))
+			request := httptest.NewRequest("DELETE", fmt.Sprintf("/store_stocks/withdraw/%d", createdTestTenant.Id), requestBody)
+			request.Header.Set("Content-Type", "application/json")
+			request.AddCookie(enterprisePOSCookie)
+			response, err := app.Test(request, testTimeout)
+			assert.NoError(t, err)
+			assert.Equal(t, http.StatusBadRequest, response.StatusCode)
+
+			byteResponseBody, err := io.ReadAll(response.Body)
+			assert.NoError(t, err)
+			assert.Contains(t, string(byteResponseBody), "ERROR")
+		})
+
+		t.Run("MissingStoreStockId", func(t *testing.T) {
+			byteBody, err := json.Marshal(fiber.Map{
+				"item_id":  itemToWithdraw.ItemId,
+				"store_id": createdTestStore.Id,
+				// store_stock_id omitted — defaults to 0
+			})
+			require.NoError(t, err)
+			requestBody := strings.NewReader(string(byteBody))
+			request := httptest.NewRequest("DELETE", fmt.Sprintf("/store_stocks/withdraw/%d", createdTestTenant.Id), requestBody)
+			request.Header.Set("Content-Type", "application/json")
+			request.AddCookie(enterprisePOSCookie)
+			response, err := app.Test(request, testTimeout)
+			assert.NoError(t, err)
+			assert.Equal(t, http.StatusBadRequest, response.StatusCode)
+		})
+
+		t.Cleanup(func() {
+			// store_stock should already be deleted by NormalWithdraw
+			// but clean up just in case the test failed before Withdraw was called
+			gormClient.
+				Where("item_id = ? AND store_id = ? AND tenant_id = ?", itemToWithdraw.ItemId, createdTestStore.Id, createdTestTenant.Id).
+				Delete(&model.StoreStock{})
+
+			// Delete warehouse item
+			err = gormClient.
+				Where("item_id = ?", itemToWithdraw.ItemId).
+				Delete(&model.Item{}).Error
+			require.Nil(t, err, "If this fail, then immediately delete the data from TestStoreStockControllerImpl/Withdraw")
+		})
 	})
 
 	t.Cleanup(func() {

@@ -27,6 +27,12 @@ type StoreStockController interface {
 	TransferStockToStoreStock(ctx *fiber.Ctx) error
 
 	/*
+		Withdraw means transfer all leftover stock from selected store then
+		delete selected product from store
+	*/
+	Withdraw(ctx *fiber.Ctx) error
+
+	/*
 		Load all necessary store stock item and category for cashier app
 	*/
 	LoadCashierData(ctx *fiber.Ctx) error
