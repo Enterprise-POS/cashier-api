@@ -11,6 +11,11 @@ import (
 
 func RequestDebug() fiber.Handler {
 	if os.Getenv("MODE") == "prod" {
+		// Nothing to do
+		return func(ctx *fiber.Ctx) error {
+			return ctx.Next()
+		}
+	} else {
 		// Even in production mode, logrus already configured to not print
 		// any debug code, but we want to save compute time here
 		return func(ctx *fiber.Ctx) error {
@@ -36,11 +41,6 @@ func RequestDebug() fiber.Handler {
 			log.Debugf("[REQ END]   id=%s status=%d duration=%s", requestID, statusCode, duration)
 
 			return err
-		}
-	} else {
-		// Nothing to do
-		return func(ctx *fiber.Ctx) error {
-			return ctx.Next()
 		}
 	}
 }

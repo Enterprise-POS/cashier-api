@@ -79,3 +79,16 @@ func (repository *StoreStockRepositoryMock) LoadCashierData(tenantId int, storeI
 		return args.Get(0).([]*model.CashierData), nil
 	}
 }
+
+// Delete implements StoreStockRepository.
+func (repository *StoreStockRepositoryMock) Withdraw(storeStock *model.StoreStock) error {
+	args := repository.Mock.Called(storeStock)
+	// If we expect error return then this condition will satisfied
+	// Example code that will satisfied this condition -> someRepo.Mock.On("something", ...someParameter).Return(errors.New())
+	if args.Get(0) != nil {
+		return args.Error(0)
+	} else {
+		// Success condition, return nil / nothing to return
+		return nil
+	}
+}

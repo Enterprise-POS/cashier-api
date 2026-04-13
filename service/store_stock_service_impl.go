@@ -7,6 +7,9 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"strings"
+
+	log "github.com/sirupsen/logrus"
 )
 
 type StoreStockServiceImpl struct {
@@ -35,7 +38,7 @@ func (service *StoreStockServiceImpl) Get(
 		return nil, 0, fmt.Errorf("Limit could not less then 1 (limit >= 1). Given limit %d", limit)
 	}
 	if page < 1 {
-		return nil, 0, fmt.Errorf("page could not less then 1 (page >= 1). Given page %d", page)
+		return nil, 0, fmt.Errorf("Page could not less then 1 (page >= 1). Given page %d", page)
 	}
 	if storeId < 1 {
 		return nil, 0, errors.New("Store id could not be empty or fill with 0")
@@ -202,4 +205,32 @@ func (service *StoreStockServiceImpl) LoadCashierData(tenantId int, storeId int)
 	}
 
 	return cashierData, nil
+}
+
+// Withdraw implements StoreStockService.
+func (service *StoreStockServiceImpl) Withdraw(storeStock *model.StoreStock) error {
+	if storeStock.ItemId < 1 {
+		return errors.New("Item id must be greater than 0")
+	}
+	if storeStock.StoreId < 1 {
+		return errors.New("Store id must be greater than 0")
+	}
+	if storeStock.TenantId < 1 {
+		return errors.New("Tenant id must be greater than 0")
+	}
+	if storeStock.Id < 1 {
+		return errors.New("Store stock id must be greater than 0")
+	}
+
+	err := service.Repository.Withdraw(storeStock)
+	if err != nil {
+		if strings.Contains(err.Error(), "ERROR") {
+			return err
+		} else {
+			log.Warning(err.Error())
+			return fmt.Errorf("Something went wrong while withdrawing store stock id %d", storeStock.Id)
+		}
+	}
+
+	return nil
 }

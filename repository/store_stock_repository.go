@@ -22,10 +22,7 @@ type StoreStockRepository interface {
 	*/
 	Edit(item *model.StoreStock) error
 
-	/*
-		Yet there is no delete method for stock that quantity less than 0
-	*/
-	// Delete()
+	Withdraw(storeStock *model.StoreStock) error
 
 	/*
 		Load all necessary store stock item and category for cashier app

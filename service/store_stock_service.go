@@ -24,6 +24,12 @@ type StoreStockService interface {
 	TransferStockToStoreStock(quantity int, itemId int, storeId int, tenantId int) error // warehouse -> store_stock
 
 	/*
+		Withdraw means transfer all leftover stock from selected store then
+		delete selected product from store
+	*/
+	Withdraw(storeStock *model.StoreStock) error
+
+	/*
 		Load all necessary store stock item and category for cashier app
 	*/
 	LoadCashierData(tenantId int, storeId int) ([]*model.CashierData, error)

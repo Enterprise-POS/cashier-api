@@ -222,3 +222,34 @@ func (controller *StoreStockControllerImpl) LoadCashierData(ctx *fiber.Ctx) erro
 			"cashier_data": cashierData,
 		}))
 }
+
+// Withdraw implements StoreStockController.
+func (controller *StoreStockControllerImpl) Withdraw(ctx *fiber.Ctx) error {
+	tenantId, _ := strconv.Atoi(ctx.Params("tenantId"))
+
+	type WithdrawProductFromStoreRequestBody struct {
+		ItemId       int `json:"item_id"`
+		StoreId      int `json:"store_id"`
+		StoreStockId int `json:"store_stock_id"`
+	}
+	var body WithdrawProductFromStoreRequestBody
+	err := ctx.BodyParser(&body)
+	if err != nil {
+		return ctx.Status(fiber.StatusBadRequest).
+			JSON(common.NewWebResponseError(400, common.StatusError, "Something gone wrong ! The request body is malformed"))
+	}
+
+	err = controller.Service.Withdraw(&model.StoreStock{
+		Id:       body.StoreStockId,
+		StoreId:  body.StoreId,
+		ItemId:   body.ItemId,
+		TenantId: tenantId,
+	})
+	if err != nil {
+		return ctx.Status(fiber.StatusBadRequest).
+			JSON(common.NewWebResponseError(400, common.StatusError, err.Error()))
+	}
+
+	// 204
+	return ctx.SendStatus(fiber.StatusNoContent)
+}

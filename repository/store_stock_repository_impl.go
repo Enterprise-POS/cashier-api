@@ -186,7 +186,7 @@ func (repository *StoreStockRepositoryImpl) TransferStockToWarehouse(quantity in
 		err = tx.
 			Model(&model.Item{}).
 			Where("item_id = ? AND tenant_id = ?", itemId, tenantId).
-			Update("stocks", warehouseItem.Stocks+quantity).Error
+			Update("stocks", gorm.Expr("stocks + ?", quantity)).Error
 		if err != nil {
 			return err
 		}
@@ -211,8 +211,6 @@ TransferStockToStoreStock:
 	We want to prevent race condition at the DB.
 
 	(store_stock -> warehouse)
-
-	TODO: resolve security alert from supabase, 'search_path'
 */
 func (repository *StoreStockRepositoryImpl) TransferStockToStoreStock(quantity int, itemId int, storeId int, tenantId int) error {
 	return repository.Client.Transaction(func(tx *gorm.DB) error {
@@ -315,4 +313,33 @@ func (repository *StoreStockRepositoryImpl) LoadCashierData(tenantId int, storeI
 	}
 
 	return cashierData, nil
+}
+
+// Withdraw implements StoreStockRepository.
+func (repository *StoreStockRepositoryImpl) Withdraw(storeStock *model.StoreStock) error {
+	return repository.Client.Transaction(func(tx *gorm.DB) error {
+		var current model.StoreStock
+		err := tx.
+			Where("id = ? AND tenant_id = ? AND store_id = ?", storeStock.Id, storeStock.TenantId, storeStock.StoreId).
+			Take(&current).Error
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return errors.New("ERROR Store stock not found")
+		}
+		if err != nil {
+			return err
+		}
+
+		if current.Stocks > 0 {
+			// We already know current.Stocks — no need to fetch again
+			err = tx.
+				Model(&model.Item{}).
+				Where("item_id = ? AND tenant_id = ?", current.ItemId, current.TenantId).
+				Update("stocks", gorm.Expr("stocks + ?", current.Stocks)).Error
+			if err != nil {
+				return err
+			}
+		}
+
+		return tx.Delete(&current).Error
+	})
 }

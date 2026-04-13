@@ -8,6 +8,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gorm.io/gorm"
 )
 
 func TestStoreStockRepository(t *testing.T) {
@@ -269,5 +270,97 @@ func TestStoreStockRepository(t *testing.T) {
 			Where("item_id = ?", dummyItemFromDB.ItemId).
 			Delete(&model.Item{}).Error
 		require.Nil(t, err, "Failed not allowed ! Because test data will persist !")
+	})
+
+	t.Run("Withdraw", func(t *testing.T) {
+		storeStockRepo := NewStoreStockRepositoryImpl(gormClient)
+		warehouseRepo := NewWarehouseRepositoryImpl(gormClient)
+
+		// Flow: warehouse -transfer-> store_stock -withdraw-> warehouse
+		dummyItem := &model.Item{
+			ItemName:  "Test Withdraw 1",
+			Stocks:    100,
+			TenantId:  TenantId,
+			StockType: model.StockTypeTracked,
+		}
+
+		_dummyItemsFromDB, err := warehouseRepo.CreateItem([]*model.Item{dummyItem})
+		require.Nil(t, err, "Failed not allowed !")
+
+		dummyItemFromDB := _dummyItemsFromDB[0]
+		require.Equal(t, 100, dummyItemFromDB.Stocks)
+
+		// Transfer 10 stocks to store_stock first
+		// warehouse: 100 - 10 = 90
+		// store_stock: 0 + 10 = 10
+		err = storeStockRepo.TransferStockToStoreStock(
+			10,
+			dummyItemFromDB.ItemId,
+			StoreId,
+			TenantId,
+		)
+		require.Nil(t, err)
+
+		// Get the created store_stock
+		var storeStockDummyFromDB model.StoreStock
+		err = gormClient.
+			Where("item_id = ?", dummyItemFromDB.ItemId).
+			Where("tenant_id = ?", dummyItemFromDB.TenantId).
+			Where("store_id = ?", StoreId).
+			Take(&storeStockDummyFromDB).Error
+		require.Nil(t, err)
+		require.Equal(t, 10, storeStockDummyFromDB.Stocks)
+
+		t.Run("NormalWithdraw", func(t *testing.T) {
+			// Withdraw — should transfer leftover stock back to warehouse and delete store_stock row
+			// warehouse: 90 + 10 = 100
+			// store_stock: deleted
+			err = storeStockRepo.Withdraw(&model.StoreStock{
+				Id:       storeStockDummyFromDB.Id,
+				StoreId:  StoreId,
+				TenantId: TenantId,
+			})
+			assert.NoError(t, err)
+
+			// store_stock row should be deleted
+			var deletedStoreStock model.StoreStock
+			err = gormClient.
+				Where("id = ?", storeStockDummyFromDB.Id).
+				Take(&deletedStoreStock).Error
+			assert.ErrorIs(t, err, gorm.ErrRecordNotFound)
+
+			// warehouse stocks should be restored back to 100
+			var warehouseItemFromDB model.Item
+			err = gormClient.
+				Where("item_id = ?", dummyItemFromDB.ItemId).
+				Take(&warehouseItemFromDB).Error
+			require.Nil(t, err)
+			assert.Equal(t, 100, warehouseItemFromDB.Stocks)
+		})
+
+		t.Run("WithdrawNotFound", func(t *testing.T) {
+			// Withdraw a non-existent store_stock
+			err = storeStockRepo.Withdraw(&model.StoreStock{
+				Id:       99999,
+				StoreId:  StoreId,
+				TenantId: TenantId,
+			})
+			assert.NotNil(t, err)
+			assert.Equal(t, "ERROR Store stock not found", err.Error())
+		})
+
+		t.Cleanup(func() {
+			// store_stock should already be deleted by NormalWithdraw
+			// but clean up just in case the test failed before Withdraw was called
+			gormClient.
+				Where("item_id = ? AND store_id = ? AND tenant_id = ?", dummyItemFromDB.ItemId, StoreId, TenantId).
+				Delete(&model.StoreStock{})
+
+			// Delete warehouse item
+			err = gormClient.
+				Where("item_id = ?", dummyItemFromDB.ItemId).
+				Delete(&model.Item{}).Error
+			require.Nil(t, err, "Failed not allowed ! Because test data will persist !")
+		})
 	})
 }
