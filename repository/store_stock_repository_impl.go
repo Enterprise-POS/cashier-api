@@ -1,10 +1,10 @@
 package repository
 
 import (
+	"cashier-api/helper/query"
 	"cashier-api/model"
 	"errors"
-	"regexp"
-	"strings"
+	"fmt"
 
 	log "github.com/sirupsen/logrus"
 	"gorm.io/gorm"
@@ -48,6 +48,7 @@ func (repository *StoreStockRepositoryImpl) GetV2(
 	page int,
 	nameQuery string,
 	categoryId int,
+	queryFilters []*query.QueryFilter,
 ) ([]*model.StoreStockV2, int, error) {
 	offset := page * limit
 	var results []*model.StoreStockV2
@@ -59,6 +60,7 @@ func (repository *StoreStockRepositoryImpl) GetV2(
 			Joins("LEFT JOIN category_mtm_warehouse ON category_mtm_warehouse.item_id = warehouse.item_id").
 			Joins("LEFT JOIN category ON category.id = category_mtm_warehouse.category_id").
 			Where("store_stock.tenant_id = ? AND store_stock.store_id = ?", tenantId, storeId)
+			// Order(clause.OrderByColumn{Column: clause.Column{Name: "created_at"}, Desc: true}) // Order("created_at DESC")
 
 		if nameQuery != "" {
 			q = q.Where("LOWER(warehouse.item_name) LIKE LOWER(?)", "%"+nameQuery+"%")
@@ -68,6 +70,23 @@ func (repository *StoreStockRepositoryImpl) GetV2(
 			q = q.Where("category_mtm_warehouse.category_id = ?", categoryId)
 		} else if categoryId == -1 {
 			q = q.Where("category_mtm_warehouse.category_id IS NULL")
+		}
+
+		hasCustomOrder := false
+		for _, f := range queryFilters {
+			if f.Column == query.CreatedAtColumn {
+				hasCustomOrder = true
+				if f.Ascending {
+					q = q.Order("store_stock.created_at ASC")
+				} else {
+					q = q.Order("store_stock.created_at DESC")
+				}
+				break
+			}
+		}
+
+		if !hasCustomOrder {
+			q = q.Order("store_stock.created_at DESC")
 		}
 
 		return q
@@ -96,6 +115,7 @@ func (repository *StoreStockRepositoryImpl) GetV2(
 			store_stock.price,
 			store_stock.stocks,
 			store_stock.created_at,
+			store_stock.updated_at,
 			warehouse.item_id,
 			warehouse.item_name,
 			warehouse.stock_type,
@@ -134,20 +154,49 @@ TransferStockToWarehouse:
 	TODO: resolve security alert from supabase, 'search_path'
 */
 func (repository *StoreStockRepositoryImpl) TransferStockToWarehouse(quantity int, itemId int, storeId int, tenantId int) error {
-	var message string
-	err := repository.Client.Raw(
-		"SELECT transfer_stock_to_warehouse(?, ?, ?, ?)",
-		quantity, itemId, storeId, tenantId,
-	).Scan(&message).Error
-	if err != nil {
-		return err
-	}
+	return repository.Client.Transaction(func(tx *gorm.DB) error {
+		// Single query: fetch warehouse item + its matching store stock in one preload
+		var warehouseItem model.Item
+		err := tx.
+			Preload("StoreStocks", "store_id = ? AND tenant_id = ?", storeId, tenantId).
+			Where("item_id = ? AND tenant_id = ?", itemId, tenantId).
+			Set("gorm:query_option", "FOR UPDATE").
+			Take(&warehouseItem).Error
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return errors.New("[ERROR] Fatal error, current item from store never exist at warehouse")
+		}
+		if err != nil {
+			return err
+		}
 
-	if strings.Contains(message, "[ERROR]") {
-		return errors.New(message)
-	}
+		// Validate store stock exists (preload returns empty slice if not found)
+		if len(warehouseItem.StoreStocks) == 0 {
+			return errors.New("[ERROR] Not exist item at the store or invalid item")
+		}
 
-	return nil
+		storeStock := warehouseItem.StoreStocks[0]
+
+		// Validate stock sufficiency before any mutations
+		realizedStoreStock := storeStock.Stocks - quantity
+		if realizedStoreStock < 0 {
+			return errors.New("[ERROR] Not enough stock")
+		}
+
+		// Update warehouse stock
+		err = tx.
+			Model(&model.Item{}).
+			Where("item_id = ? AND tenant_id = ?", itemId, tenantId).
+			Update("stocks", warehouseItem.Stocks+quantity).Error
+		if err != nil {
+			return err
+		}
+
+		// Update store stock
+		return tx.
+			Model(&model.StoreStock{}).
+			Where("id = ?", storeStock.Id).
+			Update("stocks", realizedStoreStock).Error
+	})
 }
 
 /*
@@ -167,55 +216,39 @@ TransferStockToStoreStock:
 */
 func (repository *StoreStockRepositoryImpl) TransferStockToStoreStock(quantity int, itemId int, storeId int, tenantId int) error {
 	return repository.Client.Transaction(func(tx *gorm.DB) error {
-
-		// Validate item exists in warehouse and store is valid
-		var itemCount int64
-		err := tx.Model(&model.Item{}).
-			Joins("JOIN store ON store.tenant_id = warehouse.tenant_id").
-			Where("warehouse.item_id = ? AND warehouse.tenant_id = ? AND store.id = ?", itemId, tenantId, storeId).
-			Count(&itemCount).Error
-		if err != nil {
-			return err
+		// Fetch warehouse item + matching store stock in one preload, with row lock
+		var warehouseItem model.Item
+		err := tx.
+			Preload("StoreStocks", "store_id = ? AND tenant_id = ?", storeId, tenantId).
+			Where("item_id = ? AND tenant_id = ?", itemId, tenantId).
+			Set("gorm:query_option", "FOR UPDATE").
+			Take(&warehouseItem).Error
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return errors.New("[ERROR] Not exist item at the warehouse or invalid item")
 		}
-		if itemCount == 0 {
-			return errors.New("not exist item at the warehouse or invalid item")
-		}
-
-		// Lock warehouse row and get current stock
-		var currentStocks int
-		err = tx.Raw(`
-			SELECT stocks FROM warehouse
-			WHERE item_id = ? AND tenant_id = ?
-			FOR UPDATE
-		`, itemId, tenantId).Scan(&currentStocks).Error
 		if err != nil {
 			return err
 		}
 
-		realizedWarehouseStock := currentStocks - quantity
+		// Validate stock sufficiency
+		realizedWarehouseStock := warehouseItem.Stocks - quantity
 		if realizedWarehouseStock < 0 {
-			return errors.New("not enough stock")
+			return errors.New("[ERROR] Not enough stock")
 		}
 
-		// Check if store stock row already exists
-		var storeStock model.StoreStock
-		err = tx.Where("item_id = ? AND tenant_id = ? AND store_id = ?", itemId, tenantId, storeId).
-			Take(&storeStock).Error
-		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-			return err
-		}
-
-		if storeStock.Id != 0 {
+		// Upsert store stock
+		if len(warehouseItem.StoreStocks) > 0 {
 			// Update existing store stock
-			err = tx.Model(&storeStock).
+			storeStock := warehouseItem.StoreStocks[0]
+			err = tx.
+				Model(&model.StoreStock{}).
+				Where("id = ?", storeStock.Id).
 				Update("stocks", gorm.Expr("stocks + ?", quantity)).Error
 			if err != nil {
 				return err
 			}
 		} else {
-			if quantity < 0 {
-				return errors.New("invalid quantity for new stock")
-			}
+			// Create new store stock row
 			err = tx.Create(&model.StoreStock{
 				ItemId:   itemId,
 				Stocks:   quantity,
@@ -228,34 +261,39 @@ func (repository *StoreStockRepositoryImpl) TransferStockToStoreStock(quantity i
 		}
 
 		// Deduct warehouse stock
-		err = tx.Model(&model.Item{}).
+		return tx.
+			Model(&model.Item{}).
 			Where("item_id = ? AND tenant_id = ?", itemId, tenantId).
 			Update("stocks", realizedWarehouseStock).Error
-		if err != nil {
-			return err
-		}
-
-		return nil
 	})
 }
 
 // Edit implements StoreStockRepository.
 func (repository *StoreStockRepositoryImpl) Edit(item *model.StoreStock) error {
-	var message string
-	err := repository.Client.Raw(
-		"SELECT edit_store_stock_item(?, ?, ?, ?, ?)",
-		item.Id, item.Price, item.StoreId, item.TenantId, item.ItemId,
-	).Scan(&message).Error
+	// Validate item exists
+	var count int64
+	err := repository.Client.Model(&model.StoreStock{}).
+		Where("item_id = ? AND tenant_id = ? AND store_id = ? AND id = ?", item.ItemId, item.TenantId, item.StoreId, item.Id).
+		Count(&count).Error
 	if err != nil {
 		return err
 	}
+	if count == 0 {
+		return errors.New("Item does not exist at this store or invalid item ID")
+	}
 
-	// [ERROR] || [FATAL ERROR]
-	if strings.Contains(message, "ERROR") {
-		// Strip the bracket prefix e.g. "[ERROR] " or "[FATAL ERROR] "
-		re := regexp.MustCompile(`\[[^\]]*\] `)
-		cleanMsg := re.ReplaceAllString(message, "")
-		return errors.New(cleanMsg)
+	// Perform update
+	result := repository.Client.Model(&model.StoreStock{Id: item.Id}).
+		Where("tenant_id = ?", item.TenantId).
+		Updates(map[string]any{
+			"price": item.Price, // GORM auto-updates UpdatedAt
+		})
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return fmt.Errorf("No stock found for tenant_id %d and store_id %d and store_stock.id %d",
+			item.TenantId, item.StoreId, item.Id)
 	}
 
 	return nil

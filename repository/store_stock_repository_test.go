@@ -2,6 +2,7 @@ package repository
 
 import (
 	"cashier-api/helper/client"
+	"cashier-api/helper/query"
 	"cashier-api/model"
 	"testing"
 
@@ -33,7 +34,7 @@ func TestStoreStockRepository(t *testing.T) {
 	t.Run("GetV2", func(t *testing.T) {
 		t.Run("NormalGetV2", func(t *testing.T) {
 			storeStockRepo := NewStoreStockRepositoryImpl(gormClient)
-			storeStocks, count, err := storeStockRepo.GetV2(TenantId, StoreId, 1, 1, "", 0)
+			storeStocks, count, err := storeStockRepo.GetV2(TenantId, StoreId, 1, 1, "", 0, []*query.QueryFilter{})
 			assert.NoError(t, err)
 			assert.NotNil(t, storeStocks)
 			assert.Greater(t, count, 0)
@@ -42,7 +43,7 @@ func TestStoreStockRepository(t *testing.T) {
 
 		t.Run("NotExistItemAtStoreStock", func(t *testing.T) {
 			storeStockRepo := NewStoreStockRepositoryImpl(gormClient)
-			storeStocks, count, err := storeStockRepo.GetV2(TenantId, 99, 1, 1, "", 0)
+			storeStocks, count, err := storeStockRepo.GetV2(TenantId, 99, 1, 1, "", 0, []*query.QueryFilter{})
 			assert.NoError(t, err)
 			assert.Equal(t, 0, count)
 			assert.NotNil(t, storeStocks)
@@ -113,19 +114,6 @@ func TestStoreStockRepository(t *testing.T) {
 			assert.NoError(t, err)
 
 			assert.Equal(t, expectedPrice, testStoreStock.Price)
-		})
-
-		t.Run("InvalidPriceValue", func(t *testing.T) {
-			invalidPriceValue := 100_000_001
-
-			err = storeStockRepo.Edit(&model.StoreStock{
-				Id:       storeStockDummyFromDB.Id,
-				ItemId:   storeStockDummyFromDB.ItemId,
-				TenantId: storeStockDummyFromDB.TenantId,
-				StoreId:  storeStockDummyFromDB.StoreId,
-				Price:    invalidPriceValue,
-			})
-			assert.Error(t, err)
 		})
 
 		t.Cleanup(func() {

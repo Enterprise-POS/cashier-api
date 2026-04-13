@@ -1,11 +1,14 @@
 package repository
 
-import "cashier-api/model"
+import (
+	"cashier-api/helper/query"
+	"cashier-api/model"
+)
 
 type StoreStockRepository interface {
 	Get(tenantId int, storeId int, limit int, page int) ([]*model.StoreStock, int, error)
 
-	GetV2(tenantId int, storeId int, limit int, page int, nameQuery string, categoryId int) ([]*model.StoreStockV2, int, error)
+	GetV2(tenantId int, storeId int, limit int, page int, nameQuery string, categoryId int, queryFilters []*query.QueryFilter) ([]*model.StoreStockV2, int, error)
 
 	TransferStockToWarehouse(quantity int, itemId int, storeId int, tenantId int) error
 	TransferStockToStoreStock(quantity int, itemId int, storeId int, tenantId int) error

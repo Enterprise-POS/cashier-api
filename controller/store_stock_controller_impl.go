@@ -2,6 +2,7 @@ package controller
 
 import (
 	common "cashier-api/helper"
+	"cashier-api/helper/query"
 	"cashier-api/model"
 	"cashier-api/service"
 	"fmt"
@@ -65,6 +66,7 @@ func (controller *StoreStockControllerImpl) GetV2(ctx *fiber.Ctx) error {
 	paramStoreId := ctx.Query("store_id", "must specify")
 	nameQuery := ctx.Query("name_query", "")
 	paramCategoryId := ctx.Query("category_id", "0")
+	paramSorts := ctx.Query("sort", "created_at:desc") // GET /v2?sort=created_at:desc,price:asc
 
 	tenantId, _ := strconv.Atoi(ctx.Params("tenantId"))
 
@@ -92,7 +94,9 @@ func (controller *StoreStockControllerImpl) GetV2(ctx *fiber.Ctx) error {
 		return ctx.Status(fiber.StatusBadRequest).JSON(response)
 	}
 
-	storeStocks, count, err := controller.Service.GetV2(tenantId, storeId, limit, page, nameQuery, categoryId)
+	var queryFilters []*query.QueryFilter = common.ParseQueryFilterParam(paramSorts)
+
+	storeStocks, count, err := controller.Service.GetV2(tenantId, storeId, limit, page, nameQuery, categoryId, queryFilters)
 	if err != nil {
 		response := common.NewWebResponseError(fiber.StatusBadRequest, common.StatusError, err.Error())
 		return ctx.Status(fiber.StatusBadRequest).JSON(response)

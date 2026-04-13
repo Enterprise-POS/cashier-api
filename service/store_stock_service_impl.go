@@ -1,6 +1,7 @@
 package service
 
 import (
+	"cashier-api/helper/query"
 	"cashier-api/model"
 	"cashier-api/repository"
 	"errors"
@@ -59,6 +60,7 @@ func (service *StoreStockServiceImpl) GetV2(
 	page int,
 	nameQuery string,
 	categoryId int,
+	queryFilters []*query.QueryFilter,
 ) ([]*model.StoreStockV2, int, error) {
 	if limit < 1 {
 		return nil, 0, fmt.Errorf("Limit could not less then 1 (limit >= 1). Given limit %d", limit)
@@ -79,11 +81,23 @@ func (service *StoreStockServiceImpl) GetV2(
 		}
 	}
 
-	if categoryId < 0 {
-		return nil, 0, errors.New("Tenant id could not be less than 0")
+	if categoryId < -1 {
+		return nil, 0, errors.New("Invalid category id input")
 	}
 
-	storeStocksV2, count, err := service.Repository.GetV2(tenantId, storeId, limit, page-1, nameQuery, categoryId)
+	var allowedSortColumns = map[query.ColumnName]bool{
+		query.CreatedAtColumn: true,
+		// future:
+		// query.PriceColumn: true,
+		// query.NameColumn: true,
+	}
+	for _, queryFilter := range queryFilters {
+		if !allowedSortColumns[queryFilter.Column] {
+			return nil, 0, fmt.Errorf("Invalid sort column: %s", queryFilter.Column)
+		}
+	}
+
+	storeStocksV2, count, err := service.Repository.GetV2(tenantId, storeId, limit, page-1, nameQuery, categoryId, queryFilters)
 	if err != nil {
 		return nil, 0, err
 	}
