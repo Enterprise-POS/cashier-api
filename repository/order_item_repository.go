@@ -3,6 +3,7 @@ package repository
 import (
 	"cashier-api/helper/query"
 	"cashier-api/model"
+	"time"
 )
 
 type OrderItemRepository interface {
@@ -26,7 +27,7 @@ type OrderItemRepository interface {
 	/*
 		This method will insert into 2 table
 	*/
-	Transactions(params *CreateTransactionParams) (int, error)
+	Transactions(params *CreateTransactionParams) (*TransactionDataReturn, error)
 
 	// Edit(quantity int, item *model.Item) error
 
@@ -82,4 +83,11 @@ type ProfitReportRow struct {
 	TotalCogs     int    `json:"total_cogs"     gorm:"column:total_cogs"`
 	TotalDiscount int    `json:"total_discount" gorm:"column:total_discount"`
 	TotalProfit   int    `json:"total_profit"   gorm:"column:total_profit"`
+}
+
+type TransactionDataReturn struct {
+	CreatedOrderItemId int        `json:"created_order_item_id"         gorm:"column:v_id"`
+	CreatedAt          *time.Time `json:"created_at" gorm:"column:v_created_at"`
+	TotalAmount        int        `json:"total_amount" gorm:"column:v_total_amount"`
+	CashIn             int        `json:"purchased_price" gorm:"column:v_purchased_price"`
 }

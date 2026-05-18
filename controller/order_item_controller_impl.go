@@ -142,7 +142,7 @@ func (controller *OrderItemControllerImpl) Transactions(ctx *fiber.Ctx) error {
 			JSON(common.NewWebResponseError(400, common.StatusError, "Something gone wrong ! The request body is malformed"))
 	}
 
-	transactionId, err := controller.Service.Transactions(&body)
+	transactionReturnData, err := controller.Service.Transactions(&body)
 	if err != nil {
 		if pgErr, ok := err.(*exception.PostgreSQLException); ok {
 			errMessage := pgErr.Message
@@ -167,9 +167,7 @@ func (controller *OrderItemControllerImpl) Transactions(ctx *fiber.Ctx) error {
 	}
 
 	return ctx.Status(fiber.StatusOK).
-		JSON(common.NewWebResponse(200, common.StatusSuccess, fiber.Map{
-			"transaction_id": transactionId,
-		}))
+		JSON(common.NewWebResponse(200, common.StatusSuccess, transactionReturnData))
 }
 
 // ExportProfitExcel implements OrderItemController.

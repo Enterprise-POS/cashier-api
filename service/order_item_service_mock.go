@@ -42,13 +42,13 @@ func (service *OrderItemServiceMock) FindById(orderItemid int, tenantId int) (*m
 }
 
 // Transactions implements OrderItemService.
-func (service *OrderItemServiceMock) Transactions(params *repository.CreateTransactionParams) (int, error) {
+func (service *OrderItemServiceMock) Transactions(params *repository.CreateTransactionParams) (*repository.TransactionDataReturn, error) {
 	args := service.Mock.Called(params)
 	if args.Int(0) == 0 {
-		return 0, args.Error(1)
+		return nil, args.Error(1)
 	}
 
-	return args.Int(0), nil
+	return args.Get(0).(*repository.TransactionDataReturn), nil
 }
 
 // GetSalesReport implements OrderItemService.

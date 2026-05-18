@@ -128,14 +128,15 @@ func (repository *OrderItemRepositoryImpl) Get(
 }
 
 // Transactions implements OrderItemRepository.
-func (repository *OrderItemRepositoryImpl) Transactions(params *CreateTransactionParams) (int, error) {
+func (repository *OrderItemRepositoryImpl) Transactions(params *CreateTransactionParams) (*TransactionDataReturn, error) {
 	itemsJSON, err := json.Marshal(params.Items)
 	if err != nil {
-		return 0, fmt.Errorf("failed to serialize items: %w", err)
+		return nil, fmt.Errorf("failed to serialize items: %w", err)
 	}
 
-	var createdOrderItemId int
-	result := repository.Client.Raw("SELECT transactions($1, $2, $3, $4, $5, $6::JSONB, $7, $8, $9)",
+	var transactionDataReturn *TransactionDataReturn
+	// Because it's return row, use SELECT *
+	result := repository.Client.Raw("SELECT * FROM transactions($1, $2, $3, $4, $5, $6::JSONB, $7, $8, $9)",
 		params.PurchasedPrice,
 		params.TotalQuantity,
 		params.TotalAmount,
@@ -147,20 +148,21 @@ func (repository *OrderItemRepositoryImpl) Transactions(params *CreateTransactio
 		params.UserId,
 		params.TenantId,
 		params.StoreId,
-	).Scan(&createdOrderItemId)
+	).Scan(&transactionDataReturn)
+	fmt.Println(result)
 
 	if result.Error != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(result.Error, &pgErr) {
 			log.Warnf("PostgreSQL error during transaction: code=%s, message=%s", pgErr.Code, pgErr.Message)
-			return 0, errors.New(pgErr.Message) // return clean message to caller (service layer)
+			return nil, errors.New(pgErr.Message) // return clean message to caller (service layer)
 		}
 
 		log.Errorf("Unexpected error during transaction: %v", result.Error)
-		return 0, result.Error
+		return nil, result.Error
 	}
 
-	return createdOrderItemId, nil
+	return transactionDataReturn, nil
 }
 
 // FindById implements OrderItemRepository.

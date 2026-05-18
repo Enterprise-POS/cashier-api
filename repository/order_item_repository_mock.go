@@ -39,14 +39,14 @@ func (repository *OrderItemRepositoryMock) PlaceOrderItem(*model.OrderItem) (*mo
 }
 
 // Transactions implements OrderItemRepository.
-func (repository *OrderItemRepositoryMock) Transactions(params *CreateTransactionParams) (int, error) {
+func (repository *OrderItemRepositoryMock) Transactions(params *CreateTransactionParams) (*TransactionDataReturn, error) {
 	args := repository.Mock.Called(params)
 
 	if args.Int(0) == 0 {
-		return 0, args.Error(1)
+		return nil, args.Error(1)
 	}
 
-	return args.Int(0), nil
+	return args.Get(0).(*TransactionDataReturn), nil
 }
 
 // FindById implements OrderItemRepository.

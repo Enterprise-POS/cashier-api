@@ -221,8 +221,13 @@ func TestOrderItemControllerImpl(t *testing.T) {
 				StoreId:  STORE_ID,
 			}
 
+			now := time.Now()
 			orderItemServiceMock.Mock = &mock.Mock{}
-			orderItemServiceMock.Mock.On("Transactions", expectedParams).Return(1, nil)
+			transactionReturnData := &repository.TransactionDataReturn{
+				CreatedOrderItemId: 1,
+				CreatedAt:          &now,
+			}
+			orderItemServiceMock.Mock.On("Transactions", expectedParams).Return(transactionReturnData, nil)
 
 			byteBody, err := json.Marshal(expectedParams)
 			require.NoError(t, err)

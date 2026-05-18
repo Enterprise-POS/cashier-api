@@ -93,17 +93,17 @@ func (service *OrderItemServiceImpl) PlaceOrderItem(*model.OrderItem) (*model.Or
 }
 
 // Transactions implements OrderItemService.
-func (service *OrderItemServiceImpl) Transactions(params *repository.CreateTransactionParams) (int, error) {
+func (service *OrderItemServiceImpl) Transactions(params *repository.CreateTransactionParams) (*repository.TransactionDataReturn, error) {
 	if params.TenantId <= 0 || params.StoreId <= 0 || params.UserId <= 0 {
-		return 0, errors.New("Tenant id, Store id, User id is Required !")
+		return nil, errors.New("Tenant id, Store id, User id is Required !")
 	}
 
 	if len(params.Items) == 0 {
-		return 0, errors.New("At least one item is required")
+		return nil, errors.New("At least one item is required")
 	}
 
 	if len(params.Items) > 1000 {
-		return 0, errors.New("Too many items (max 1000)")
+		return nil, errors.New("Too many items (max 1000)")
 	}
 
 	var (
@@ -117,7 +117,7 @@ func (service *OrderItemServiceImpl) Transactions(params *repository.CreateTrans
 		// Check price consistency for same item
 		if existingPrice, exists := priceConsistencyCheck[item.ItemId]; exists {
 			if existingPrice != item.StorePriceSnapshot {
-				return 0, fmt.Errorf("Price mismatch for item_id %d: expected %d, got %d",
+				return nil, fmt.Errorf("Price mismatch for item_id %d: expected %d, got %d",
 					item.ItemId, existingPrice, item.StorePriceSnapshot)
 			}
 		} else {
@@ -125,12 +125,12 @@ func (service *OrderItemServiceImpl) Transactions(params *repository.CreateTrans
 		}
 
 		if item.Quantity < 1 {
-			return 0, fmt.Errorf("Given quantity %d, from item_id: %d. Quantity should never be <= 0", item.Quantity, item.Id)
+			return nil, fmt.Errorf("Given quantity %d, from item_id: %d. Quantity should never be <= 0", item.Quantity, item.Id)
 		}
 
 		if !service.ItemNameRegexRule.MatchString(item.ItemNameSnapshot) {
 			// This is the same regex with WarehouseService.CreateItem
-			return 0, fmt.Errorf("Illegal input from item name snapshot: %s", item.ItemNameSnapshot)
+			return nil, fmt.Errorf("Illegal input from item name snapshot: %s", item.ItemNameSnapshot)
 		}
 
 		// Calculate totals
@@ -145,45 +145,45 @@ func (service *OrderItemServiceImpl) Transactions(params *repository.CreateTrans
 
 		// Validate individual item total
 		if item.TotalAmount != itemTotal {
-			return 0, fmt.Errorf("Item %d total mismatch: expected %d, got %d",
+			return nil, fmt.Errorf("Item %d total mismatch: expected %d, got %d",
 				item.ItemId, itemTotal, item.TotalAmount)
 		}
 	}
 
 	// Validate against provided totals
 	if calculatedQuantity != params.TotalQuantity {
-		return 0, fmt.Errorf("Total quantity mismatch: calculated %d, provided %d",
+		return nil, fmt.Errorf("Total quantity mismatch: calculated %d, provided %d",
 			calculatedQuantity, params.TotalQuantity)
 	}
 
 	if calculatedSubTotal != params.SubTotal {
-		return 0, fmt.Errorf("Subtotal mismatch: calculated %d, provided %d",
+		return nil, fmt.Errorf("Subtotal mismatch: calculated %d, provided %d",
 			calculatedSubTotal, params.SubTotal)
 	}
 
 	if calculatedTotal != params.TotalAmount {
-		return 0, fmt.Errorf("Total amount mismatch: calculated %d, provided %d",
+		return nil, fmt.Errorf("Total amount mismatch: calculated %d, provided %d",
 			calculatedTotal, params.TotalAmount)
 	}
 
 	if calculatedDiscount != params.DiscountAmount {
-		return 0, fmt.Errorf("Discount amount mismatch: calculated %d, provided %d",
+		return nil, fmt.Errorf("Discount amount mismatch: calculated %d, provided %d",
 			calculatedDiscount, params.DiscountAmount)
 	}
 
 	// Validate payment (if you track cash given)
 	// Remove this if PurchasedPrice is just another name for TotalAmount
 	if params.PurchasedPrice < params.TotalAmount {
-		return 0, fmt.Errorf("Insufficient payment: need %d, got %d",
+		return nil, fmt.Errorf("Insufficient payment: need %d, got %d",
 			params.TotalAmount, params.PurchasedPrice)
 	}
 
-	orderId, err := service.Repository.Transactions(params)
+	transactionDataReturn, err := service.Repository.Transactions(params)
 	if err != nil {
-		return 0, fmt.Errorf("Failed to create transaction: %w", err)
+		return nil, fmt.Errorf("Failed to create transaction: %w", err)
 	}
 
-	return orderId, nil
+	return transactionDataReturn, nil
 }
 
 // FindById implements OrderItemService.

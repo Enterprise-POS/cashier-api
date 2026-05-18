@@ -30,7 +30,7 @@ type OrderItemService interface {
 	/*
 		This method will insert into 2 table
 	*/
-	Transactions(params *repository.CreateTransactionParams) (int, error)
+	Transactions(params *repository.CreateTransactionParams) (*repository.TransactionDataReturn, error)
 
 	/*
 		Using aggregate function from SQL to get report
