@@ -42,7 +42,7 @@ func (repository *OrderItemRepositoryMock) PlaceOrderItem(*model.OrderItem) (*mo
 func (repository *OrderItemRepositoryMock) Transactions(params *CreateTransactionParams) (*TransactionDataReturn, error) {
 	args := repository.Mock.Called(params)
 
-	if args.Int(0) == 0 {
+	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
 

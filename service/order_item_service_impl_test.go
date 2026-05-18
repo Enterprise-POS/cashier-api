@@ -352,7 +352,7 @@ func TestOrderItemServiceImpl(t *testing.T) {
 						DiscountAmount:     0,
 						TotalAmount:        10_000,
 						ItemId:             1,
-						ItemNameSnapshot:   "Item Name Snapshow",
+						ItemNameSnapshot:   "Item Name Snapshot",
 					},
 				},
 
@@ -366,7 +366,7 @@ func TestOrderItemServiceImpl(t *testing.T) {
 				CreatedOrderItemId: 1,
 				CreatedAt:          &now,
 			}
-			orderItemRepo.Mock.On("Transactions", expectedParams).Return(expectedTransactionDataReturn)
+			orderItemRepo.Mock.On("Transactions", expectedParams).Return(expectedTransactionDataReturn, nil)
 			transactionDataReturn, err := orderItemService.Transactions(expectedParams)
 			assert.Nil(t, err)
 			assert.Equal(t, expectedTransactionDataReturn.CreatedOrderItemId, transactionDataReturn.CreatedOrderItemId)
@@ -413,7 +413,7 @@ func TestOrderItemServiceImpl(t *testing.T) {
 			}
 			transactionDataReturn, err := orderItemService.Transactions(invalidParams)
 			assert.Error(t, err)
-			assert.Equal(t, nil, transactionDataReturn)
+			assert.Nil(t, transactionDataReturn)
 			assert.Equal(t, "At least one item is required", err.Error())
 
 			invalidParams = &repository.CreateTransactionParams{
@@ -425,7 +425,7 @@ func TestOrderItemServiceImpl(t *testing.T) {
 			}
 			transactionDataReturn, err = orderItemService.Transactions(invalidParams)
 			assert.Error(t, err)
-			assert.Equal(t, nil, transactionDataReturn)
+			assert.Nil(t, transactionDataReturn)
 		})
 
 		t.Run("PriceMismatch", func(t *testing.T) {
@@ -466,7 +466,7 @@ func TestOrderItemServiceImpl(t *testing.T) {
 
 			transactionDataReturn, err := orderItemService.Transactions(expectedParams)
 			assert.Error(t, err)
-			assert.Nil(t, transactionDataReturn.CreatedOrderItemId)
+			assert.Nil(t, transactionDataReturn)
 			assert.ErrorContains(t, err, "Price mismatch")
 		})
 
@@ -556,7 +556,7 @@ func TestOrderItemServiceImpl(t *testing.T) {
 
 			transactionDataReturn, err := orderItemService.Transactions(expectedParams)
 			assert.Error(t, err)
-			assert.Nil(t, 0, transactionDataReturn)
+			assert.Nil(t, transactionDataReturn)
 			assert.ErrorContains(t, err, "Subtotal mismatch")
 		})
 
@@ -822,9 +822,9 @@ func TestOrderItemServiceImpl(t *testing.T) {
 
 			orderItemRepo.Mock = &mock.Mock{}
 			orderItemRepo.Mock.On("Transactions", expectedParams).Return(nil, errors.New("database error"))
-			orderItemId, err := orderItemService.Transactions(expectedParams)
+			transactionDataReturn, err := orderItemService.Transactions(expectedParams)
 			assert.Error(t, err)
-			assert.Equal(t, 0, orderItemId)
+			assert.Nil(t, transactionDataReturn)
 			assert.ErrorContains(t, err, "Failed to create transaction")
 		})
 	})
