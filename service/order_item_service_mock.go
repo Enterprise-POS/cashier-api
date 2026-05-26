@@ -70,3 +70,13 @@ func (service *OrderItemServiceMock) ExportProfitExcel(tenantId int, storeId int
 
 	return args.Get(0).([]byte), nil
 }
+
+// DeleteInvoice implements [OrderItemService].
+func (service *OrderItemServiceMock) DeleteInvoice(orderItemId int, tenantId int) error {
+	args := service.Mock.Called(orderItemId, tenantId)
+	if args.Get(0) != nil {
+		return args.Error(0)
+	}
+
+	return nil
+}

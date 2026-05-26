@@ -85,3 +85,13 @@ func (repository *OrderItemRepositoryMock) GetTenantAndStoreName(tenantId int, s
 	args := repository.Mock.Called(tenantId, storeId)
 	return args.String(0), args.String(1), args.Error(2)
 }
+
+// DeleteInvoice implements [OrderItemRepository].
+func (repository *OrderItemRepositoryMock) DeleteInvoice(orderItemId int, tenantId int) error {
+	args := repository.Mock.Called(orderItemId, tenantId)
+	if args.Get(0) != nil {
+		return args.Error(0)
+	}
+
+	return nil
+}

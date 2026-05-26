@@ -566,3 +566,20 @@ func (service *OrderItemServiceImpl) ExportProfitExcel(tenantId int, storeId int
 
 	return buf.Bytes(), nil
 }
+
+// DeleteInvoice implements [OrderItemService].
+func (service *OrderItemServiceImpl) DeleteInvoice(orderItemId int, tenantId int) error {
+	if orderItemId <= 0 {
+		return fmt.Errorf("invalid order item id: %d", orderItemId)
+	}
+	if tenantId <= 0 {
+		return fmt.Errorf("invalid tenant id: %d", tenantId)
+	}
+
+	err := service.Repository.DeleteInvoice(orderItemId, tenantId)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}

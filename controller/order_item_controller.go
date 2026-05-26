@@ -34,4 +34,6 @@ type OrderItemController interface {
 		Generate and stream an Excel (.xlsx) profit report
 	*/
 	ExportProfitExcel(ctx *fiber.Ctx) error
+
+	DeleteInvoice(ctx *fiber.Ctx) error
 }

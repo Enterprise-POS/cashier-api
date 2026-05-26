@@ -370,4 +370,84 @@ func TestOrderItemRepository(t *testing.T) {
 	t.Run("GetSalesReport", func(t *testing.T) {
 		t.Skip("DBMS relation too deep")
 	})
+
+	t.Run("DeleteInvoice", func(t *testing.T) {
+		t.Run("SuccessCase", func(t *testing.T) {
+			tx := gormClient.Begin()
+			defer tx.Rollback()
+
+			tenantId, storeId := seedOrderItemTestDependencies(t, tx)
+			repo := NewOrderItemRepositoryImpl(tx)
+
+			created, err := repo.PlaceOrderItem(&model.OrderItem{
+				PurchasedPrice: 10000,
+				TotalQuantity:  1,
+				TotalAmount:    10000,
+				DiscountAmount: 0,
+				Subtotal:       10000,
+				TenantId:       tenantId,
+				StoreId:        storeId,
+			})
+			require.NoError(t, err)
+			require.NotZero(t, created.Id)
+
+			err = repo.DeleteInvoice(created.Id, tenantId)
+			assert.NoError(t, err)
+
+			// Verify soft deleted — row still exists but deleted_at is set
+			var deleted model.OrderItem
+			err = tx.Unscoped().First(&deleted, created.Id).Error
+			assert.NoError(t, err)
+			assert.True(t, deleted.DeletedAt.Valid)
+
+			// Verify excluded from normal queries
+			results, count, err := repo.Get(tenantId, 0, 10, 0, nil, nil)
+			assert.NoError(t, err)
+			assert.Equal(t, 0, count)
+			assert.Len(t, results, 0)
+		})
+
+		t.Run("NotFound", func(t *testing.T) {
+			tx := gormClient.Begin()
+			defer tx.Rollback()
+
+			tenantId, _ := seedOrderItemTestDependencies(t, tx)
+			repo := NewOrderItemRepositoryImpl(tx)
+
+			// id: 1 should not exist
+			err := repo.DeleteInvoice(1, tenantId)
+
+			// RowsAffected = 0 now returns an error since we added the check
+			assert.Error(t, err)
+		})
+
+		t.Run("WrongTenant", func(t *testing.T) {
+			tx := gormClient.Begin()
+			defer tx.Rollback()
+
+			tenantId, storeId := seedOrderItemTestDependencies(t, tx)
+			repo := NewOrderItemRepositoryImpl(tx)
+
+			created, err := repo.PlaceOrderItem(&model.OrderItem{
+				PurchasedPrice: 10000,
+				TotalQuantity:  1,
+				TotalAmount:    10000,
+				DiscountAmount: 0,
+				Subtotal:       10000,
+				TenantId:       tenantId,
+				StoreId:        storeId,
+			})
+			require.NoError(t, err)
+			require.NotZero(t, created.Id)
+
+			err = repo.DeleteInvoice(created.Id, tenantId+1)
+			assert.Error(t, err)
+
+			// Verify the record is untouched
+			var untouched model.OrderItem
+			err = tx.Unscoped().First(&untouched, created.Id).Error
+			assert.NoError(t, err)
+			assert.False(t, untouched.DeletedAt.Valid)
+		})
+	})
 }

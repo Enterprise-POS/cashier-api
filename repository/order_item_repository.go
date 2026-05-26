@@ -46,6 +46,11 @@ type OrderItemRepository interface {
 		If storeId is 0, storeName will be "All Stores".
 	*/
 	GetTenantAndStoreName(tenantId int, storeId int) (tenantName string, storeName string, err error)
+
+	/*
+		Soft delete invoice.
+	*/
+	DeleteInvoice(orderItemId int, tenantId int) error
 }
 
 type CreateTransactionParams struct {

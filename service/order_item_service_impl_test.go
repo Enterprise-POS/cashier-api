@@ -828,4 +828,97 @@ func TestOrderItemServiceImpl(t *testing.T) {
 			assert.ErrorContains(t, err, "Failed to create transaction")
 		})
 	})
+
+	t.Run("DeleteInvoice", func(t *testing.T) {
+		t.Run("SuccessCase", func(t *testing.T) {
+			orderItemRepo := repository.NewOrderItemRepositoryMock(&mock.Mock{}).(*repository.OrderItemRepositoryMock)
+			orderItemService := NewOrderItemServiceImpl(orderItemRepo)
+
+			const ORDER_ITEM_ID = 1
+
+			orderItemRepo.Mock.On("DeleteInvoice", ORDER_ITEM_ID, TENANT_ID).Return(nil)
+
+			err := orderItemService.DeleteInvoice(ORDER_ITEM_ID, TENANT_ID)
+
+			assert.NoError(t, err)
+			orderItemRepo.Mock.AssertExpectations(t)
+		})
+
+		t.Run("InvalidOrderItemId_Zero", func(t *testing.T) {
+			orderItemRepo := repository.NewOrderItemRepositoryMock(&mock.Mock{}).(*repository.OrderItemRepositoryMock)
+			orderItemService := NewOrderItemServiceImpl(orderItemRepo)
+
+			err := orderItemService.DeleteInvoice(0, TENANT_ID)
+
+			assert.Error(t, err)
+			assert.Contains(t, err.Error(), "invalid order item id")
+			// Repository should never be called
+			orderItemRepo.Mock.AssertNotCalled(t, "DeleteInvoice", mock.Anything, mock.Anything)
+		})
+
+		t.Run("InvalidOrderItemId_Negative", func(t *testing.T) {
+			orderItemRepo := repository.NewOrderItemRepositoryMock(&mock.Mock{}).(*repository.OrderItemRepositoryMock)
+			orderItemService := NewOrderItemServiceImpl(orderItemRepo)
+
+			err := orderItemService.DeleteInvoice(-1, TENANT_ID)
+
+			assert.Error(t, err)
+			assert.Contains(t, err.Error(), "invalid order item id")
+			orderItemRepo.Mock.AssertNotCalled(t, "DeleteInvoice", mock.Anything, mock.Anything)
+		})
+
+		t.Run("InvalidTenantId_Zero", func(t *testing.T) {
+			orderItemRepo := repository.NewOrderItemRepositoryMock(&mock.Mock{}).(*repository.OrderItemRepositoryMock)
+			orderItemService := NewOrderItemServiceImpl(orderItemRepo)
+
+			err := orderItemService.DeleteInvoice(1, 0)
+
+			assert.Error(t, err)
+			assert.Contains(t, err.Error(), "invalid tenant id")
+			orderItemRepo.Mock.AssertNotCalled(t, "DeleteInvoice", mock.Anything, mock.Anything)
+		})
+
+		t.Run("InvalidTenantId_Negative", func(t *testing.T) {
+			orderItemRepo := repository.NewOrderItemRepositoryMock(&mock.Mock{}).(*repository.OrderItemRepositoryMock)
+			orderItemService := NewOrderItemServiceImpl(orderItemRepo)
+
+			err := orderItemService.DeleteInvoice(1, -1)
+
+			assert.Error(t, err)
+			assert.Contains(t, err.Error(), "invalid tenant id")
+			orderItemRepo.Mock.AssertNotCalled(t, "DeleteInvoice", mock.Anything, mock.Anything)
+		})
+
+		t.Run("NotFound", func(t *testing.T) {
+			orderItemRepo := repository.NewOrderItemRepositoryMock(&mock.Mock{}).(*repository.OrderItemRepositoryMock)
+			orderItemService := NewOrderItemServiceImpl(orderItemRepo)
+
+			const ORDER_ITEM_ID = 999999
+
+			orderItemRepo.Mock.On("DeleteInvoice", ORDER_ITEM_ID, TENANT_ID).
+				Return(fmt.Errorf("order item %d not found", ORDER_ITEM_ID))
+
+			err := orderItemService.DeleteInvoice(ORDER_ITEM_ID, TENANT_ID)
+
+			assert.Error(t, err)
+			assert.Contains(t, err.Error(), "not found")
+			orderItemRepo.Mock.AssertExpectations(t)
+		})
+
+		t.Run("RepositoryError", func(t *testing.T) {
+			orderItemRepo := repository.NewOrderItemRepositoryMock(&mock.Mock{}).(*repository.OrderItemRepositoryMock)
+			orderItemService := NewOrderItemServiceImpl(orderItemRepo)
+
+			const ORDER_ITEM_ID = 1
+
+			orderItemRepo.Mock.On("DeleteInvoice", ORDER_ITEM_ID, TENANT_ID).
+				Return(errors.New("database connection failed"))
+
+			err := orderItemService.DeleteInvoice(ORDER_ITEM_ID, TENANT_ID)
+
+			assert.Error(t, err)
+			assert.Contains(t, err.Error(), "database connection failed")
+			orderItemRepo.Mock.AssertExpectations(t)
+		})
+	})
 }

@@ -42,4 +42,9 @@ type OrderItemService interface {
 		Returns the raw .xlsx bytes.
 	*/
 	ExportProfitExcel(tenantId int, storeId int, dateFilter *query.DateFilter) ([]byte, error)
+
+	/*
+		Soft delete invoice.
+	*/
+	DeleteInvoice(orderItemId int, tenantId int) error
 }

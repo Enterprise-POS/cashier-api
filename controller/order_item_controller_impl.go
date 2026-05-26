@@ -224,3 +224,25 @@ func (controller *OrderItemControllerImpl) GetSalesReport(ctx *fiber.Ctx) error 
 	return ctx.Status(fiber.StatusOK).
 		JSON(common.NewWebResponse(200, common.StatusSuccess, salesReport))
 }
+
+// DeleteInvoice implements [OrderItemController].
+func (controller *OrderItemControllerImpl) DeleteInvoice(ctx *fiber.Ctx) error {
+	tenantId, _ := strconv.Atoi(ctx.Params("tenantId"))
+
+	var body struct {
+		OrderItemId int `json:"order_item_id"`
+	}
+	err := ctx.BodyParser(&body)
+	if err != nil {
+		return ctx.Status(fiber.StatusBadRequest).
+			JSON(common.NewWebResponseError(400, common.StatusError, "Something gone wrong ! The request body is malformed"))
+	}
+
+	err = controller.Service.DeleteInvoice(body.OrderItemId, tenantId)
+	if err != nil {
+		return ctx.Status(fiber.StatusBadRequest).
+			JSON(common.NewWebResponseError(400, common.StatusError, err.Error()))
+	}
+
+	return ctx.SendStatus(fiber.StatusNoContent)
+}

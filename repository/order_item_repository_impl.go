@@ -195,7 +195,7 @@ func (repository *OrderItemRepositoryImpl) FindById(orderItemId int, tenantId in
 	var rows []row // local struct
 
 	err := repository.Client.
-		Table("order_item").
+		Model(&model.OrderItem{}). // Will exclude deleted_at
 		Select(`
 			purchased_item_list.id                  AS purchased_item_id,
 			purchased_item_list.item_id,
@@ -224,7 +224,8 @@ func (repository *OrderItemRepositoryImpl) FindById(orderItemId int, tenantId in
 		return nil, nil, fmt.Errorf("FindById query failed: %w", err)
 	}
 	if len(rows) == 0 {
-		return nil, nil, fmt.Errorf("order item %d not found for tenant %d", orderItemId, tenantId)
+		log.Warnf("At OrderItemRepositoryImpl.FindById with order item %d not found for tenant %d", orderItemId, tenantId)
+		return nil, nil, fmt.Errorf("No data found. for order item id %d", orderItemId)
 	}
 
 	// Extract OrderItem from first row (since it's the same for all rows)
@@ -329,7 +330,7 @@ func (repository *OrderItemRepositoryImpl) GetTenantAndStoreName(tenantId int, s
 	return tenantName, storeName, nil
 }
 
-// GetReport implements OrderItemRepository.
+// GetReport implements [OrderItemRepository].
 func (repository *OrderItemRepositoryImpl) GetSalesReport(tenantId int, storeId int, dateFilter *query.DateFilter) (*SalesReport, error) {
 	var salesReport []*SalesReport
 
@@ -363,4 +364,23 @@ func (repository *OrderItemRepositoryImpl) GetSalesReport(tenantId int, storeId 
 	}
 
 	return salesReport[0], nil
+}
+
+// DeleteInvoice implements [OrderItemRepository].
+func (repository *OrderItemRepositoryImpl) DeleteInvoice(orderItemId int, tenantId int) error {
+	// In the future will be implement security such as:
+	// - Only owner could delete the invoice
+	// - Permission request
+	result := repository.Client.
+		Where("id = ? AND tenant_id = ?", orderItemId, tenantId).
+		Delete(&model.OrderItem{})
+
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return fmt.Errorf("order item %d not found", orderItemId)
+	}
+
+	return nil
 }

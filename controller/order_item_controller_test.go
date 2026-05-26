@@ -379,6 +379,95 @@ func TestOrderItemControllerImpl(t *testing.T) {
 		})
 	})
 
+	t.Run("DeleteInvoice", func(t *testing.T) {
+		app.Delete("/order_items/:tenantId", tenantRestriction, orderItemController.DeleteInvoice) // Register route only for this scope
+
+		t.Run("SuccessCase", func(t *testing.T) {
+			const ORDER_ITEM_ID = 1
+
+			orderItemServiceMock.Mock = &mock.Mock{}
+			orderItemServiceMock.Mock.On("DeleteInvoice", ORDER_ITEM_ID, createdTestTenant.Id).Return(nil)
+
+			byteBody, err := json.Marshal(fiber.Map{
+				"order_item_id": ORDER_ITEM_ID,
+			})
+			require.NoError(t, err)
+
+			request = httptest.NewRequest("DELETE", fmt.Sprintf("/order_items/%d", createdTestTenant.Id), strings.NewReader(string(byteBody)))
+			request.Header.Set("Content-Type", "application/json")
+			request.AddCookie(enterprisePOSCookie)
+			response, err = app.Test(request, testTimeout)
+			assert.NoError(t, err)
+			assert.NotNil(t, response)
+			assert.Equal(t, http.StatusNoContent, response.StatusCode)
+			orderItemServiceMock.Mock.AssertExpectations(t)
+		})
+
+		t.Run("MalformedBody", func(t *testing.T) {
+			orderItemServiceMock.Mock = &mock.Mock{}
+
+			byteBody, err := json.Marshal(fiber.Map{
+				"order_item_id": "not_an_int",
+			})
+			require.NoError(t, err)
+
+			request = httptest.NewRequest("DELETE", fmt.Sprintf("/order_items/%d", createdTestTenant.Id), strings.NewReader(string(byteBody)))
+			request.Header.Set("Content-Type", "application/json")
+			request.AddCookie(enterprisePOSCookie)
+			response, err = app.Test(request, testTimeout)
+			assert.NoError(t, err)
+			assert.NotNil(t, response)
+			assert.Equal(t, http.StatusBadRequest, response.StatusCode)
+
+			byteResponseBody, err := io.ReadAll(response.Body)
+			assert.NoError(t, err)
+			assert.Contains(t, string(byteResponseBody), "Something gone wrong ! The request body is malformed")
+		})
+
+		t.Run("ServiceReturnsError", func(t *testing.T) {
+			const ORDER_ITEM_ID = 999999
+
+			orderItemServiceMock.Mock = &mock.Mock{}
+			orderItemServiceMock.Mock.On("DeleteInvoice", ORDER_ITEM_ID, createdTestTenant.Id).
+				Return(fmt.Errorf("order item %d not found", ORDER_ITEM_ID))
+
+			byteBody, err := json.Marshal(fiber.Map{
+				"order_item_id": ORDER_ITEM_ID,
+			})
+			require.NoError(t, err)
+
+			request = httptest.NewRequest("DELETE", fmt.Sprintf("/order_items/%d", createdTestTenant.Id), strings.NewReader(string(byteBody)))
+			request.Header.Set("Content-Type", "application/json")
+			request.AddCookie(enterprisePOSCookie)
+			response, err = app.Test(request, testTimeout)
+			assert.NoError(t, err)
+			assert.NotNil(t, response)
+			assert.Equal(t, http.StatusBadRequest, response.StatusCode)
+
+			byteResponseBody, err := io.ReadAll(response.Body)
+			assert.NoError(t, err)
+			assert.Contains(t, string(byteResponseBody), "not found")
+			orderItemServiceMock.Mock.AssertExpectations(t)
+		})
+
+		t.Run("Unauthorized", func(t *testing.T) {
+			const ORDER_ITEM_ID = 1
+
+			byteBody, err := json.Marshal(fiber.Map{
+				"order_item_id": ORDER_ITEM_ID,
+			})
+			require.NoError(t, err)
+
+			request = httptest.NewRequest("DELETE", fmt.Sprintf("/order_items/%d", createdTestTenant.Id), strings.NewReader(string(byteBody)))
+			request.Header.Set("Content-Type", "application/json")
+			// No cookie attached
+			response, err = app.Test(request, testTimeout)
+			assert.NoError(t, err)
+			assert.NotNil(t, response)
+			assert.Equal(t, http.StatusUnauthorized, response.StatusCode)
+		})
+	})
+
 	t.Cleanup(func() {
 		_, _, err = supabaseClient.From(repository.UserMtmTenantTable).
 			Delete("", "").
