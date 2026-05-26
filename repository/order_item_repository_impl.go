@@ -332,38 +332,80 @@ func (repository *OrderItemRepositoryImpl) GetTenantAndStoreName(tenantId int, s
 
 // GetReport implements [OrderItemRepository].
 func (repository *OrderItemRepositoryImpl) GetSalesReport(tenantId int, storeId int, dateFilter *query.DateFilter) (*SalesReport, error) {
-	var salesReport []*SalesReport
+	// Base condition builder to avoid repeating date filter logic
+	applyFilters := func(db *gorm.DB, tablePrefix string) *gorm.DB {
+		db = db.Where(tablePrefix+"tenant_id = ?", tenantId)
 
-	var result *gorm.DB
-	if dateFilter != nil {
-		if dateFilter.StartDate != nil && dateFilter.EndDate != nil {
-			result = repository.Client.Raw("SELECT * FROM sales_report(?, ?, ?, ?)",
-				tenantId, storeId, *dateFilter.StartDate, *dateFilter.EndDate).Scan(&salesReport)
-		} else if dateFilter.StartDate != nil {
-			result = repository.Client.Raw("SELECT * FROM sales_report(?, ?, ?, NULL)",
-				tenantId, storeId, *dateFilter.StartDate).Scan(&salesReport)
-		} else if dateFilter.EndDate != nil {
-			result = repository.Client.Raw("SELECT * FROM sales_report(?, ?, NULL, ?)",
-				tenantId, storeId, *dateFilter.EndDate).Scan(&salesReport)
-		} else {
-			result = repository.Client.Raw("SELECT * FROM sales_report(?, ?)",
-				tenantId, storeId).Scan(&salesReport)
+		if storeId > 0 {
+			db = db.Where(tablePrefix+"store_id = ?", storeId)
 		}
-	} else {
-		result = repository.Client.Raw("SELECT * FROM sales_report(?, ?)",
-			tenantId, storeId).Scan(&salesReport)
+
+		if dateFilter != nil {
+			if dateFilter.StartDate != nil && dateFilter.EndDate != nil {
+				db = db.Where(tablePrefix+"created_at >= to_timestamp(?) AND "+tablePrefix+"created_at < to_timestamp(?)",
+					*dateFilter.StartDate, *dateFilter.EndDate)
+			} else if dateFilter.StartDate != nil {
+				db = db.Where(tablePrefix+"created_at >= to_timestamp(?)", *dateFilter.StartDate)
+			} else if dateFilter.EndDate != nil {
+				db = db.Where(tablePrefix+"created_at <= to_timestamp(?)", *dateFilter.EndDate)
+			}
+		}
+
+		return db
 	}
 
-	if result.Error != nil {
-		return nil, result.Error
+	// order_summary — Model() applies deleted_at IS NULL automatically
+	type orderSummary struct {
+		SumPurchasedPrice int
+		SumSubtotal       int
+		SumTotalQuantity  int
+		SumDiscountAmount int
+		SumTotalAmount    int
+		SumTransactions   int
+	}
+	var oSummary orderSummary
+
+	orderQuery := applyFilters(repository.Client.Model(&model.OrderItem{}), "")
+	err := orderQuery.Select(`
+        COALESCE(SUM(purchased_price), 0)  AS sum_purchased_price,
+        COALESCE(SUM(subtotal), 0)         AS sum_subtotal,
+        COALESCE(SUM(total_quantity), 0)   AS sum_total_quantity,
+        COALESCE(SUM(discount_amount), 0)  AS sum_discount_amount,
+        COALESCE(SUM(total_amount), 0)     AS sum_total_amount,
+        COALESCE(COUNT(id), 0)             AS sum_transactions
+    `).Scan(&oSummary).Error
+	if err != nil {
+		return nil, fmt.Errorf("GetSalesReport order_summary failed: %w", err)
 	}
 
-	if len(salesReport) == 0 {
-		log.Errorf("Sales report return nil. tenantId: %d, storeId: %d", tenantId, storeId)
-		return nil, errors.New("unexpected error while requesting sales report. Please try again later")
+	// profit_summary — raw join since purchased_item_list is not a model
+	// Still filters order_item with deleted_at via the JOIN condition
+	type profitSummary struct {
+		SumProfit int
+	}
+	var pSummary profitSummary
+
+	profitQuery := applyFilters(
+		repository.Client.Table("purchased_item_list pil").
+			Joins("INNER JOIN order_item oi ON oi.id = pil.order_item_id AND oi.deleted_at IS NULL"),
+		"oi.",
+	)
+	err = profitQuery.Select(`
+        COALESCE(SUM(pil.total_amount) - SUM(pil.base_price_snapshot * pil.quantity), 0) AS sum_profit
+    `).Scan(&pSummary).Error
+	if err != nil {
+		return nil, fmt.Errorf("GetSalesReport profit_summary failed: %w", err)
 	}
 
-	return salesReport[0], nil
+	return &SalesReport{
+		SumPurchasedPrice: oSummary.SumPurchasedPrice,
+		SumSubtotal:       oSummary.SumSubtotal,
+		SumTotalQuantity:  oSummary.SumTotalQuantity,
+		SumDiscountAmount: oSummary.SumDiscountAmount,
+		SumTotalAmount:    oSummary.SumTotalAmount,
+		SumProfit:         pSummary.SumProfit,
+		SumTransactions:   oSummary.SumTransactions,
+	}, nil
 }
 
 // DeleteInvoice implements [OrderItemRepository].
