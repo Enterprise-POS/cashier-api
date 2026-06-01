@@ -115,8 +115,10 @@ func (controller *StoreControllerImpl) SetActivate(ctx *fiber.Ctx) error {
 func (controller *StoreControllerImpl) Edit(ctx *fiber.Ctx) error {
 	tenantId, _ := strconv.Atoi(ctx.Params("tenantId"))
 	type StoreSetActiveRequestBody struct {
-		StoreId int    `json:"store_id"`
-		Name    string `json:"name"`
+		StoreId     int    `json:"store_id"`
+		Name        string `json:"name"`
+		Address     string `json:"address"`
+		PhoneNumber string `json:"phone_number"`
 	}
 	var body StoreSetActiveRequestBody
 	err := ctx.BodyParser(&body)
@@ -128,7 +130,13 @@ func (controller *StoreControllerImpl) Edit(ctx *fiber.Ctx) error {
 	}
 
 	editedStore, err := controller.Service.Edit(
-		&model.Store{TenantId: tenantId, Id: body.StoreId, Name: body.Name},
+		&model.Store{
+			TenantId:    tenantId,
+			Id:          body.StoreId,
+			Name:        body.Name,
+			Address:     body.Address,
+			PhoneNumber: body.PhoneNumber,
+		},
 	)
 	if err != nil {
 		return ctx.Status(fiber.StatusBadRequest).

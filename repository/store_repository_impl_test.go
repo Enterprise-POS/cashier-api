@@ -183,11 +183,15 @@ func TestStoreRepositoryImpl(t *testing.T) {
 			require.Equal(t, testStoreName, createdStore.Name)
 
 			createdStore.Name = "StoreRepository_Edit_NormalEdit(EDITED)"
+			createdStore.Address = "Fictional Address"
+			createdStore.PhoneNumber = "+81 123456789"
 			updatedStore, err := storeRepository.Edit(createdStore)
 			assert.NoError(t, err)
 			assert.NotNil(t, updatedStore)
 			assert.Equal(t, createdStore.Id, updatedStore.Id)
 			assert.Equal(t, createdStore.Name, updatedStore.Name)
+			assert.Equal(t, createdStore.Address, updatedStore.Address)
+			assert.Equal(t, createdStore.PhoneNumber, updatedStore.PhoneNumber)
 
 			t.Cleanup(func() {
 				result := gormClient.Delete(updatedStore)
@@ -197,7 +201,7 @@ func TestStoreRepositoryImpl(t *testing.T) {
 		})
 
 		t.Run("EditNotFoundInDB", func(t *testing.T) {
-			updatedStore, err := storeRepository.Edit(&model.Store{Id: 9999, TenantId: 8888, Name: "Wrong"})
+			updatedStore, err := storeRepository.Edit(&model.Store{Id: 9999, TenantId: 8888, Name: "Wrong", Address: "zzz", PhoneNumber: "0"})
 			assert.Error(t, err)
 			assert.Nil(t, updatedStore)
 		})

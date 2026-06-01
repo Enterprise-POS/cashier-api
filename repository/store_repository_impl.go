@@ -80,7 +80,9 @@ func (repository *StoreRepositoryImpl) Edit(tobeEditStore *model.Store) (*model.
 	// Struct with id definition will trigger auto update updated_at query
 	result := repository.Client.Model(&model.Store{Id: tobeEditStore.Id}).
 		Where("tenant_id", tobeEditStore.TenantId).Where("id", tobeEditStore.Id).
-		Update("name", tobeEditStore.Name)
+		Update("name", tobeEditStore.Name).
+		Update("address", tobeEditStore.Address).
+		Update("phone_number", tobeEditStore.PhoneNumber)
 
 	if result.Error != nil {
 		return nil, result.Error

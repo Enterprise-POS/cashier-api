@@ -7,17 +7,22 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+	"unicode/utf8"
 )
 
 type StoreServiceImpl struct {
-	Repository        repository.StoreRepository
-	CategoryNameRegex *regexp.Regexp
+	Repository     repository.StoreRepository
+	StoreNameRegex *regexp.Regexp
+	AddressRegex   *regexp.Regexp
+	PhoneRegex     *regexp.Regexp
 }
 
 func NewStoreServiceImpl(repository repository.StoreRepository) StoreService {
 	return &StoreServiceImpl{
-		Repository:        repository,
-		CategoryNameRegex: regexp.MustCompile(`^[a-zA-Z0-9_ ]{1,50}$`), // We wil limit the name for store
+		Repository:     repository,
+		StoreNameRegex: regexp.MustCompile(`^[\p{L}\p{N}\p{Zs}\p{P}]{1,100}$`), // We will limit the name for store
+		AddressRegex:   regexp.MustCompile(`^[\p{L}\p{N}\p{Zs}\p{P}]{0,255}$`), // We will limit the name for address <= 255
+		PhoneRegex:     regexp.MustCompile(`^[0-9+\-\(\) ]+$`),                 // We will limit <= 50
 	}
 }
 
@@ -27,7 +32,7 @@ func (service *StoreServiceImpl) Create(tenantId int, name string) (*model.Store
 		return nil, errors.New("Invalid tenant id")
 	}
 
-	if !service.CategoryNameRegex.MatchString(name) {
+	if !service.StoreNameRegex.MatchString(name) {
 		return nil, fmt.Errorf("Current store name is not allowed: %s", name)
 	}
 
@@ -90,16 +95,35 @@ func (service *StoreServiceImpl) SetActivate(tenantId int, storeId int, setInto 
 
 // Edit implements StoreService.
 func (service *StoreServiceImpl) Edit(tobeEditStore *model.Store) (*model.Store, error) {
-	if tobeEditStore.Id < 1 {
+	if tobeEditStore.Id <= 0 {
 		return nil, errors.New("Invalid store id")
 	}
 
-	if tobeEditStore.TenantId < 1 {
+	if tobeEditStore.TenantId <= 0 {
 		return nil, errors.New("Invalid tenant id")
 	}
 
-	if !service.CategoryNameRegex.MatchString(tobeEditStore.Name) {
+	if !service.StoreNameRegex.MatchString(tobeEditStore.Name) {
 		return nil, fmt.Errorf("Current store name is not allowed: %s", tobeEditStore.Name)
+	}
+
+	if !service.AddressRegex.MatchString(tobeEditStore.Address) {
+		return nil, fmt.Errorf("Current store address is not allowed: %s", tobeEditStore.Address)
+	}
+
+	phone := strings.TrimSpace(tobeEditStore.PhoneNumber)
+	tobeEditStore.PhoneNumber = phone // persist trimmed value before repo call
+
+	if phone != "" {
+		phoneLength := utf8.RuneCountInString(phone)
+
+		if phoneLength < 8 || phoneLength > 20 {
+			return nil, errors.New("Invalid phone number length")
+		}
+
+		if !service.PhoneRegex.MatchString(phone) {
+			return nil, errors.New("Invalid phone number format")
+		}
 	}
 
 	editedStore, err := service.Repository.Edit(tobeEditStore)

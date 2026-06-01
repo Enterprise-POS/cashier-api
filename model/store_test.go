@@ -14,7 +14,7 @@ func TestStoreTest(t *testing.T) {
 		Name:      "Store Model Test",
 		IsActive:  true,
 		TenantId:  1,
-		CreatedAt: now,
+		CreatedAt: &now,
 	}
 
 	assert.IsType(t, int(0), storeTest.Id)
@@ -28,5 +28,5 @@ func TestStoreTest(t *testing.T) {
 	assert.Equal(t, true, storeTest.IsActive)
 	assert.Equal(t, 1, storeTest.TenantId)
 	assert.NotNil(t, storeTest.CreatedAt)
-	assert.WithinDuration(t, now, storeTest.CreatedAt, time.Second, "CreatedAt should be around now")
+	assert.WithinDuration(t, now, *storeTest.CreatedAt, time.Second, "CreatedAt should be around now")
 }
