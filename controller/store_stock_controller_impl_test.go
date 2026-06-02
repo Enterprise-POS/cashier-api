@@ -22,7 +22,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/supabase-community/supabase-go"
 	"gorm.io/gorm"
 )
 
@@ -32,7 +31,6 @@ func TestStoreStockControllerImpl(t *testing.T) {
 	}
 
 	//SETUP//
-	supabaseClient := client.CreateSupabaseClient()
 	gormClient := client.CreateGormClient()
 
 	testTimeout := int((time.Second * 5).Milliseconds())
@@ -78,7 +76,7 @@ func TestStoreStockControllerImpl(t *testing.T) {
 		Email:    uniqueIdentity + "@gmail.com",
 		Password: "$2a$10$V6ZP0rm./adZ9kryl3mYf.MB9IY80Y8ZCjtKslUEPWoH.9PCsX7vK",
 	}
-	createdTestUser := createUser(supabaseClient, expectedUser)
+	createdTestUser := createUser(gormClient, expectedUser)
 	require.Equal(t, expectedUser.Email, createdTestUser.Email)
 
 	expectedTenant := &model.Tenant{
@@ -86,7 +84,7 @@ func TestStoreStockControllerImpl(t *testing.T) {
 		OwnerUserId: createdTestUser.Id,
 		IsActive:    true,
 	}
-	createdTestTenant := createTenant(supabaseClient, expectedTenant)
+	createdTestTenant := createTenant(gormClient, expectedTenant)
 	require.Equal(t, expectedTenant.Name, createdTestTenant.Name)
 	require.Equal(t, expectedTenant.OwnerUserId, createdTestTenant.OwnerUserId)
 	require.True(t, createdTestTenant.IsActive)
@@ -111,7 +109,7 @@ func TestStoreStockControllerImpl(t *testing.T) {
 	// Store
 	testStoreName := fmt.Sprintf("TestStore By %s", createdTestUser.Name)
 	createdTestStore := createStore(
-		supabaseClient,
+		gormClient,
 		createdTestTenant.Id,
 		testStoreName,
 	)
@@ -208,11 +206,14 @@ func TestStoreStockControllerImpl(t *testing.T) {
 
 		t.Cleanup(func() {
 			// store_stock
-			_, _, err = supabaseClient.From(repository.StoreStockTable).
-				Delete("", "").
-				Eq("item_id", strconv.Itoa(itemToTransfer.ItemId)).
-				Eq("tenant_id", strconv.Itoa(createdTestTenant.Id)).
-				Execute()
+			err := gormClient.
+				Where(
+					"item_id = ? AND tenant_id = ?",
+					itemToTransfer.ItemId,
+					createdTestTenant.Id,
+				).
+				Delete(&model.StoreStock{}).
+				Error
 			require.NoError(t, err, "If this fail, then immediately delete the data from TestStoreControllerImpl/NormalTransferStockToStoreStock")
 		})
 	})
@@ -286,11 +287,14 @@ func TestStoreStockControllerImpl(t *testing.T) {
 
 		t.Cleanup(func() {
 			// store_stock
-			_, _, err = supabaseClient.From(repository.StoreStockTable).
-				Delete("", "").
-				Eq("item_id", strconv.Itoa(itemToTransfer.ItemId)).
-				Eq("tenant_id", strconv.Itoa(createdTestTenant.Id)).
-				Execute()
+			err := gormClient.
+				Where(
+					"item_id = ? AND tenant_id = ?",
+					itemToTransfer.ItemId,
+					createdTestTenant.Id,
+				).
+				Delete(&model.StoreStock{}).
+				Error
 			require.NoError(t, err, "If this fail, then immediately delete the data from TestStoreControllerImpl/NormalTransferStockToStoreStock")
 		})
 	})
@@ -325,15 +329,19 @@ func TestStoreStockControllerImpl(t *testing.T) {
 		assert.NotNil(t, response)
 		assert.Equal(t, http.StatusAccepted, response.StatusCode)
 
-		var transferredItems *model.StoreStock
-		_, err = supabaseClient.From(repository.StoreStockTable).
-			Select("*", "", false).
-			Eq("item_id", strconv.Itoa(itemToTransfer.ItemId)).
-			Eq("store_id", strconv.Itoa(createdTestStore.Id)).
-			Eq("tenant_id", strconv.Itoa(createdTestTenant.Id)).
-			Single().ExecuteTo(&transferredItems)
+		var transferredItems model.StoreStock
+
+		err = gormClient.
+			Where(
+				"item_id = ? AND store_id = ? AND tenant_id = ?",
+				itemToTransfer.ItemId,
+				createdTestStore.Id,
+				createdTestTenant.Id,
+			).
+			Take(&transferredItems).
+			Error
+
 		require.NoError(t, err)
-		require.NotNil(t, transferredItems)
 
 		t.Run("NormalEdit", func(t *testing.T) {
 			// Because we when transferring for the first time, We don't know the id so
@@ -341,7 +349,7 @@ func TestStoreStockControllerImpl(t *testing.T) {
 
 			// Here we edit the createdItems
 			// Id will be already defined here
-			var transferredItemsCopy model.StoreStock = *transferredItems
+			var transferredItemsCopy model.StoreStock = transferredItems
 			transferredItemsCopy.Price = 9999
 
 			byteBody, _ = json.Marshal(&transferredItemsCopy)
@@ -355,13 +363,12 @@ func TestStoreStockControllerImpl(t *testing.T) {
 			assert.Equal(t, http.StatusAccepted, response.StatusCode)
 
 			// Check manually
-			var testEditedItems *model.StoreStock
-			_, err = supabaseClient.From(repository.StoreStockTable).
-				Select("*", "", false).
-				Eq("id", strconv.Itoa(transferredItemsCopy.Id)).
-				Single().ExecuteTo(&testEditedItems)
+			var testEditedItems model.StoreStock
+			err = gormClient.
+				Where("id = ?", transferredItemsCopy.Id).
+				Take(&testEditedItems).
+				Error
 			assert.NoError(t, err)
-			assert.NotNil(t, testEditedItems)
 			assert.Equal(t, transferredItemsCopy.Price, testEditedItems.Price)
 		})
 
@@ -381,7 +388,7 @@ func TestStoreStockControllerImpl(t *testing.T) {
 		})
 
 		t.Run("NonExistData", func(t *testing.T) {
-			var transferredItemsCopy model.StoreStock = *transferredItems
+			var transferredItemsCopy model.StoreStock = transferredItems
 			transferredItemsCopy.Id = 9999 // Non exist for this test user
 			byteBody, _ = json.Marshal(&transferredItemsCopy)
 			requestBody := strings.NewReader(string(byteBody))
@@ -396,11 +403,14 @@ func TestStoreStockControllerImpl(t *testing.T) {
 
 		t.Cleanup(func() {
 			// store_stock
-			_, _, err = supabaseClient.From(repository.StoreStockTable).
-				Delete("", "").
-				Eq("item_id", strconv.Itoa(itemToTransfer.ItemId)).
-				Eq("tenant_id", strconv.Itoa(createdTestTenant.Id)).
-				Execute()
+			err := gormClient.
+				Where(
+					"item_id = ? AND tenant_id = ?",
+					itemToTransfer.ItemId,
+					createdTestTenant.Id,
+				).
+				Delete(&model.StoreStock{}).
+				Error
 			require.NoError(t, err, "If this fail, then immediately delete the data from TestStoreControllerImpl/NormalTransferStockToStoreStock")
 		})
 	})
@@ -438,12 +448,17 @@ func TestStoreStockControllerImpl(t *testing.T) {
 			assert.Equal(t, http.StatusAccepted, response.StatusCode)
 
 			// Check if the data really counted 5
-			var testValue *model.StoreStock
-			_, err = supabaseClient.From(repository.StoreStockTable).
-				Select("*", "exact", false).
-				Eq("item_id", strconv.Itoa(itemToTransfer.ItemId)).
-				Single().
-				ExecuteTo(&testValue)
+			var testValue model.StoreStock
+
+			err = gormClient.
+				Where(
+					"item_id = ? AND store_id = ? AND tenant_id = ?",
+					itemToTransfer.ItemId,
+					createdTestStore.Id,
+					createdTestTenant.Id,
+				).
+				Take(&testValue).
+				Error
 			assert.NoError(t, err)
 			assert.Equal(t, 5, testValue.Stocks)
 		})
@@ -486,11 +501,14 @@ func TestStoreStockControllerImpl(t *testing.T) {
 
 		t.Cleanup(func() {
 			// store_stock
-			_, _, err = supabaseClient.From(repository.StoreStockTable).
-				Delete("", "").
-				Eq("item_id", strconv.Itoa(itemToTransfer.ItemId)).
-				Eq("tenant_id", strconv.Itoa(createdTestTenant.Id)).
-				Execute()
+			err := gormClient.
+				Where(
+					"item_id = ? AND tenant_id = ?",
+					itemToTransfer.ItemId,
+					createdTestTenant.Id,
+				).
+				Delete(&model.StoreStock{}).
+				Error
 			require.NoError(t, err, "If this fail, then immediately delete the data from TestStoreControllerImpl/NormalTransferStockToStoreStock")
 		})
 	})
@@ -643,52 +661,51 @@ func TestStoreStockControllerImpl(t *testing.T) {
 	})
 
 	t.Cleanup(func() {
-		_, _, err = supabaseClient.From(repository.StoreTable).
-			Delete("", "").
-			Eq("id", strconv.Itoa(createdTestStore.Id)).
-			Eq("tenant_id", strconv.Itoa(createdTestTenant.Id)).
-			Execute()
+		err := gormClient.
+			Where("id = ? AND tenant_id = ?", createdTestStore.Id, createdTestTenant.Id).
+			Delete(&model.Store{}).
+			Error
 		require.NoError(t, err, "If this fail, then immediately delete the data from TestStoreStockControllerImpl (1)")
 
-		_, _, err = supabaseClient.From(repository.UserMtmTenantTable).
-			Delete("", "").
-			Eq("user_id", strconv.Itoa(createdTestUser.Id)).
-			Eq("tenant_id", strconv.Itoa(createdTestTenant.Id)).
-			Execute()
+		err = gormClient.
+			Where(
+				"user_id = ? AND tenant_id = ?",
+				createdTestUser.Id,
+				createdTestTenant.Id,
+			).
+			Delete(&model.UserMtmTenant{}).
+			Error
 		require.NoError(t, err, "If this fail, then immediately delete the data from TestStoreStockControllerImpl (2)")
 
-		_, _, err = supabaseClient.From(repository.WarehouseTable).
-			Delete("", "").
-			Eq("tenant_id", strconv.Itoa(createdTestTenant.Id)).
-			Execute()
+		err = gormClient.
+			Where("tenant_id = ?", createdTestTenant.Id).
+			Delete(&model.Item{}).
+			Error
 		require.NoError(t, err, "If this fail, then immediately delete the data from TestStoreControllerImpl (3)")
 
-		_, _, err = supabaseClient.From(repository.TenantTable).
-			Delete("", "").
-			Eq("id", strconv.Itoa(createdTestTenant.Id)).
-			Execute()
+		err = gormClient.
+			Where("id = ?", createdTestTenant.Id).
+			Delete(&model.Tenant{}).
+			Error
 		require.NoError(t, err, "If this fail, then immediately delete the data from TestStoreStockControllerImpl (4)")
 
-		_, _, err = supabaseClient.From(repository.UserTable).
-			Delete("", "").
-			Eq("id", strconv.Itoa(createdTestUser.Id)).
-			Execute()
+		err = gormClient.
+			Where("id = ?", createdTestUser.Id).
+			Delete(&model.User{}).
+			Error
 		require.NoError(t, err, "If this fail, then immediately delete the data from TestStoreStockControllerImpl (5)")
 	})
 }
 
-func createStore(client *supabase.Client, tenantId int, storeName string) *model.Store {
-	var result *model.Store
-	_, err := client.From(repository.StoreTable).
-		Insert(&model.Store{
-			TenantId: tenantId,
-			Name:     storeName,
-		}, false, "", "representation", "").
-		Single().
-		ExecuteTo(&result)
-	if err != nil {
+func createStore(gorm *gorm.DB, tenantId int, storeName string) *model.Store {
+	store := &model.Store{
+		TenantId: tenantId,
+		Name:     storeName,
+	}
+
+	if err := gorm.Create(store).Error; err != nil {
 		panic(fmt.Sprintf("[DEV] Could not create store. Reason: %s", err.Error()))
 	}
 
-	return result
+	return store
 }

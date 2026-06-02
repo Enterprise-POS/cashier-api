@@ -23,7 +23,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/supabase-community/supabase-go"
+	"gorm.io/gorm"
 )
 
 func TestWarehouseControllerImpl(t *testing.T) {
@@ -69,12 +69,12 @@ func TestWarehouseControllerImpl(t *testing.T) {
 		Email:    uniqueIdentity + "@gmail.com",
 		Password: "$2a$10$V6ZP0rm./adZ9kryl3mYf.MB9IY80Y8ZCjtKslUEPWoH.9PCsX7vK",
 	}
-	createdTestUser := createUser(supabaseClient, testUser)
+	createdTestUser := createUser(gormClient, testUser)
 	testTenant := &model.Tenant{
 		Name:        createdTestUser.Name + "'Group",
 		OwnerUserId: createdTestUser.Id,
 		IsActive:    true}
-	createdTenant := createTenant(supabaseClient, testTenant)
+	createdTenant := createTenant(gormClient, testTenant)
 
 	byteBody, err := json.Marshal(fiber.Map{
 		"email":    createdTestUser.Email,
@@ -607,31 +607,33 @@ func TestWarehouseControllerImpl(t *testing.T) {
 	require.NoError(t, err, "If this fail, then immediately delete the data from TestWarehouseControllerImpl/CreateItem/TestWarehouseControllerImpl (3)")
 }
 
-func createUser(client *supabase.Client, user *model.UserRegisterForm) *model.User {
-	var result *model.User
-	_, err := client.From(repository.UserTable).Insert(user, false, "", "", "").Single().ExecuteTo(&result)
-	if err != nil {
+func createUser(db *gorm.DB, user *model.UserRegisterForm) *model.User {
+	result := &model.User{
+		Name:     user.Name,
+		Email:    user.Email,
+		Password: user.Password,
+	}
+
+	if err := db.Create(result).Error; err != nil {
 		panic(fmt.Sprintf("[DEV] Could not create user, check input. Reason %s", err.Error()))
 	}
 
 	return result
 }
 
-func createTenant(client *supabase.Client, tenant *model.Tenant) *model.Tenant {
-	var result *model.Tenant
-	_, err := client.From(repository.TenantTable).
-		Insert(tenant, false, "", "", "").
-		Single().
-		ExecuteTo(&result)
-	if err != nil {
+func createTenant(db *gorm.DB, tenant *model.Tenant) *model.Tenant {
+	if err := db.Create(tenant).Error; err != nil {
 		panic(fmt.Sprintf("[DEV] Could not create tenant, check input (1). Reason: %s", err.Error()))
 	}
-	_, _, err = client.From("user_mtm_tenant").
-		Insert(&model.UserMtmTenant{UserId: tenant.OwnerUserId, TenantId: result.Id}, false, "", "", "").
-		Execute()
-	if err != nil {
+
+	userMtmTenant := &model.UserMtmTenant{
+		UserId:   tenant.OwnerUserId,
+		TenantId: tenant.Id,
+	}
+
+	if err := db.Create(userMtmTenant).Error; err != nil {
 		panic(fmt.Sprintf("[DEV] Could not create tenant, check input (2). Reason: %s", err.Error()))
 	}
 
-	return result
+	return tenant
 }

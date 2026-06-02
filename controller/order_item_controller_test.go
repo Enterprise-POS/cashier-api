@@ -78,7 +78,7 @@ func TestOrderItemControllerImpl(t *testing.T) {
 		Email:    uniqueIdentity + "@gmail.com",
 		Password: "$2a$10$V6ZP0rm./adZ9kryl3mYf.MB9IY80Y8ZCjtKslUEPWoH.9PCsX7vK",
 	}
-	createdTestUser := createUser(supabaseClient, expectedUser)
+	createdTestUser := createUser(gormClient, expectedUser)
 	require.Equal(t, expectedUser.Email, createdTestUser.Email)
 
 	expectedTenant := &model.Tenant{
@@ -87,7 +87,7 @@ func TestOrderItemControllerImpl(t *testing.T) {
 		IsActive:    true,
 	}
 
-	createdTestTenant := createTenant(supabaseClient, expectedTenant)
+	createdTestTenant := createTenant(gormClient, expectedTenant)
 	require.Equal(t, expectedTenant.Name, createdTestTenant.Name)
 	require.Equal(t, expectedTenant.OwnerUserId, createdTestTenant.OwnerUserId)
 	require.True(t, createdTestTenant.IsActive)

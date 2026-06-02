@@ -5,9 +5,9 @@ import (
 	common "cashier-api/helper"
 	"cashier-api/helper/client"
 	constant "cashier-api/helper/constant/cookie"
+	"cashier-api/model"
 	"cashier-api/repository"
 	"cashier-api/service"
-	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -28,7 +28,6 @@ func TestProtectedRoute(t *testing.T) {
 	}
 
 	gormClient := client.CreateGormClient()
-	supabaseClient := client.CreateSupabaseClient()
 
 	// To create new user, User endpoint are needed
 	userRepository := repository.NewUserRepositoryImpl(gormClient)
@@ -122,10 +121,7 @@ func TestProtectedRoute(t *testing.T) {
 		assert.Equal(t, http.StatusBadRequest, response.StatusCode)
 		assert.Contains(t, string(bytes), "token has invalid claims: token is expired")
 
-		_, _, err = supabaseClient.From("user").
-			Delete("", "").
-			Eq("id", fmt.Sprint(userId)).
-			Execute()
+		err = gormClient.Delete(&model.User{Id: int(userId)}).Error
 		require.Nil(t, err)
 	})
 }

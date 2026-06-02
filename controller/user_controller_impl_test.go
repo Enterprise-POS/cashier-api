@@ -3,6 +3,7 @@ package controller
 import (
 	"cashier-api/helper/client"
 	constant "cashier-api/helper/constant/cookie"
+	"cashier-api/model"
 	"cashier-api/repository"
 	"cashier-api/service"
 	"io"
@@ -23,7 +24,6 @@ func TestUserControllerImpl(t *testing.T) {
 		t.Skip("Required ENV not available: JWT_S")
 	}
 
-	supabaseClient := client.CreateSupabaseClient()
 	gormClient := client.CreateGormClient()
 	userRepository := repository.NewUserRepositoryImpl(gormClient)
 	userService := service.NewUserServiceImpl(userRepository)
@@ -62,13 +62,14 @@ func TestUserControllerImpl(t *testing.T) {
 			assert.NotEqual(t, "", enterprisePosCookie)
 
 			// clean up
-			_, _, err = supabaseClient.From(repository.UserTable).
-				Delete("", "").
-				Eq("email", "testusercontroller_sign_up@gmail.com").
-				Eq("name", "Test User").
-				Execute()
-
-			require.Nil(t, err, "If this failed, then delete data at DB. error at TestUserControllerImpl_SignUp_NormalSignUp")
+			err = gormClient.
+				Where(
+					"email = ? AND name = ?",
+					"testusercontroller_sign_up@gmail.com",
+					"Test User",
+				).
+				Delete(&model.User{}).
+				Error
 		})
 
 		t.Run("InvalidInput", func(t *testing.T) {
@@ -248,11 +249,10 @@ func TestUserControllerImpl(t *testing.T) {
 		})
 
 		// clean up
-		_, _, err = supabaseClient.From(repository.UserTable).
-			Delete("", "").
-			Eq("email", "testusercontroller_sign_in@gmail.com").
-			Eq("name", "Test User").
-			Execute()
+		err = gormClient.
+			Where("email = ? AND name = ?", "testusercontroller_sign_out1@gmail.com", "Test User").
+			Delete(&model.User{}).
+			Error
 
 		require.Nil(t, err, "If this failed, then delete data at DB. error at TestUserControllerImpl_SignIn")
 	})
@@ -304,12 +304,10 @@ func TestUserControllerImpl(t *testing.T) {
 			assert.True(t, cleared)
 
 			// Clean up
-			_, _, err = supabaseClient.From(repository.UserTable).
-				Delete("", "").
-				Eq("email", "testusercontroller_sign_out1@gmail.com").
-				Eq("name", "Test User").
-				Execute()
-
+			err = gormClient.
+				Where("email = ? AND name = ?", "testusercontroller_sign_in@gmail.com", "Test User").
+				Delete(&model.User{}).
+				Error
 			require.Nil(t, err, "If this failed, then delete data at DB. error at TestUserControllerImpl_SignOut1")
 		})
 	})

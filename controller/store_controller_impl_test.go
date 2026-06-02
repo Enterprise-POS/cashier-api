@@ -39,7 +39,6 @@ func TestStoreControllerImpl(t *testing.T) {
 	*/
 	testTimeout := int((time.Second * 5).Milliseconds())
 	app := fiber.New()
-	supabaseClient := client.CreateSupabaseClient()
 	gormClient := client.CreateGormClient()
 
 	userRepository := repository.NewUserRepositoryImpl(gormClient)
@@ -60,14 +59,14 @@ func TestStoreControllerImpl(t *testing.T) {
 		Email:    uniqueIdentity + "@gmail.com",
 		Password: "$2a$10$V6ZP0rm./adZ9kryl3mYf.MB9IY80Y8ZCjtKslUEPWoH.9PCsX7vK",
 	}
-	createdTestUser := createUser(supabaseClient, testUser)
+	createdTestUser := createUser(gormClient, testUser)
 
 	// Tenant
 	testTenant := &model.Tenant{
 		Name:        createdTestUser.Name + "'Group",
 		OwnerUserId: createdTestUser.Id,
 		IsActive:    true}
-	createdTestTenant := createTenant(supabaseClient, testTenant)
+	createdTestTenant := createTenant(gormClient, testTenant)
 
 	byteBody, err := json.Marshal(fiber.Map{
 		"email":    createdTestUser.Email,
