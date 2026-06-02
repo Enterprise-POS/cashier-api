@@ -161,7 +161,6 @@ func TestUserServiceImpl(t *testing.T) {
 					assert.Equal(t, user.Name, val)
 				case "created_at":
 					createdAtStr, ok := val.(string)
-					fmt.Println("Debug ", val)
 					assert.True(t, ok)
 
 					createdAt, err := time.Parse(time.RFC3339Nano, createdAtStr)
