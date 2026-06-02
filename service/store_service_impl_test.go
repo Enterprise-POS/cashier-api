@@ -42,13 +42,13 @@ func TestStoreServiceImpl(t *testing.T) {
 
 		t.Run("InvalidParameter", func(t *testing.T) {
 			// Store Name more than 50
-			invalidStoreName := "This Store Name is more than 50 So error will occurred"
+			invalidStoreName := "This Store Name is more than 100 So error will occurred" + strings.Repeat("A", 100)
 			createdStore, err := storeService.Create(tenantId, invalidStoreName)
 			assert.Error(t, err)
 			assert.Nil(t, createdStore)
 
 			// , Is not allowed / Not allowed characters
-			invalidStoreName = "Invalid Character By ,"
+			invalidStoreName = "Invalid Character By\n\n"
 			createdStore, err = storeService.Create(tenantId, invalidStoreName)
 			assert.Error(t, err)
 			assert.Nil(t, createdStore)
