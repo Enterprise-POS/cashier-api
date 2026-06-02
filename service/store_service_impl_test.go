@@ -5,6 +5,7 @@ import (
 	"cashier-api/model"
 	"cashier-api/repository"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -22,16 +23,20 @@ func TestStoreServiceImpl(t *testing.T) {
 	t.Run("Create", func(t *testing.T) {
 		t.Run("NormalCreate", func(t *testing.T) {
 			expectedStore := &model.Store{
-				Id:        1,
-				Name:      "Test_Create_NormalCreate1",
-				IsActive:  true,
-				CreatedAt: now,
-				TenantId:  tenantId,
+				Id:          1,
+				Name:        "Test_Create_NormalCreate1",
+				Address:     "Fiction Address",
+				PhoneNumber: "+81 123456789",
+				IsActive:    true,
+				CreatedAt:   &now,
+				TenantId:    tenantId,
 			}
 			storeRepository.Mock.On("Create", tenantId, expectedStore.Name).Return(expectedStore, nil)
 			createdStore, err := storeService.Create(tenantId, expectedStore.Name)
 			assert.NoError(t, err)
 			assert.NotNil(t, createdStore)
+			assert.Equal(t, createdStore.Address, expectedStore.Address)
+			assert.Equal(t, createdStore.PhoneNumber, expectedStore.PhoneNumber)
 			assert.Equal(t, createdStore.Name, expectedStore.Name)
 		})
 
@@ -70,18 +75,22 @@ func TestStoreServiceImpl(t *testing.T) {
 		t.Run("NormalGetAll", func(t *testing.T) {
 			expectedStores := []*model.Store{
 				{
-					Id:        1,
-					Name:      "Test_GetAll_NormalGetAll1",
-					IsActive:  true,
-					CreatedAt: now,
-					TenantId:  tenantId,
+					Id:          1,
+					Name:        "Test_GetAll_NormalGetAll1",
+					Address:     "Fiction Address",
+					PhoneNumber: "+81 123456789",
+					IsActive:    true,
+					CreatedAt:   &now,
+					TenantId:    tenantId,
 				},
 				{
-					Id:        2,
-					Name:      "Test_GetAll_NormalGetAll2",
-					IsActive:  true,
-					CreatedAt: now,
-					TenantId:  tenantId,
+					Id:          2,
+					Name:        "Test_GetAll_NormalGetAll2",
+					Address:     "Fiction Address",
+					PhoneNumber: "+81 123456789",
+					IsActive:    true,
+					CreatedAt:   &now,
+					TenantId:    tenantId,
 				},
 			}
 			page := 1
@@ -166,7 +175,7 @@ func TestStoreServiceImpl(t *testing.T) {
 				Id:        1,
 				Name:      "Edited Store",
 				TenantId:  1,
-				CreatedAt: now,
+				CreatedAt: &now,
 				IsActive:  true,
 			}
 			storeRepository.Mock.On("Edit", editedStore).Return(expectedEditedStoreReturn, nil)
@@ -178,32 +187,77 @@ func TestStoreServiceImpl(t *testing.T) {
 		})
 
 		t.Run("WrongInput", func(t *testing.T) {
-			editedStore := &model.Store{
-				// Id:       1,
-				Name:     "Edited Store",
-				TenantId: 1,
+			testCases := []struct {
+				name  string
+				store *model.Store
+			}{
+				{
+					name: "InvalidStoreId",
+					store: &model.Store{
+						Name:     "Edited Store",
+						TenantId: 1,
+					},
+				},
+				{
+					name: "InvalidStoreName",
+					store: &model.Store{
+						Id:       1,
+						Name:     "Invalid\x01Name", // control character — not matched by \p{L}\p{N}\p{Zs}\p{P}
+						TenantId: 1,
+					},
+				},
+				{
+					name: "InvalidTenantId",
+					store: &model.Store{
+						Id:   1,
+						Name: "Edited Store",
+					},
+				},
+				{
+					name: "InvalidAddress",
+					store: &model.Store{
+						Id:       1,
+						Name:     "Edited Store",
+						TenantId: 1,
+						Address:  strings.Repeat("A", 256),
+					},
+				},
+				{
+					name: "PhoneTooShort",
+					store: &model.Store{
+						Id:          1,
+						Name:        "Edited Store",
+						TenantId:    1,
+						PhoneNumber: "123", // 3 chars < 8
+					},
+				},
+				{
+					name: "PhoneTooLong",
+					store: &model.Store{
+						Id:          1,
+						Name:        "Edited Store",
+						TenantId:    1,
+						PhoneNumber: strings.Repeat("1", 21), // 21 chars > 20
+					},
+				},
+				{
+					name: "InvalidPhoneFormat",
+					store: &model.Store{
+						Id:          1,
+						Name:        "Edited Store",
+						TenantId:    1,
+						PhoneNumber: "ABC12345678",
+					},
+				},
 			}
-			editedTestStore, err := storeService.Edit(editedStore)
-			assert.Error(t, err)
-			assert.Nil(t, editedTestStore)
 
-			editedStore = &model.Store{
-				Id:       1,
-				Name:     "@WeirdName",
-				TenantId: 1,
+			for _, tc := range testCases {
+				t.Run(tc.name, func(t *testing.T) {
+					editedStore, err := storeService.Edit(tc.store)
+					assert.Error(t, err)
+					assert.Nil(t, editedStore)
+				})
 			}
-			editedTestStore, err = storeService.Edit(editedStore)
-			assert.Error(t, err)
-			assert.Nil(t, editedTestStore)
-
-			editedStore = &model.Store{
-				Id:   1,
-				Name: "Edited Store",
-				// TenantId: 1,
-			}
-			editedTestStore, err = storeService.Edit(editedStore)
-			assert.Error(t, err)
-			assert.Nil(t, editedTestStore)
 		})
 	})
 

@@ -350,9 +350,14 @@ func TestStoreControllerImpl(t *testing.T) {
 
 		t.Run("NormalEdit", func(t *testing.T) {
 			editedName := "Test Store Controller Normal Edit"
+			editedAddress := "123 Test Street"
+			editedPhone := "08123456789"
+
 			byteBody, err := json.Marshal(fiber.Map{
-				"store_id": createdTestStore.Id,
-				"name":     editedName,
+				"store_id":     createdTestStore.Id,
+				"name":         editedName,
+				"address":      editedAddress,
+				"phone_number": editedPhone,
 			})
 			require.NoError(t, err)
 
@@ -364,15 +369,17 @@ func TestStoreControllerImpl(t *testing.T) {
 			assert.NotNil(t, response)
 			assert.Equal(t, http.StatusOK, response.StatusCode)
 
-			// Verify via GORM that name is updated
+			// Verify via GORM that all fields are updated
 			var testStore model.Store
 			err = gormClient.Where("id = ?", createdTestStore.Id).First(&testStore).Error
 			assert.NoError(t, err)
 			assert.Equal(t, editedName, testStore.Name)
+			assert.Equal(t, editedAddress, testStore.Address)
+			assert.Equal(t, editedPhone, testStore.PhoneNumber)
 		})
 
 		t.Run("WrongInputType", func(t *testing.T) {
-			// name should be string, not int
+			// name should be string, not int — this causes a BodyParser error → 400
 			byteBody, err := json.Marshal(fiber.Map{
 				"store_id": createdTestStore.Id,
 				"name":     1,
@@ -386,9 +393,14 @@ func TestStoreControllerImpl(t *testing.T) {
 			assert.Nil(t, err)
 			assert.Equal(t, http.StatusBadRequest, response.StatusCode)
 
-			// store_id should be int, not string
+			byteResponseBody, err := io.ReadAll(response.Body)
+			assert.NoError(t, err)
+			assert.Contains(t, string(byteResponseBody), "Something gone wrong ! The request body is malformed")
+
+			// store_id as a non-numeric string — BodyParser sets it to 0,
+			// which the service rejects as "Invalid store id" → 400
 			byteBody, err = json.Marshal(fiber.Map{
-				"store_id": "1",
+				"store_id": "not-a-number",
 				"name":     "Test Store Controller Normal Edit",
 			})
 			require.NoError(t, err)
@@ -399,6 +411,88 @@ func TestStoreControllerImpl(t *testing.T) {
 			response, err = app.Test(request, testTimeout)
 			assert.Nil(t, err)
 			assert.Equal(t, http.StatusBadRequest, response.StatusCode)
+
+			byteResponseBody, err = io.ReadAll(response.Body)
+			assert.NoError(t, err)
+			assert.Contains(t, string(byteResponseBody), "The request body is malformed")
+		})
+
+		t.Run("WrongAddressOrPhone", func(t *testing.T) {
+			// Address exceeds 255 characters → 400
+			byteBody, err := json.Marshal(fiber.Map{
+				"store_id": createdTestStore.Id,
+				"name":     "Test Store Controller Normal Edit",
+				"address":  strings.Repeat("A", 256),
+			})
+			require.NoError(t, err)
+
+			request := httptest.NewRequest("PUT", fmt.Sprint("/stores/", createdTestTenant.Id), strings.NewReader(string(byteBody)))
+			request.Header.Set("Content-Type", "application/json")
+			request.AddCookie(enterprisePOSCookie)
+			response, err := app.Test(request, testTimeout)
+			assert.Nil(t, err)
+			assert.Equal(t, http.StatusBadRequest, response.StatusCode)
+
+			byteResponseBody, err := io.ReadAll(response.Body)
+			assert.NoError(t, err)
+			assert.Contains(t, string(byteResponseBody), "Current store address is not allowed")
+
+			// Phone too short → 400
+			byteBody, err = json.Marshal(fiber.Map{
+				"store_id":     createdTestStore.Id,
+				"name":         "Test Store Controller Normal Edit",
+				"phone_number": "123",
+			})
+			require.NoError(t, err)
+
+			request = httptest.NewRequest("PUT", fmt.Sprint("/stores/", createdTestTenant.Id), strings.NewReader(string(byteBody)))
+			request.Header.Set("Content-Type", "application/json")
+			request.AddCookie(enterprisePOSCookie)
+			response, err = app.Test(request, testTimeout)
+			assert.Nil(t, err)
+			assert.Equal(t, http.StatusBadRequest, response.StatusCode)
+
+			byteResponseBody, err = io.ReadAll(response.Body)
+			assert.NoError(t, err)
+			assert.Contains(t, string(byteResponseBody), "Invalid phone number length")
+
+			// Phone too long → 400
+			byteBody, err = json.Marshal(fiber.Map{
+				"store_id":     createdTestStore.Id,
+				"name":         "Test Store Controller Normal Edit",
+				"phone_number": strings.Repeat("1", 21),
+			})
+			require.NoError(t, err)
+
+			request = httptest.NewRequest("PUT", fmt.Sprint("/stores/", createdTestTenant.Id), strings.NewReader(string(byteBody)))
+			request.Header.Set("Content-Type", "application/json")
+			request.AddCookie(enterprisePOSCookie)
+			response, err = app.Test(request, testTimeout)
+			assert.Nil(t, err)
+			assert.Equal(t, http.StatusBadRequest, response.StatusCode)
+
+			byteResponseBody, err = io.ReadAll(response.Body)
+			assert.NoError(t, err)
+			assert.Contains(t, string(byteResponseBody), "Invalid phone number length")
+
+			// Invalid phone format → 400
+			byteBody, err = json.Marshal(fiber.Map{
+				"store_id":     createdTestStore.Id,
+				"name":         "Test Store Controller Normal Edit",
+				"phone_number": "ABC12345678",
+			})
+			require.NoError(t, err)
+
+			request = httptest.NewRequest("PUT", fmt.Sprint("/stores/", createdTestTenant.Id), strings.NewReader(string(byteBody)))
+			request.Header.Set("Content-Type", "application/json")
+			request.AddCookie(enterprisePOSCookie)
+			response, err = app.Test(request, testTimeout)
+			assert.Nil(t, err)
+			assert.Equal(t, http.StatusBadRequest, response.StatusCode)
+
+			byteResponseBody, err = io.ReadAll(response.Body)
+			assert.NoError(t, err)
+			assert.Contains(t, string(byteResponseBody), "Invalid phone number format")
 		})
 
 		t.Run("NotSpecifySomeField", func(t *testing.T) {

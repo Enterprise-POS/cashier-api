@@ -1,8 +1,6 @@
 package model
 
 import (
-	"fmt"
-	"os"
 	"testing"
 	"time"
 
@@ -25,7 +23,7 @@ func TestTenant(t *testing.T) {
 	assert.Equal(t, time.Now().UTC().Day(), tenant.CreatedAt.UTC().Day())
 	assert.Equal(t, false, tenant.IsActive)
 
-	fmt.Println(os.Getenv("MODE"))
+	// fmt.Println(os.Getenv("MODE"))
 }
 
 func TestUserMtmTenant(t *testing.T) {

@@ -24,16 +24,18 @@ func (orderItem *OrderItem) TableName() string {
 }
 
 type OrderItemWithStore struct {
-	Id             int       `json:"id"`
-	PurchasedPrice int       `json:"purchased_price"`
-	CreatedAt      time.Time `json:"created_at"`
-	TotalQuantity  int       `json:"total_quantity"`
-	TotalAmount    int       `json:"total_amount"`
-	DiscountAmount int       `json:"discount_amount"`
-	Subtotal       int       `json:"subtotal"`
-	StoreId        int       `json:"store_id"`
-	TenantId       int       `json:"tenant_id"`
-	StoreName      string    `json:"store_name"` // Joined field
+	Id               int       `json:"id"`
+	PurchasedPrice   int       `json:"purchased_price"`
+	CreatedAt        time.Time `json:"created_at"`
+	TotalQuantity    int       `json:"total_quantity"`
+	TotalAmount      int       `json:"total_amount"`
+	DiscountAmount   int       `json:"discount_amount"`
+	Subtotal         int       `json:"subtotal"`
+	StoreId          int       `json:"store_id"`
+	TenantId         int       `json:"tenant_id"`
+	StoreName        string    `json:"store_name"` // Joined field
+	StoreAddress     string    `json:"store_address"`
+	StorePhoneNumber string    `json:"store_phone_number"`
 }
 
 /*

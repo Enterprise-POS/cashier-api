@@ -149,7 +149,6 @@ func (repository *OrderItemRepositoryImpl) Transactions(params *CreateTransactio
 		params.TenantId,
 		params.StoreId,
 	).Scan(&transactionDataReturn)
-	fmt.Println(result)
 
 	if result.Error != nil {
 		var pgErr *pgconn.PgError
@@ -189,7 +188,9 @@ func (repository *OrderItemRepositoryImpl) FindById(orderItemId int, tenantId in
 		StoreId                 int       `gorm:"column:store_id"`
 
 		// store
-		StoreName string `gorm:"column:store_name"`
+		StoreName        string `gorm:"column:store_name"`
+		StoreAddress     string `gorm:"column:store_address"`
+		StorePhoneNumber string `gorm:"column:store_phone_number"`
 	}
 
 	var rows []row // local struct
@@ -213,7 +214,9 @@ func (repository *OrderItemRepositoryImpl) FindById(orderItemId int, tenantId in
 			order_item.discount_amount              AS order_item_discount_amount,
 			order_item.created_at,
 			order_item.store_id,
-			store.name                              AS store_name
+			store.name                              AS store_name,
+			store.address														AS store_address,
+			store.phone_number											AS store_phone_number
 		`).
 		Joins("INNER JOIN purchased_item_list ON purchased_item_list.order_item_id = order_item.id").
 		Joins("LEFT JOIN store ON store.id = order_item.store_id").
@@ -231,16 +234,18 @@ func (repository *OrderItemRepositoryImpl) FindById(orderItemId int, tenantId in
 	// Extract OrderItem from first row (since it's the same for all rows)
 	first := rows[0]
 	orderItem := &model.OrderItemWithStore{
-		Id:             first.OrderItemId,
-		PurchasedPrice: first.PurchasedPrice,
-		Subtotal:       first.Subtotal,
-		TotalQuantity:  first.TotalQuantity,
-		TotalAmount:    first.OrderItemTotalAmount,
-		DiscountAmount: first.OrderItemDiscountAmount,
-		CreatedAt:      first.CreatedAt,
-		StoreId:        first.StoreId,
-		TenantId:       tenantId,
-		StoreName:      first.StoreName,
+		Id:               first.OrderItemId,
+		PurchasedPrice:   first.PurchasedPrice,
+		Subtotal:         first.Subtotal,
+		TotalQuantity:    first.TotalQuantity,
+		TotalAmount:      first.OrderItemTotalAmount,
+		DiscountAmount:   first.OrderItemDiscountAmount,
+		CreatedAt:        first.CreatedAt,
+		StoreId:          first.StoreId,
+		TenantId:         tenantId,
+		StoreName:        first.StoreName,
+		StoreAddress:     first.StoreAddress,
+		StorePhoneNumber: first.StorePhoneNumber,
 	}
 
 	// Extract all PurchasedItems
