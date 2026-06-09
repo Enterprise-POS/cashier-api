@@ -171,6 +171,15 @@ func (service *OrderItemServiceImpl) Transactions(params *repository.CreateTrans
 			calculatedDiscount, params.DiscountAmount)
 	}
 
+	if params.PaymentType == "" {
+		params.PaymentType = model.PaymentTypeCash
+	}
+	switch params.PaymentType {
+	case model.PaymentTypeCash, model.PaymentTypeQRIS, model.PaymentTypeCard, model.PaymentTypeEWallet, model.PaymentTypeOther:
+	default:
+		return nil, fmt.Errorf("invalid payment_type: %q. Must be one of CASH, QRIS, CARD, EWALLET, OTHER", params.PaymentType)
+	}
+
 	// Validate payment (if you track cash given)
 	// Remove this if PurchasedPrice is just another name for TotalAmount
 	if params.PurchasedPrice < params.TotalAmount {

@@ -6,6 +6,16 @@ import (
 	"gorm.io/gorm"
 )
 
+type PaymentType string
+
+const (
+	PaymentTypeCash    PaymentType = "CASH"
+	PaymentTypeQRIS    PaymentType = "QRIS"
+	PaymentTypeCard    PaymentType = "CARD"
+	PaymentTypeEWallet PaymentType = "EWALLET"
+	PaymentTypeOther   PaymentType = "OTHER"
+)
+
 type OrderItem struct {
 	Id             int            `json:"id,omitempty" gorm:"primaryKey;autoIncrement;column:id"`
 	PurchasedPrice int            `json:"purchased_price" gorm:"column:purchased_price"`
@@ -16,6 +26,7 @@ type OrderItem struct {
 	Subtotal       int            `json:"subtotal" gorm:"column:subtotal"`
 	StoreId        int            `json:"store_id" gorm:"column:store_id"`
 	TenantId       int            `json:"tenant_id" gorm:"column:tenant_id"`
+	PaymentType    PaymentType    `json:"payment_type" gorm:"column:payment_type"`
 	DeletedAt      gorm.DeletedAt `json:"-"` // Soft delete
 }
 
@@ -24,18 +35,19 @@ func (orderItem *OrderItem) TableName() string {
 }
 
 type OrderItemWithStore struct {
-	Id               int       `json:"id"`
-	PurchasedPrice   int       `json:"purchased_price"`
-	CreatedAt        time.Time `json:"created_at"`
-	TotalQuantity    int       `json:"total_quantity"`
-	TotalAmount      int       `json:"total_amount"`
-	DiscountAmount   int       `json:"discount_amount"`
-	Subtotal         int       `json:"subtotal"`
-	StoreId          int       `json:"store_id"`
-	TenantId         int       `json:"tenant_id"`
-	StoreName        string    `json:"store_name"` // Joined field
-	StoreAddress     string    `json:"store_address"`
-	StorePhoneNumber string    `json:"store_phone_number"`
+	Id               int         `json:"id"`
+	PurchasedPrice   int         `json:"purchased_price"`
+	CreatedAt        time.Time   `json:"created_at"`
+	TotalQuantity    int         `json:"total_quantity"`
+	TotalAmount      int         `json:"total_amount"`
+	DiscountAmount   int         `json:"discount_amount"`
+	Subtotal         int         `json:"subtotal"`
+	StoreId          int         `json:"store_id"`
+	TenantId         int         `json:"tenant_id"`
+	PaymentType      PaymentType `json:"payment_type"`
+	StoreName        string      `json:"store_name"` // Joined field
+	StoreAddress     string      `json:"store_address"`
+	StorePhoneNumber string      `json:"store_phone_number"`
 }
 
 /*
