@@ -88,6 +88,7 @@ func TestOrderItemRepository(t *testing.T) {
 				Subtotal:       10000,
 				TenantId:       tenantId,
 				StoreId:        storeId,
+				PaymentType:    model.PaymentTypeCash,
 			}
 
 			result, err := orderItemRepo.PlaceOrderItem(input)
@@ -112,6 +113,7 @@ func TestOrderItemRepository(t *testing.T) {
 				Subtotal:       10000,
 				TenantId:       tenantId,
 				StoreId:        storeId,
+				PaymentType:    model.PaymentTypeCash,
 			}
 
 			result, err := repo.PlaceOrderItem(input)
@@ -139,6 +141,7 @@ func TestOrderItemRepository(t *testing.T) {
 				Subtotal:       10000,
 				TenantId:       tenantId,
 				StoreId:        storeId,
+				PaymentType:    model.PaymentTypeCash,
 			}
 
 			result, err := repo.PlaceOrderItem(input)
@@ -166,6 +169,7 @@ func TestOrderItemRepository(t *testing.T) {
 				Subtotal:       10000,
 				TenantId:       tenantId,
 				StoreId:        storeId,
+				PaymentType:    model.PaymentTypeCash,
 			}
 
 			result, err := repo.PlaceOrderItem(input)
@@ -193,6 +197,7 @@ func TestOrderItemRepository(t *testing.T) {
 				Subtotal:       9999,
 				TenantId:       tenantId,
 				StoreId:        0, // Invalid: FK violation expected
+				PaymentType:    model.PaymentTypeCash,
 			}
 
 			result, err := repo.PlaceOrderItem(input)
@@ -220,6 +225,7 @@ func TestOrderItemRepository(t *testing.T) {
 				Subtotal:       9999,
 				TenantId:       0, // Invalid: FK violation expected
 				StoreId:        storeId,
+				PaymentType:    model.PaymentTypeCash,
 			}
 
 			result, err := repo.PlaceOrderItem(input)
@@ -242,11 +248,11 @@ func TestOrderItemRepository(t *testing.T) {
 			orderItemRepo := NewOrderItemRepositoryImpl(tx)
 
 			dummyOrderItems := []*model.OrderItem{
-				{PurchasedPrice: 10000, TotalQuantity: 1, TotalAmount: 10000, DiscountAmount: 0, Subtotal: 10000, TenantId: tenantId, StoreId: storeId},
-				{PurchasedPrice: 20000, TotalQuantity: 2, TotalAmount: 40000, DiscountAmount: 0, Subtotal: 40000, TenantId: tenantId, StoreId: storeId},
-				{PurchasedPrice: 30000, TotalQuantity: 3, TotalAmount: 90000, DiscountAmount: 0, Subtotal: 90000, TenantId: tenantId, StoreId: storeId},
-				{PurchasedPrice: 40000, TotalQuantity: 4, TotalAmount: 100000, DiscountAmount: 60000, Subtotal: 160000, TenantId: tenantId, StoreId: storeId},
-				{PurchasedPrice: 50000, TotalQuantity: 5, TotalAmount: 250000, DiscountAmount: 0, Subtotal: 250000, TenantId: tenantId, StoreId: storeId},
+				{PurchasedPrice: 10000, TotalQuantity: 1, TotalAmount: 10000, DiscountAmount: 0, Subtotal: 10000, TenantId: tenantId, StoreId: storeId, PaymentType: model.PaymentTypeCash},
+				{PurchasedPrice: 20000, TotalQuantity: 2, TotalAmount: 40000, DiscountAmount: 0, Subtotal: 40000, TenantId: tenantId, StoreId: storeId, PaymentType: model.PaymentTypeCash},
+				{PurchasedPrice: 30000, TotalQuantity: 3, TotalAmount: 90000, DiscountAmount: 0, Subtotal: 90000, TenantId: tenantId, StoreId: storeId, PaymentType: model.PaymentTypeCash},
+				{PurchasedPrice: 40000, TotalQuantity: 4, TotalAmount: 100000, DiscountAmount: 60000, Subtotal: 160000, TenantId: tenantId, StoreId: storeId, PaymentType: model.PaymentTypeCash},
+				{PurchasedPrice: 50000, TotalQuantity: 5, TotalAmount: 250000, DiscountAmount: 0, Subtotal: 250000, TenantId: tenantId, StoreId: storeId, PaymentType: model.PaymentTypeCash},
 			}
 
 			for _, item := range dummyOrderItems {
@@ -294,6 +300,7 @@ func TestOrderItemRepository(t *testing.T) {
 					TenantId:       tenantId,
 					StoreId:        storeId,
 					CreatedAt:      dates[i],
+					PaymentType:    model.PaymentTypeCash,
 				})
 				assert.Nil(t, err)
 			}
@@ -336,6 +343,7 @@ func TestOrderItemRepository(t *testing.T) {
 					Subtotal:       amt,
 					TenantId:       tenantId,
 					StoreId:        storeId,
+					PaymentType:    model.PaymentTypeCash,
 				})
 				assert.Nil(t, err)
 			}
@@ -387,6 +395,7 @@ func TestOrderItemRepository(t *testing.T) {
 				Subtotal:       10000,
 				TenantId:       tenantId,
 				StoreId:        storeId,
+				PaymentType:    model.PaymentTypeCash,
 			})
 			require.NoError(t, err)
 			require.NotZero(t, created.Id)
@@ -436,6 +445,7 @@ func TestOrderItemRepository(t *testing.T) {
 				Subtotal:       10000,
 				TenantId:       tenantId,
 				StoreId:        storeId,
+				PaymentType:    model.PaymentTypeCash,
 			})
 			require.NoError(t, err)
 			require.NotZero(t, created.Id)
