@@ -196,6 +196,7 @@ func TestOrderItemControllerImpl(t *testing.T) {
 				TotalAmount:    27_700,
 				DiscountAmount: 1_300,
 				SubTotal:       29_000, // 20_000 + 9_000
+				PaymentType:    model.PaymentTypeQRIS,
 
 				Items: []*model.PurchasedItem{
 					{

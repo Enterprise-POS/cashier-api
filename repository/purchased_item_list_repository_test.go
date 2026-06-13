@@ -56,6 +56,7 @@ func TestPurchasedItem(t *testing.T) {
 			Subtotal:       40000,
 			StoreId:        storeId,
 			TenantId:       tenantId,
+			PaymentType:    model.PaymentTypeCash,
 		}
 		require.NoError(t, tx.Create(orderItem).Error)
 		require.NotZero(t, orderItem.Id)

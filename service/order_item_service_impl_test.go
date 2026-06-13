@@ -269,6 +269,7 @@ func TestOrderItemServiceImpl(t *testing.T) {
 				TenantId:       TENANT_ID,
 				CreatedAt:      now,
 				StoreName:      "Test Store Name",
+				PaymentType:    model.PaymentTypeQRIS,
 			}
 
 			expectedPurchasedList := []*model.PurchasedItem{
@@ -301,6 +302,7 @@ func TestOrderItemServiceImpl(t *testing.T) {
 			assert.Len(t, purchasedItemList, 2)
 			assert.NotNil(t, orderItem)
 			assert.Equal(t, expectedOrderItem.StoreName, orderItem.StoreName)
+			assert.Equal(t, expectedOrderItem.PaymentType, orderItem.PaymentType)
 			for i, purchasedItem := range purchasedItemList {
 				assert.Equal(t, expectedPurchasedList[i].Id, purchasedItem.Id)
 				assert.Equal(t, expectedPurchasedList[i].ItemId, purchasedItem.ItemId)
@@ -344,6 +346,7 @@ func TestOrderItemServiceImpl(t *testing.T) {
 				TotalAmount:    10_000,
 				DiscountAmount: 0,
 				SubTotal:       10_000,
+				PaymentType:    model.PaymentTypeCash,
 
 				Items: []*model.PurchasedItem{
 					{
@@ -677,6 +680,37 @@ func TestOrderItemServiceImpl(t *testing.T) {
 			assert.Error(t, err)
 			assert.Nil(t, transactionDataReturn)
 			assert.ErrorContains(t, err, "Insufficient payment")
+		})
+
+		t.Run("InvalidPaymentType", func(t *testing.T) {
+			invalidParams := &repository.CreateTransactionParams{
+				PurchasedPrice: 10_000,
+				TotalQuantity:  1,
+				TotalAmount:    10_000,
+				DiscountAmount: 0,
+				SubTotal:       10_000,
+				PaymentType:    "VISA",
+
+				Items: []*model.PurchasedItem{
+					{
+						Quantity:           1,
+						StorePriceSnapshot: 10_000,
+						DiscountAmount:     0,
+						TotalAmount:        10_000,
+						ItemId:             1,
+						ItemNameSnapshot:   "Item Name Snapshot",
+					},
+				},
+
+				UserId:   USER_ID,
+				TenantId: TENANT_ID,
+				StoreId:  STORE_ID,
+			}
+
+			transactionDataReturn, err := orderItemService.Transactions(invalidParams)
+			assert.Error(t, err)
+			assert.Nil(t, transactionDataReturn)
+			assert.ErrorContains(t, err, "invalid payment_type")
 		})
 
 		t.Run("TooManyItems", func(t *testing.T) {

@@ -19,6 +19,7 @@ func TestOrderItem(t *testing.T) {
 		Subtotal:       10000,
 		TenantId:       1,
 		StoreId:        1,
+		PaymentType:    PaymentTypeCash,
 	}
 
 	assert.Equal(t, 1, orderItem.Id)
@@ -30,4 +31,5 @@ func TestOrderItem(t *testing.T) {
 	assert.Equal(t, 1, orderItem.TenantId)
 	assert.Equal(t, 1, orderItem.StoreId)
 	assert.NotNil(t, orderItem.CreatedAt)
+	assert.Equal(t, PaymentTypeCash, orderItem.PaymentType)
 }
