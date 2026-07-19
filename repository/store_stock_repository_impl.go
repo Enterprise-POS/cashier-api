@@ -300,10 +300,27 @@ func (repository *StoreStockRepositoryImpl) Edit(item *model.StoreStock) error {
 // LoadCashierData implements StoreStockRepository.
 func (repository *StoreStockRepositoryImpl) LoadCashierData(tenantId int, storeId int) ([]*model.CashierData, error) {
 	var cashierData []*model.CashierData
-	err := repository.Client.Raw(
-		"SELECT * FROM load_cashier_data(?, ?)",
-		tenantId, storeId,
-	).Scan(&cashierData).Error
+
+	err := repository.Client.
+		Model(&model.Item{}).
+		Select(`
+			category.id AS category_id,
+			category.category_name,
+			warehouse.item_id,
+			warehouse.item_name,
+			warehouse.stocks,
+			warehouse.stock_type,
+			warehouse.base_price,
+			warehouse.is_active,
+			store_stock.id AS store_stock_id,
+			store_stock.stocks AS store_stock_stocks,
+			store_stock.price AS store_stock_price
+		`).
+		Joins("INNER JOIN store_stock ON store_stock.item_id = warehouse.item_id AND store_stock.store_id = ?", storeId).
+		Joins("LEFT JOIN category_mtm_warehouse ON category_mtm_warehouse.item_id = warehouse.item_id").
+		Joins("LEFT JOIN category ON category.id = category_mtm_warehouse.category_id").
+		Where("warehouse.tenant_id = ?", tenantId).
+		Scan(&cashierData).Error
 	if err != nil {
 		return nil, err
 	}
