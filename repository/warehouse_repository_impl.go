@@ -148,22 +148,41 @@ func (warehouse *WarehouseRepositoryImpl) SetActivate(tenantId, itemId int, setI
 // FindCompleteById implements WarehouseRepository.
 func (warehouse *WarehouseRepositoryImpl) FindCompleteById(itemId int, tenantId int) (*model.CategoryWithItem, error) {
 	var result model.CategoryWithItem
+	var count int64
 
-	err := warehouse.Client.Raw(`
-		SELECT * FROM find_complete_by_id(?, ?)
-	`, tenantId, itemId).
+	if err := warehouse.Client.
+		Model(&model.Item{}).
+		Where("warehouse.tenant_id = ?", tenantId).
+		Where("warehouse.item_id = ?", itemId).
+		Count(&count).Error; err != nil {
+		return nil, err
+	}
+
+	if count == 0 {
+		return nil, errors.New("NO_DATA_FOUND")
+	}
+	if count > 1 {
+		return nil, errors.New("CARDINALITY_VIOLATION")
+	}
+
+	err := warehouse.Client.
+		Model(&model.Item{}).
+		Select(`
+			category.id AS category_id,
+			category.category_name,
+			warehouse.item_id,
+			warehouse.item_name,
+			warehouse.stock_type,
+			warehouse.stocks,
+			warehouse.base_price,
+			COUNT(*) OVER() AS total_count
+		`).
+		Joins("LEFT JOIN category_mtm_warehouse ON category_mtm_warehouse.item_id = warehouse.item_id").
+		Joins("LEFT JOIN category ON category.id = category_mtm_warehouse.category_id").
+		Where("warehouse.tenant_id = ?", tenantId).
+		Where("warehouse.item_id = ?", itemId).
 		Scan(&result).Error
-
 	if err != nil {
-		// Preserve original PostgreSQL error codes
-		if strings.Contains(err.Error(), "NO_DATA_FOUND") {
-			return nil, errors.New("NO_DATA_FOUND")
-		}
-
-		if strings.Contains(err.Error(), "CARDINALITY_VIOLATION") {
-			return nil, errors.New("CARDINALITY_VIOLATION")
-		}
-
 		return nil, err
 	}
 
