@@ -80,6 +80,16 @@ func (repository *OrderItemRepositoryMock) GetProfitReport(tenantId int, storeId
 	return args.Get(0).([]*ProfitReportRow), nil
 }
 
+// GetOrderDetails implements OrderItemRepository.
+func (repository *OrderItemRepositoryMock) GetOrderDetails(tenantId int, storeId int, dateFilter *query.DateFilter) ([]*OrderDetailRow, error) {
+	args := repository.Mock.Called(tenantId, storeId, dateFilter)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+
+	return args.Get(0).([]*OrderDetailRow), nil
+}
+
 // GetTenantAndStoreName implements OrderItemRepository.
 func (repository *OrderItemRepositoryMock) GetTenantAndStoreName(tenantId int, storeId int) (string, string, error) {
 	args := repository.Mock.Called(tenantId, storeId)

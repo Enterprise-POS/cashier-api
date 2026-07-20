@@ -424,6 +424,11 @@ func (service *OrderItemServiceImpl) ExportProfitExcel(tenantId int, storeId int
 	f.SetCellValue(itemSheet, fmt.Sprintf("H%d", totalRow), grandMargin)
 	f.SetCellStyle(itemSheet, fmt.Sprintf("H%d", totalRow), fmt.Sprintf("H%d", totalRow), marginTotalStyle)
 
+	// Header filter dropdowns (excludes the TOTAL row)
+	if err := f.AutoFilter(itemSheet, fmt.Sprintf("A1:H%d", len(rows)+1), []excelize.AutoFilterOptions{}); err != nil {
+		return nil, fmt.Errorf("failed to set auto filter on %s: %w", itemSheet, err)
+	}
+
 	// ── Sheet 2: Summary ──────────────────────────────────────────────────────
 	summarySheet := "Summary"
 	f.NewSheet(summarySheet)
@@ -485,7 +490,7 @@ func (service *OrderItemServiceImpl) ExportProfitExcel(tenantId int, storeId int
 
 	// ── Chart 1: Clustered Column on "Profit Per Item" ───────────────────────
 	if len(rows) > 0 {
-		lastDataRow := len(rows) + 1 // row 1 = header, rows 2..N = data
+		lastDataRow := len(rows) + 1
 		cat := fmt.Sprintf("'%s'!$B$2:$B$%d", itemSheet, lastDataRow)
 		f.AddChart(itemSheet, "J1", &excelize.Chart{
 			Type: excelize.Col,
@@ -516,7 +521,6 @@ func (service *OrderItemServiceImpl) ExportProfitExcel(tenantId int, storeId int
 	}
 
 	// ── Chart 2: Pie on "Summary" (revenue breakdown) ────────────────────────
-	// Write a small helper table in columns D/E for the pie series.
 	f.SetColWidth(summarySheet, "D", "D", 18)
 	f.SetColWidth(summarySheet, "E", "E", 18)
 
@@ -567,6 +571,71 @@ func (service *OrderItemServiceImpl) ExportProfitExcel(tenantId int, storeId int
 		Legend:    excelize.ChartLegend{Position: "bottom"},
 		Dimension: excelize.ChartDimension{Width: 400, Height: 300},
 	})
+
+	// ── Sheet 3: Order Details ───────────────────────────────────────────────
+	orderDetails, err := service.Repository.GetOrderDetails(tenantId, storeId, dateFilter)
+	if err != nil {
+		return nil, err
+	}
+
+	detailSheet := "Order Details"
+	f.NewSheet(detailSheet)
+
+	if err := f.MoveSheet(detailSheet, summarySheet); err != nil {
+		return nil, fmt.Errorf("failed to reorder sheets: %w", err)
+	}
+
+	detailBorderStyle, _ := f.NewStyle(&excelize.Style{
+		Border: []excelize.Border{
+			{Type: "left", Color: "CCCCCC", Style: 1},
+			{Type: "right", Color: "CCCCCC", Style: 1},
+			{Type: "top", Color: "CCCCCC", Style: 1},
+			{Type: "bottom", Color: "CCCCCC", Style: 1},
+		},
+	})
+
+	detailHeaders := []string{"Order Details ID", "Invoice ID", "Product Name", "Category", "Qty", "Price (Rp)", "Order Date", "Status", "Price Buy (Rp)"}
+	detailColWidths := []float64{16, 12, 30, 20, 8, 16, 14, 12, 16}
+
+	for i, h := range detailHeaders {
+		col, _ := excelize.ColumnNumberToName(i + 1)
+		cell := fmt.Sprintf("%s1", col)
+		f.SetCellValue(detailSheet, cell, h)
+		f.SetCellStyle(detailSheet, cell, cell, headerStyle)
+		f.SetColWidth(detailSheet, col, col, detailColWidths[i])
+	}
+	f.SetRowHeight(detailSheet, 1, 20)
+
+	for i, row := range orderDetails {
+		excelRow := i + 2
+		cells := []interface{}{
+			row.OrderDetailsId,
+			row.InvoiceId,
+			row.ProductName,
+			row.Category,
+			row.ProductQty,
+			row.ProductPrice,
+			row.ProductOrderDate.Format("2006-01-02"),
+			row.OrderStatus,
+			row.PriceBuy,
+		}
+		for j, val := range cells {
+			col, _ := excelize.ColumnNumberToName(j + 1)
+			cell := fmt.Sprintf("%s%d", col, excelRow)
+			f.SetCellValue(detailSheet, cell, val)
+			switch j {
+			case 5, 8: // Price, Price Buy
+				f.SetCellStyle(detailSheet, cell, cell, currencyStyle)
+			default:
+				f.SetCellStyle(detailSheet, cell, cell, detailBorderStyle)
+			}
+		}
+	}
+
+	// Header filter dropdowns
+	if err := f.AutoFilter(detailSheet, fmt.Sprintf("A1:I%d", len(orderDetails)+1), []excelize.AutoFilterOptions{}); err != nil {
+		return nil, fmt.Errorf("failed to set auto filter on %s: %w", detailSheet, err)
+	}
 
 	buf, err := f.WriteToBuffer()
 	if err != nil {

@@ -48,6 +48,12 @@ type OrderItemRepository interface {
 	GetTenantAndStoreName(tenantId int, storeId int) (tenantName string, storeName string, err error)
 
 	/*
+		Get per-order-item (purchased_item_list row) detail data for Excel export.
+		Includes soft-deleted (cancelled) invoices, reflected via OrderStatus.
+	*/
+	GetOrderDetails(tenantId int, storeId int, dateFilter *query.DateFilter) ([]*OrderDetailRow, error)
+
+	/*
 		Soft delete invoice.
 	*/
 	DeleteInvoice(orderItemId int, tenantId int) error
@@ -89,6 +95,18 @@ type ProfitReportRow struct {
 	TotalCogs     int    `json:"total_cogs"     gorm:"column:total_cogs"`
 	TotalDiscount int    `json:"total_discount" gorm:"column:total_discount"`
 	TotalProfit   int    `json:"total_profit"   gorm:"column:total_profit"`
+}
+
+type OrderDetailRow struct {
+	OrderDetailsId   int       `json:"order_details_id"   gorm:"column:order_details_id"`
+	InvoiceId        int       `json:"invoice_id"         gorm:"column:invoice_id"`
+	ProductName      string    `json:"product_name"       gorm:"column:product_name"`
+	Category         string    `json:"category"           gorm:"column:category"`
+	ProductQty       int       `json:"product_qty"        gorm:"column:product_qty"`
+	ProductPrice     int       `json:"product_price"      gorm:"column:product_price"`
+	ProductOrderDate time.Time `json:"product_order_date" gorm:"column:product_order_date"`
+	OrderStatus      string    `json:"order_status"       gorm:"column:order_status"`
+	PriceBuy         int       `json:"price_buy"          gorm:"column:price_buy"`
 }
 
 type TransactionDataReturn struct {

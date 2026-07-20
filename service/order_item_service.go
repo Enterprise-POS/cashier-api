@@ -38,8 +38,8 @@ type OrderItemService interface {
 	GetSalesReport(tenantId int, storeId int, dateFilter *query.DateFilter) (*repository.SalesReport, error)
 
 	/*
-		Build an Excel workbook with per-item profit breakdown and a summary sheet.
-		Returns the raw .xlsx bytes.
+		Build an Excel workbook with a per-item profit breakdown, a summary sheet,
+		and an order details sheet. Returns the raw .xlsx bytes.
 	*/
 	ExportProfitExcel(tenantId int, storeId int, dateFilter *query.DateFilter) ([]byte, error)
 
