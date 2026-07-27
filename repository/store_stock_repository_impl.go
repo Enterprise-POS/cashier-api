@@ -320,6 +320,7 @@ func (repository *StoreStockRepositoryImpl) LoadCashierData(tenantId int, storeI
 		Joins("LEFT JOIN category_mtm_warehouse ON category_mtm_warehouse.item_id = warehouse.item_id").
 		Joins("LEFT JOIN category ON category.id = category_mtm_warehouse.category_id").
 		Where("warehouse.tenant_id = ?", tenantId).
+		Order("warehouse.item_name ASC").
 		Scan(&cashierData).Error
 	if err != nil {
 		return nil, err

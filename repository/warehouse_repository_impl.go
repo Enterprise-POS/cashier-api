@@ -147,23 +147,7 @@ func (warehouse *WarehouseRepositoryImpl) SetActivate(tenantId, itemId int, setI
 
 // FindCompleteById implements WarehouseRepository.
 func (warehouse *WarehouseRepositoryImpl) FindCompleteById(itemId int, tenantId int) (*model.CategoryWithItem, error) {
-	var result model.CategoryWithItem
-	var count int64
-
-	if err := warehouse.Client.
-		Model(&model.Item{}).
-		Where("warehouse.tenant_id = ?", tenantId).
-		Where("warehouse.item_id = ?", itemId).
-		Count(&count).Error; err != nil {
-		return nil, err
-	}
-
-	if count == 0 {
-		return nil, errors.New("NO_DATA_FOUND")
-	}
-	if count > 1 {
-		return nil, errors.New("CARDINALITY_VIOLATION")
-	}
+	var results []model.CategoryWithItem
 
 	err := warehouse.Client.
 		Model(&model.Item{}).
@@ -174,17 +158,24 @@ func (warehouse *WarehouseRepositoryImpl) FindCompleteById(itemId int, tenantId 
 			warehouse.item_name,
 			warehouse.stock_type,
 			warehouse.stocks,
-			warehouse.base_price,
-			COUNT(*) OVER() AS total_count
+			warehouse.base_price
 		`).
 		Joins("LEFT JOIN category_mtm_warehouse ON category_mtm_warehouse.item_id = warehouse.item_id").
 		Joins("LEFT JOIN category ON category.id = category_mtm_warehouse.category_id").
 		Where("warehouse.tenant_id = ?", tenantId).
 		Where("warehouse.item_id = ?", itemId).
-		Scan(&result).Error
+		Limit(2). // only need to know if there are 0, 1, or >1 rows
+		Find(&results).Error
 	if err != nil {
 		return nil, err
 	}
 
-	return &result, nil
+	switch len(results) {
+	case 0:
+		return nil, errors.New("NO_DATA_FOUND")
+	case 1:
+		return &results[0], nil
+	default:
+		return nil, errors.New("CARDINALITY_VIOLATION")
+	}
 }
