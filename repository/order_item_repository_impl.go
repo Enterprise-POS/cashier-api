@@ -284,7 +284,7 @@ func (repository *OrderItemRepositoryImpl) GetProfitReport(tenantId int, storeId
 			SUM(pil.discount_amount * pil.quantity) AS total_discount,
 			SUM(pil.total_amount) - SUM(pil.base_price_snapshot * pil.quantity) AS total_profit
 		`).
-		Joins("JOIN order_item oi ON oi.id = pil.order_item_id").
+		Joins("JOIN order_item oi ON oi.id = pil.order_item_id AND oi.deleted_at IS NULL").
 		Where("oi.tenant_id = ?", tenantId).
 		Group("pil.item_id").
 		Order("total_profit DESC")
@@ -308,6 +308,55 @@ func (repository *OrderItemRepositoryImpl) GetProfitReport(tenantId int, storeId
 	}
 
 	var rows []*ProfitReportRow
+	if err := db.Scan(&rows).Error; err != nil {
+		return nil, err
+	}
+
+	return rows, nil
+}
+
+// GetOrderDetails implements OrderItemRepository.
+func (repository *OrderItemRepositoryImpl) GetOrderDetails(tenantId int, storeId int, dateFilter *query.DateFilter) ([]*OrderDetailRow, error) {
+	db := repository.Client.Table("purchased_item_list pil").
+		Select(`
+			pil.id AS order_details_id,
+			pil.order_item_id AS invoice_id,
+			pil.item_name_snapshot AS product_name,
+			COALESCE((
+				SELECT STRING_AGG(c.category_name, ', ' ORDER BY c.category_name)
+				FROM category_mtm_warehouse cmw
+				JOIN category c ON c.id = cmw.category_id
+				WHERE cmw.item_id = pil.item_id
+			), '') AS category,
+			pil.quantity AS product_qty,
+			pil.store_price_snapshot AS product_price,
+			oi.created_at AS product_order_date,
+			CASE WHEN oi.deleted_at IS NULL THEN 'Completed' ELSE 'Cancelled' END AS order_status,
+			pil.base_price_snapshot AS price_buy
+		`).
+		Joins("JOIN order_item oi ON oi.id = pil.order_item_id").
+		Where("oi.tenant_id = ?", tenantId).
+		Order("oi.created_at ASC, pil.id ASC")
+
+	if storeId > 0 {
+		db = db.Where("oi.store_id = ?", storeId)
+	}
+
+	if dateFilter != nil {
+		if dateFilter.StartDate != nil && dateFilter.EndDate != nil {
+			startDate := common.EpochToRFC3339(*dateFilter.StartDate)
+			endDate := common.EpochToRFC3339(*dateFilter.EndDate)
+			db = db.Where("oi.created_at >= ? AND oi.created_at < ?", startDate, endDate)
+		} else if dateFilter.StartDate != nil {
+			startDate := common.EpochToRFC3339(*dateFilter.StartDate)
+			db = db.Where("oi.created_at >= ?", startDate)
+		} else if dateFilter.EndDate != nil {
+			endDate := common.EpochToRFC3339(*dateFilter.EndDate)
+			db = db.Where("oi.created_at < ?", endDate)
+		}
+	}
+
+	var rows []*OrderDetailRow
 	if err := db.Scan(&rows).Error; err != nil {
 		return nil, err
 	}

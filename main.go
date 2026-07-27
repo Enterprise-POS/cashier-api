@@ -51,7 +51,7 @@ func main() {
 		AllowOrigins:     "http://localhost:3000, https://enterprisepos.vercel.app",
 		AllowCredentials: true,
 		AllowHeaders:     "Origin, Content-Type, Cookie, Authorization",
-		AllowMethods:     "GET, POST, PUT, DELETE, OPTIONS",
+		AllowMethods:     "GET, POST, PUT, DELETE",
 	}))
 	app.Use(middleware.RequestDebug())
 
