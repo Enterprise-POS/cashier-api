@@ -19,7 +19,7 @@ var (
 )
 
 func CreateGormClient() *gorm.DB {
-	dialect := fmt.Sprintf("host=%s user=%s password=%s dbname=postgres port=%s sslmode=disable TimeZone=%s", DB_HOST, DB_USER, DB_PASSWORD, DB_PORT, DB_TIMEZONE)
+	dialect := fmt.Sprintf("host=%s user=%s password=%s dbname=postgres port=%s sslmode=require TimeZone=%s", DB_HOST, DB_USER, DB_PASSWORD, DB_PORT, DB_TIMEZONE)
 
 	logMode := logger.Warn
 	if MODE == "prod" {
