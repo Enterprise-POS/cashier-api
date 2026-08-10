@@ -155,6 +155,12 @@ func main() {
 	apiV1.Post("/order_items/export_profit/:tenantId", tenantRestriction, orderItemController.ExportProfitExcel)
 	apiV1.Delete("/order_items/:tenantId", tenantRestriction, orderItemController.DeleteInvoice)
 
+	purchasedItemRepository := repository.NewPurchasedItemRepositoryImpl(gormClient)
+	purchasedItemService := service.NewPurchasedItemServiceImpl(purchasedItemRepository)
+	purchasedItemController := controller.NewPurchasedItemControllerImpl(purchasedItemService)
+
+	apiV1.Post("/purchased_item_list/logs/:tenantId", tenantRestriction, purchasedItemController.PurchasedItemListLogs)
+
 	// Handle route not found (404)
 	app.All("*", func(ctx *fiber.Ctx) error {
 		return ctx.Status(fiber.StatusNotFound).

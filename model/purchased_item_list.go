@@ -18,9 +18,12 @@ type PurchasedItem struct {
 	ItemNameSnapshot   string     `json:"item_name_snapshot" gorm:"column:item_name_snapshot"`
 	OrderItemId        int        `json:"order_item_id" gorm:"column:order_item_id"`
 
-	// ! DEPRECATED, by default if this property is not defined then
-	// ! the default value given by GO is 0 (if it's int)
-	// PurchasedPrice int `json:"purchased_price"`
+	// This query below is only for JOIN to warehouse and order_item
+	ItemName           string     `json:"item_name,omitempty" gorm:"column:item_name;->"`
+	BasePrice          int        `json:"base_price,omitempty" gorm:"column:base_price;->"`
+	OrderItemCreatedAt *time.Time `json:"order_item_created_at,omitempty" gorm:"column:order_item_created_at;->"`
+	StoreId            int        `json:"store_id,omitempty" gorm:"column:store_id;->"`
+	TenantId           int        `json:"tenant_id,omitempty" gorm:"column:tenant_id;->"`
 }
 
 func (p *PurchasedItem) TableName() string {
