@@ -5,6 +5,7 @@ import (
 	"cashier-api/helper/query"
 	"cashier-api/model"
 	"errors"
+	"fmt"
 
 	"gorm.io/gorm"
 )
@@ -59,6 +60,7 @@ func (repository *PurchasedItemRepositoryImpl) PurchasedItemListLogs(
 	limit int,
 	page int,
 	dateFilter *query.DateFilter,
+	filters []query.QueryFilter,
 ) ([]*model.PurchasedItem, int, error) {
 	start := page * limit
 
@@ -105,18 +107,55 @@ func (repository *PurchasedItemRepositoryImpl) PurchasedItemListLogs(
 		}
 	}
 
+	// Sorting filters
+	if len(filters) > 0 {
+		for _, filter := range filters {
+			var column string
+
+			switch filter.Column {
+			case query.CreatedAtColumn:
+				column = "order_item.created_at"
+
+			case query.TotalAmountColumn:
+				column = "pil.total_amount"
+
+			default:
+				// Should never happened except or developer wrong set the input
+				return nil, 0, fmt.Errorf(
+					"[FATAL ERROR] Application crashed. invalid filter column: %s",
+					filter.Column,
+				)
+			}
+
+			direction := "DESC"
+			if filter.Ascending {
+				direction = "ASC"
+			}
+
+			db = db.Order(fmt.Sprintf("%s %s", column, direction))
+		}
+
+		// Stable ordering when multiple records have the same value.
+		db = db.Order("pil.id DESC")
+	} else {
+		// Default sorting.
+		db = db.
+			Order("order_item.created_at DESC").
+			Order("pil.id DESC")
+	}
+
+	// Count before pagination.
 	var totalCount int64
 	if err := db.Count(&totalCount).Error; err != nil {
 		return nil, 0, err
 	}
 
+	// Fetch paginated result.
 	var rows []*model.PurchasedItem
-	err := db.
-		Order("order_item.created_at DESC, pil.id DESC").
+	if err := db.
 		Limit(limit).
 		Offset(start).
-		Scan(&rows).Error
-	if err != nil {
+		Scan(&rows).Error; err != nil {
 		return nil, 0, err
 	}
 

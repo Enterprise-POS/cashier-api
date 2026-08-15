@@ -21,5 +21,5 @@ type PurchasedItemRepository interface {
 		Get purchased_item_list rows for one or more item IDs, including current warehouse
 		item data and the order date.
 	*/
-	PurchasedItemListLogs(tenantId int, storeId int, itemIds []int, limit int, page int, dateFilter *query.DateFilter) ([]*model.PurchasedItem, int, error)
+	PurchasedItemListLogs(tenantId int, storeId int, itemIds []int, limit int, page int, dateFilter *query.DateFilter, filters []query.QueryFilter) ([]*model.PurchasedItem, int, error)
 }

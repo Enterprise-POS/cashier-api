@@ -19,11 +19,12 @@ func NewPurchasedItemControllerImpl(service service.PurchasedItemService) Purcha
 }
 
 type PurchasedItemListLogsRequest struct {
-	ItemIds    []int             `json:"item_ids"`
-	StoreId    int               `json:"store_id"`
-	Limit      int               `json:"limit"`
-	Page       int               `json:"page"`
-	DateFilter *query.DateFilter `json:"date_filter"`
+	ItemIds    []int               `json:"item_ids"`
+	StoreId    int                 `json:"store_id"`
+	Limit      int                 `json:"limit"`
+	Page       int                 `json:"page"`
+	DateFilter *query.DateFilter   `json:"date_filter"`
+	Filters    []query.QueryFilter `json:"filters"`
 }
 
 type PurchasedItemListLogsResponse struct {
@@ -52,6 +53,7 @@ func (controller *PurchasedItemControllerImpl) PurchasedItemListLogs(ctx *fiber.
 		body.Limit,
 		body.Page,
 		body.DateFilter,
+		body.Filters,
 	)
 	if err != nil {
 		return ctx.Status(fiber.StatusBadRequest).

@@ -12,11 +12,6 @@ type PurchasedItemServiceImpl struct {
 	Repository repository.PurchasedItemRepository
 }
 
-func NewPurchasedItemServiceImpl(repository repository.PurchasedItemRepository) PurchasedItemService {
-	return &PurchasedItemServiceImpl{Repository: repository}
-}
-
-// PurchasedItemListLogs implements PurchasedItemService.
 func (service *PurchasedItemServiceImpl) PurchasedItemListLogs(
 	tenantId int,
 	storeId int,
@@ -24,6 +19,7 @@ func (service *PurchasedItemServiceImpl) PurchasedItemListLogs(
 	limit int,
 	page int,
 	dateFilter *query.DateFilter,
+	filters []query.QueryFilter,
 ) ([]*model.PurchasedItem, int, error) {
 	if tenantId <= 0 {
 		return nil, 0, errors.New("Tenant id is Required !")
@@ -78,5 +74,17 @@ func (service *PurchasedItemServiceImpl) PurchasedItemListLogs(
 		}
 	}
 
-	return service.Repository.PurchasedItemListLogs(tenantId, storeId, itemIds, limit, page-1, dateFilter)
+	for _, filter := range filters {
+		if !query.IsValidColumn(filter.Column) {
+			return nil, 0, fmt.Errorf("Invalid filter column: %s", filter.Column)
+		}
+	}
+
+	return service.Repository.PurchasedItemListLogs(tenantId, storeId, itemIds, limit, page-1, dateFilter, filters)
 }
+
+func NewPurchasedItemServiceImpl(repository repository.PurchasedItemRepository) PurchasedItemService {
+	return &PurchasedItemServiceImpl{Repository: repository}
+}
+
+// PurchasedItemListLogs implements PurchasedItemService.
