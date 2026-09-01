@@ -4,6 +4,7 @@ import (
 	"cashier-api/helper/client"
 	"cashier-api/helper/query"
 	"cashier-api/model"
+	"fmt"
 	"testing"
 	"time"
 
@@ -15,19 +16,19 @@ import (
 
 // seedOrderItemTestDependencies creates a user, tenant, and store within the
 // given transaction. All rows are rolled back automatically after each test.
-func seedOrderItemTestDependencies(t *testing.T, tx *gorm.DB) (tenantId int, storeId int) {
+func seedOrderItemTestDependencies(t *testing.T, tx *gorm.DB, email string, userName string) (tenantId int, storeId int) {
 	t.Helper()
 
 	user := &model.User{
-		Name:     "Order Item Test User",
-		Email:    "orderitem_test@example.com",
+		Name:     fmt.Sprintf("%s Test User", userName),
+		Email:    email,
 		Password: "password",
 	}
 	require.NoError(t, tx.Create(user).Error)
 	require.NotZero(t, user.Id)
 
 	tenant := &model.Tenant{
-		Name:        "Order Item Test Tenant",
+		Name:        fmt.Sprintf("%s Test Tenant", userName),
 		OwnerUserId: user.Id,
 		IsActive:    true,
 	}
@@ -35,7 +36,7 @@ func seedOrderItemTestDependencies(t *testing.T, tx *gorm.DB) (tenantId int, sto
 	require.NotZero(t, tenant.Id)
 
 	store := &model.Store{
-		Name:     "Order Item Test Store",
+		Name:     fmt.Sprintf("%s Test Store", userName),
 		TenantId: tenant.Id,
 		IsActive: true,
 	}
@@ -53,7 +54,7 @@ func TestOrderItemRepository(t *testing.T) {
 			tx := gormClient.Begin()
 			defer tx.Rollback()
 
-			tenantId, storeId := seedOrderItemTestDependencies(t, tx)
+			tenantId, storeId := seedOrderItemTestDependencies(t, tx, "orderitem_test@example.com", "Order Item")
 
 			warehouseRepo := NewWarehouseRepositoryImpl(tx)
 			orderItemRepo := NewOrderItemRepositoryImpl(tx)
@@ -102,7 +103,7 @@ func TestOrderItemRepository(t *testing.T) {
 			tx := gormClient.Begin()
 			defer tx.Rollback()
 
-			tenantId, storeId := seedOrderItemTestDependencies(t, tx)
+			tenantId, storeId := seedOrderItemTestDependencies(t, tx, "orderitem_test@example.com", "Order Item")
 			repo := NewOrderItemRepositoryImpl(tx)
 
 			input := &model.OrderItem{
@@ -130,7 +131,7 @@ func TestOrderItemRepository(t *testing.T) {
 			tx := gormClient.Begin()
 			defer tx.Rollback()
 
-			tenantId, storeId := seedOrderItemTestDependencies(t, tx)
+			tenantId, storeId := seedOrderItemTestDependencies(t, tx, "orderitem_test@example.com", "Order Item")
 			repo := NewOrderItemRepositoryImpl(tx)
 
 			input := &model.OrderItem{
@@ -158,7 +159,7 @@ func TestOrderItemRepository(t *testing.T) {
 			tx := gormClient.Begin()
 			defer tx.Rollback()
 
-			tenantId, storeId := seedOrderItemTestDependencies(t, tx)
+			tenantId, storeId := seedOrderItemTestDependencies(t, tx, "orderitem_test@example.com", "Order Item")
 			repo := NewOrderItemRepositoryImpl(tx)
 
 			input := &model.OrderItem{
@@ -186,7 +187,7 @@ func TestOrderItemRepository(t *testing.T) {
 			tx := gormClient.Begin()
 			defer tx.Rollback()
 
-			tenantId, _ := seedOrderItemTestDependencies(t, tx)
+			tenantId, _ := seedOrderItemTestDependencies(t, tx, "orderitem_test@example.com", "Order Item")
 			repo := NewOrderItemRepositoryImpl(tx)
 
 			input := &model.OrderItem{
@@ -214,7 +215,7 @@ func TestOrderItemRepository(t *testing.T) {
 			tx := gormClient.Begin()
 			defer tx.Rollback()
 
-			_, storeId := seedOrderItemTestDependencies(t, tx)
+			_, storeId := seedOrderItemTestDependencies(t, tx, "orderitem_test@example.com", "Order Item")
 			repo := NewOrderItemRepositoryImpl(tx)
 
 			input := &model.OrderItem{
@@ -244,7 +245,7 @@ func TestOrderItemRepository(t *testing.T) {
 			tx := gormClient.Begin()
 			defer tx.Rollback()
 
-			tenantId, storeId := seedOrderItemTestDependencies(t, tx)
+			tenantId, storeId := seedOrderItemTestDependencies(t, tx, "orderitem_test@example.com", "Order Item")
 			orderItemRepo := NewOrderItemRepositoryImpl(tx)
 
 			dummyOrderItems := []*model.OrderItem{
@@ -277,7 +278,7 @@ func TestOrderItemRepository(t *testing.T) {
 			tx := gormClient.Begin()
 			defer tx.Rollback()
 
-			tenantId, storeId := seedOrderItemTestDependencies(t, tx)
+			tenantId, storeId := seedOrderItemTestDependencies(t, tx, "orderitem_test@example.com", "Order Item")
 			orderItemRepo := NewOrderItemRepositoryImpl(tx)
 
 			base := time.Date(2025, 1, 10, 10, 0, 0, 0, time.UTC)
@@ -329,7 +330,7 @@ func TestOrderItemRepository(t *testing.T) {
 			tx := gormClient.Begin()
 			defer tx.Rollback()
 
-			tenantId, storeId := seedOrderItemTestDependencies(t, tx)
+			tenantId, storeId := seedOrderItemTestDependencies(t, tx, "orderitem_test@example.com", "Order Item")
 			orderItemRepo := NewOrderItemRepositoryImpl(tx)
 
 			amounts := []int{10000, 40000, 90000, 100000, 250000}
@@ -384,7 +385,7 @@ func TestOrderItemRepository(t *testing.T) {
 			tx := gormClient.Begin()
 			defer tx.Rollback()
 
-			tenantId, storeId := seedOrderItemTestDependencies(t, tx)
+			tenantId, storeId := seedOrderItemTestDependencies(t, tx, "orderitem_test@example.com", "Order Item")
 			repo := NewOrderItemRepositoryImpl(tx)
 
 			created, err := repo.PlaceOrderItem(&model.OrderItem{
@@ -420,7 +421,7 @@ func TestOrderItemRepository(t *testing.T) {
 			tx := gormClient.Begin()
 			defer tx.Rollback()
 
-			tenantId, _ := seedOrderItemTestDependencies(t, tx)
+			tenantId, _ := seedOrderItemTestDependencies(t, tx, "orderitem_test@example.com", "Order Item")
 			repo := NewOrderItemRepositoryImpl(tx)
 
 			// id: 1 should not exist
@@ -434,7 +435,7 @@ func TestOrderItemRepository(t *testing.T) {
 			tx := gormClient.Begin()
 			defer tx.Rollback()
 
-			tenantId, storeId := seedOrderItemTestDependencies(t, tx)
+			tenantId, storeId := seedOrderItemTestDependencies(t, tx, "orderitem_test@example.com", "Order Item")
 			repo := NewOrderItemRepositoryImpl(tx)
 
 			created, err := repo.PlaceOrderItem(&model.OrderItem{

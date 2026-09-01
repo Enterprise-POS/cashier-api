@@ -86,5 +86,3 @@ func (service *PurchasedItemServiceImpl) PurchasedItemListLogs(
 func NewPurchasedItemServiceImpl(repository repository.PurchasedItemRepository) PurchasedItemService {
 	return &PurchasedItemServiceImpl{Repository: repository}
 }
-
-// PurchasedItemListLogs implements PurchasedItemService.
