@@ -119,10 +119,13 @@ func (repository *PurchasedItemRepositoryImpl) PurchasedItemListLogs(
 			case query.TotalAmountColumn:
 				column = "pil.total_amount"
 
+			case query.Quantity:
+				column = "pil.quantity"
+
 			default:
 				// Should never happened except or developer wrong set the input
 				return nil, 0, fmt.Errorf(
-					"[FATAL ERROR] Application crashed. invalid filter column: %s",
+					"[FATAL ERROR] Application crashed. Invalid filter column: %s",
 					filter.Column,
 				)
 			}
