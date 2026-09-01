@@ -151,7 +151,7 @@ func (repository *PurchasedItemRepositoryImpl) PurchasedItemListLogs(
 	}
 
 	// Fetch paginated result.
-	var rows []*model.PurchasedItem
+	var rows = make([]*model.PurchasedItem, 0)
 	if err := db.
 		Limit(limit).
 		Offset(start).
