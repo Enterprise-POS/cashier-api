@@ -13,7 +13,14 @@ type PurchasedItemServiceMock struct {
 
 // PurchasedItemListLogs implements [PurchasedItemService].
 func (p *PurchasedItemServiceMock) PurchasedItemListLogs(tenantId int, storeId int, itemIds []int, limit int, page int, dateFilter *query.DateFilter, filters []query.QueryFilter) ([]*model.PurchasedItem, int, error) {
-	panic("unimplemented")
+	args := p.Mock.Called(tenantId, storeId, itemIds, limit, page, dateFilter, filters)
+
+	var result []*model.PurchasedItem
+	if args.Get(0) != nil {
+		result = args.Get(0).([]*model.PurchasedItem)
+	}
+
+	return result, args.Int(1), args.Error(2)
 }
 
 func NewPurchasedItemServiceMock(mock *mock.Mock) PurchasedItemService {
