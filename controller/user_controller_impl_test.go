@@ -62,7 +62,10 @@ func TestUserControllerImpl(t *testing.T) {
 			assert.NotEqual(t, "", enterprisePosCookie)
 
 			// clean up
+			// NOTE: Unscoped() is required here — model.User has a soft-delete field,
+			// so a plain Delete() only sets deleted_at and leaves the row in the table.
 			err = gormClient.
+				Unscoped().
 				Where(
 					"email = ? AND name = ?",
 					"testusercontroller_sign_up@gmail.com",
@@ -70,6 +73,7 @@ func TestUserControllerImpl(t *testing.T) {
 				).
 				Delete(&model.User{}).
 				Error
+			assert.Nil(t, err, "If this failed, then delete data at DB. error at TestUserControllerImpl_SignUp")
 		})
 
 		t.Run("InvalidInput", func(t *testing.T) {
@@ -249,8 +253,12 @@ func TestUserControllerImpl(t *testing.T) {
 		})
 
 		// clean up
+		// NOTE: fixed email to match the user actually created above (was
+		// "testusercontroller_sign_in1@gmail.com", which never matched anything),
+		// and added Unscoped() so the soft-deleted row is actually removed.
 		err = gormClient.
-			Where("email = ? AND name = ?", "testusercontroller_sign_out1@gmail.com", "Test User").
+			Unscoped().
+			Where("email = ? AND name = ?", "testusercontroller_sign_in@gmail.com", "Test User").
 			Delete(&model.User{}).
 			Error
 
@@ -304,8 +312,11 @@ func TestUserControllerImpl(t *testing.T) {
 			assert.True(t, cleared)
 
 			// Clean up
+			// NOTE: Unscoped() added so the soft-deleted row is actually removed,
+			// not just marked deleted_at.
 			err = gormClient.
-				Where("email = ? AND name = ?", "testusercontroller_sign_in@gmail.com", "Test User").
+				Unscoped().
+				Where("email = ? AND name = ?", "testusercontroller_sign_out1@gmail.com", "Test User").
 				Delete(&model.User{}).
 				Error
 			require.Nil(t, err, "If this failed, then delete data at DB. error at TestUserControllerImpl_SignOut1")
