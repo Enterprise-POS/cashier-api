@@ -1,8 +1,11 @@
 package repository
 
 import (
+	common "cashier-api/helper"
+	"cashier-api/helper/query"
 	"cashier-api/model"
 	"errors"
+	"fmt"
 
 	"gorm.io/gorm"
 )
@@ -47,4 +50,117 @@ func (repository *PurchasedItemRepositoryImpl) GetByOrderItemId(orderItemId int)
 	}
 
 	return result, nil
+}
+
+// PurchasedItemListLogs implements PurchasedItemRepository.
+func (repository *PurchasedItemRepositoryImpl) PurchasedItemListLogs(
+	tenantId int,
+	storeId int,
+	itemIds []int,
+	limit int,
+	page int,
+	dateFilter *query.DateFilter,
+	filters []query.QueryFilter,
+) ([]*model.PurchasedItem, int, error) {
+	start := page * limit
+
+	db := repository.Client.Table("purchased_item_list pil").
+		Select(`
+			warehouse.item_id,
+			warehouse.item_name,
+			warehouse.base_price,
+			order_item.id AS order_item_id,
+			order_item.created_at AS order_item_created_at,
+			pil.id,
+			pil.quantity,
+			pil.store_price_snapshot,
+			pil.item_name_snapshot,
+			pil.base_price_snapshot,
+			pil.discount_amount,
+			pil.total_amount,
+			order_item.store_id,
+			order_item.tenant_id
+		`).
+		Joins("INNER JOIN warehouse ON warehouse.item_id = pil.item_id").
+		Joins("INNER JOIN order_item ON order_item.id = pil.order_item_id AND order_item.deleted_at IS NULL").
+		Where("order_item.tenant_id = ?", tenantId)
+
+	if len(itemIds) > 0 {
+		db = db.Where("pil.item_id IN ?", itemIds)
+	}
+
+	if storeId > 0 {
+		db = db.Where("order_item.store_id = ?", storeId)
+	}
+
+	if dateFilter != nil {
+		if dateFilter.StartDate != nil && dateFilter.EndDate != nil {
+			startDate := common.EpochToRFC3339(*dateFilter.StartDate)
+			endDate := common.EpochToRFC3339(*dateFilter.EndDate)
+			db = db.Where("order_item.created_at >= ? AND order_item.created_at < ?", startDate, endDate)
+		} else if dateFilter.StartDate != nil {
+			startDate := common.EpochToRFC3339(*dateFilter.StartDate)
+			db = db.Where("order_item.created_at >= ?", startDate)
+		} else if dateFilter.EndDate != nil {
+			endDate := common.EpochToRFC3339(*dateFilter.EndDate)
+			db = db.Where("order_item.created_at < ?", endDate)
+		}
+	}
+
+	// Sorting filters
+	if len(filters) > 0 {
+		for _, filter := range filters {
+			var column string
+
+			switch filter.Column {
+			case query.CreatedAtColumn:
+				column = "order_item.created_at"
+
+			case query.TotalAmountColumn:
+				column = "pil.total_amount"
+
+			case query.Quantity:
+				column = "pil.quantity"
+
+			default:
+				// Should never happened except or developer wrong set the input
+				return nil, 0, fmt.Errorf(
+					"[FATAL ERROR] Application crashed. Invalid filter column: %s",
+					filter.Column,
+				)
+			}
+
+			direction := "DESC"
+			if filter.Ascending {
+				direction = "ASC"
+			}
+
+			db = db.Order(fmt.Sprintf("%s %s", column, direction))
+		}
+
+		// Stable ordering when multiple records have the same value.
+		db = db.Order("pil.id DESC")
+	} else {
+		// Default sorting.
+		db = db.
+			Order("order_item.created_at DESC").
+			Order("pil.id DESC")
+	}
+
+	// Count before pagination.
+	var totalCount int64
+	if err := db.Count(&totalCount).Error; err != nil {
+		return nil, 0, err
+	}
+
+	// Fetch paginated result.
+	var rows = make([]*model.PurchasedItem, 0)
+	if err := db.
+		Limit(limit).
+		Offset(start).
+		Scan(&rows).Error; err != nil {
+		return nil, 0, err
+	}
+
+	return rows, int(totalCount), nil
 }
