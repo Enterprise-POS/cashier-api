@@ -51,6 +51,16 @@ func (service *OrderItemServiceMock) Transactions(params *repository.CreateTrans
 	return args.Get(0).(*repository.TransactionDataReturn), nil
 }
 
+// CheckTransaction implements [OrderItemService].
+func (service *OrderItemServiceMock) CheckTransaction(orderId string) (model.PaymentStatusResponse, error) {
+	args := service.Mock.Called(orderId)
+	if args.Get(0) == nil {
+		return model.PaymentStatusResponse{}, args.Error(1)
+	}
+
+	return args.Get(0).(model.PaymentStatusResponse), nil
+}
+
 // GetSalesReport implements OrderItemService.
 func (service *OrderItemServiceMock) GetSalesReport(tenantId int, storeId int, dateFilter *query.DateFilter) (*repository.SalesReport, error) {
 	args := service.Mock.Called(tenantId, storeId, dateFilter)

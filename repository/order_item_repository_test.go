@@ -373,6 +373,43 @@ func TestOrderItemRepository(t *testing.T) {
 	t.Run("Transactions", func(t *testing.T) {
 		t.Skip("DBMS relation too deep")
 	})
+
+	t.Run("CheckTransaction", func(t *testing.T) {
+		tx := gormClient.Begin()
+		defer tx.Rollback()
+
+		tenantId, storeId := seedOrderItemTestDependencies(t, tx, "orderitem_test_checktransaction@example.com", "Order Item")
+		orderItemRepo := NewOrderItemRepositoryImpl(tx)
+
+		dummyOrderItems := []*model.OrderItem{
+			{PurchasedPrice: 20000, TotalQuantity: 2, TotalAmount: 40000, DiscountAmount: 0, Subtotal: 40000, TenantId: tenantId, StoreId: storeId, PaymentType: model.PaymentTypeQRIS, PaymentStatus: model.PaymentStatusPending, TransactionId: "527ae3d1-66b2-4c08-8bb2-e768552142ab"},
+			{PurchasedPrice: 30000, TotalQuantity: 3, TotalAmount: 90000, DiscountAmount: 0, Subtotal: 90000, TenantId: tenantId, StoreId: storeId, PaymentType: model.PaymentTypeQRIS, PaymentStatus: model.PaymentStatusCanceled, TransactionId: "c23a9b9c-d62b-4efc-9914-4e0257fd64f5"},
+			{PurchasedPrice: 40000, TotalQuantity: 4, TotalAmount: 100000, DiscountAmount: 60000, Subtotal: 160000, TenantId: tenantId, StoreId: storeId, PaymentType: model.PaymentTypeQRIS, PaymentStatus: model.PaymentStatusExpired, TransactionId: "a8800859-288d-45b8-b5f6-c342750ac146"},
+			{PurchasedPrice: 50000, TotalQuantity: 5, TotalAmount: 250000, DiscountAmount: 0, Subtotal: 250000, TenantId: tenantId, StoreId: storeId, PaymentType: model.PaymentTypeQRIS, PaymentStatus: model.PaymentStatusRefunded, TransactionId: "fb80a494-1737-4418-ba83-1aadabe71990"},
+		}
+
+		resultsOrderItems := make([]*model.OrderItem, 0)
+		for _, item := range dummyOrderItems {
+			result, err := orderItemRepo.PlaceOrderItem(item)
+			assert.Nil(t, err)
+			assert.NotZero(t, result.Id)
+			assert.Equal(t, item.PaymentStatus, result.PaymentStatus)
+			assert.Equal(t, item.PaymentType, result.PaymentType)
+			resultsOrderItems = append(resultsOrderItems, result)
+		}
+
+		// Actual test
+		for _, item := range resultsOrderItems {
+			err := orderItemRepo.SetPaymentStatus(item.Id, item.TransactionId, model.PaymentStatusSuccess)
+			assert.NoError(t, err)
+
+			var checkOrderItem model.OrderItem
+			err = tx.First(&checkOrderItem, item.Id).Error
+			require.NoError(t, err)
+			assert.Equal(t, model.PaymentStatusSuccess, checkOrderItem.PaymentStatus)
+		}
+	})
+
 	t.Run("FindById", func(t *testing.T) {
 		t.Skip("DBMS relation too deep")
 	})

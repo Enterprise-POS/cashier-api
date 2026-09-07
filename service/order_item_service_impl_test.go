@@ -863,6 +863,15 @@ func TestOrderItemServiceImpl(t *testing.T) {
 		})
 	})
 
+	t.Run("CheckTransaction", func(t *testing.T) {
+		orderItemRepo := repository.NewOrderItemRepositoryMock(&mock.Mock{}).(*repository.OrderItemRepositoryMock)
+		orderItemService := NewOrderItemServiceImpl(orderItemRepo)
+
+		response, err := orderItemService.CheckTransaction("MID-QRIS-65f6f7c0-4778-4c9c-90e9-e3934fb9c722")
+		fmt.Println(response)
+		fmt.Println(err)
+	})
+
 	t.Run("DeleteInvoice", func(t *testing.T) {
 		t.Run("SuccessCase", func(t *testing.T) {
 			orderItemRepo := repository.NewOrderItemRepositoryMock(&mock.Mock{}).(*repository.OrderItemRepositoryMock)

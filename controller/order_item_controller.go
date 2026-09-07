@@ -26,6 +26,11 @@ type OrderItemController interface {
 	Transactions(ctx *fiber.Ctx) error
 
 	/*
+		Check payment gateway transaction status
+	*/
+	CheckTransaction(ctx *fiber.Ctx) error
+
+	/*
 		Using aggregate function from SQL to get report
 	*/
 	GetSalesReport(ctx *fiber.Ctx) error

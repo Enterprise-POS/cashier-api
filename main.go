@@ -70,6 +70,7 @@ func main() {
 	})
 
 	// public
+	// user
 	userRepository := repository.NewUserRepositoryImpl(gormClient)
 	userService := service.NewUserServiceImpl(userRepository)
 	userController := controller.NewUserControllerImpl(userService)
@@ -77,6 +78,10 @@ func main() {
 	apiV1.Post("/users/sign_up", userController.SignUpWithEmailAndPassword)
 	apiV1.Post("/users/sign_in", userController.SignInWithEmailAndPassword)
 	apiV1.Delete("/users/sign_out", userController.SignOut)
+
+	// webhook
+	webhookController := controller.NewWebhookControllerImpl()
+	apiV1.Post("/order_items/transactions/webhook", webhookController.HandlePaymentGateWayWebhook)
 
 	// protected only login user
 	apiV1.Use(middleware.ProtectedRoute)
@@ -149,6 +154,8 @@ func main() {
 
 	// GET /order_items/:tenantId?order_item_id=99
 	apiV1.Get("/order_items/details/:tenantId", tenantRestriction, orderItemController.FindById)
+	// GET /order_items/transactions/:tenantId?transaction_id=00
+	apiV1.Get("/order_items/transactions/:tenantId", tenantRestriction, orderItemController.CheckTransaction)
 	apiV1.Post("/order_items/search/:tenantId", tenantRestriction, orderItemController.Get)
 	apiV1.Post("/order_items/transactions/:tenantId", tenantRestriction, orderItemController.Transactions)
 	apiV1.Post("/order_items/sales_report/:tenantId", tenantRestriction, orderItemController.GetSalesReport)

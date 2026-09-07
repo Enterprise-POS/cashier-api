@@ -9,18 +9,21 @@ import (
 	"regexp"
 	"time"
 
+	log "github.com/sirupsen/logrus"
 	"github.com/xuri/excelize/v2"
 )
 
 type OrderItemServiceImpl struct {
 	Repository        repository.OrderItemRepository
 	ItemNameRegexRule *regexp.Regexp
+	PaymentProvider   PaymentProvider
 }
 
 func NewOrderItemServiceImpl(repository repository.OrderItemRepository) OrderItemService {
 	return &OrderItemServiceImpl{
 		Repository:        repository,
 		ItemNameRegexRule: regexp.MustCompile(`^[\p{Han}\p{Hiragana}\p{Katakana}a-zA-Z][\p{Han}\p{Hiragana}\p{Katakana}a-zA-Z0-9' ]*$`),
+		PaymentProvider:   NewPaymentProviderImpl(),
 	}
 }
 
@@ -97,6 +100,10 @@ func (service *OrderItemServiceImpl) Transactions(params *repository.CreateTrans
 	if params.TenantId <= 0 || params.StoreId <= 0 || params.UserId <= 0 {
 		return nil, errors.New("Tenant id, Store id, User id is Required !")
 	}
+
+	// Check whether at database this transaction already saved or not
+	// If already saved then just return the data
+	// service.FindById()
 
 	if len(params.Items) == 0 {
 		return nil, errors.New("At least one item is required")
@@ -187,12 +194,58 @@ func (service *OrderItemServiceImpl) Transactions(params *repository.CreateTrans
 			params.TotalAmount, params.PurchasedPrice)
 	}
 
+	var paymentToken string = ""
+	var paymentURL string = ""
+	switch params.PaymentType {
+	case model.PaymentTypeQRIS, model.PaymentTypeCard, model.PaymentTypeEWallet:
+		res, err := service.PaymentProvider.CreateTransaction(params)
+		if err != nil {
+			return nil, err
+		}
+		paymentToken = res.Token
+		paymentURL = res.RedirectURL
+		break
+	default:
+		break
+	}
+
 	transactionDataReturn, err := service.Repository.Transactions(params)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to create transaction: %w", err)
 	}
 
+	// In case it's available
+	transactionDataReturn.PaymentToken = paymentToken
+	transactionDataReturn.PaymentURL = paymentURL
+
 	return transactionDataReturn, nil
+}
+
+// CheckTransaction implements [OrderItemService].
+func (service *OrderItemServiceImpl) CheckTransaction(transactionId string) (model.PaymentStatusResponse, error) {
+	if transactionId == "" {
+		return model.PaymentStatusResponse{}, errors.New("Transaction id is required")
+	}
+
+	paymentRes, err := service.PaymentProvider.CheckTransaction(transactionId)
+	if err != nil {
+		return paymentRes, err
+	}
+
+	switch paymentRes.PaymentStatus {
+	case model.PaymentStatusSuccess, model.PaymentStatusPending, model.PaymentStatusRefunded, model.PaymentStatusFailed,
+		model.PaymentStatusExpired, model.PaymentStatusCanceled, model.PaymentStatusPartiallyRefunded:
+		// Also give a chance to database to confirm the transaction
+		err = service.Repository.SetPaymentStatus(0, transactionId, paymentRes.PaymentStatus)
+		if err != nil {
+			// Because this error is our database error we tell it's not payment error so no error return for this case
+			paymentRes.Message = fmt.Sprintf("Payment success but something gone wrong while writing data to database. Reason: %s", err.Error())
+		}
+	default:
+		log.Errorf("Unknown error while confirming payment status. payment_status: %s", paymentRes.PaymentStatus)
+	}
+
+	return paymentRes, nil
 }
 
 // FindById implements OrderItemService.

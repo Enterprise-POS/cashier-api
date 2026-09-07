@@ -136,7 +136,7 @@ func (repository *OrderItemRepositoryImpl) Transactions(params *CreateTransactio
 
 	var transactionDataReturn *TransactionDataReturn
 	// Because it's return row, use SELECT *
-	result := repository.Client.Raw("SELECT * FROM transactions($1, $2, $3, $4, $5, $6::JSONB, $7, $8, $9, $10)",
+	result := repository.Client.Raw("SELECT * FROM test_transactions($1, $2, $3, $4, $5, $6::JSONB, $7, $8, $9, $10, $11)",
 		params.PurchasedPrice,
 		params.TotalQuantity,
 		params.TotalAmount,
@@ -149,6 +149,7 @@ func (repository *OrderItemRepositoryImpl) Transactions(params *CreateTransactio
 		params.TenantId,
 		params.StoreId,
 		string(params.PaymentType),
+		string(params.TransactionId),
 	).Scan(&transactionDataReturn)
 
 	if result.Error != nil {
@@ -166,6 +167,24 @@ func (repository *OrderItemRepositoryImpl) Transactions(params *CreateTransactio
 	return transactionDataReturn, nil
 }
 
+// SetPaymentStatus implements [OrderItemRepository].
+func (repository *OrderItemRepositoryImpl) SetPaymentStatus(orderItemId int, transactionId string, setTo model.PaymentStatus) error {
+	result := repository.Client.Model(&model.OrderItem{}).
+		Where("transaction_id = ?", transactionId).
+		Or("id = ?", orderItemId).
+		Update("payment_status", setTo)
+	if result.Error != nil {
+		return result.Error
+	}
+
+	if result.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+		// return errors.New("[FATAL ERROR] Record not found / Data missing")
+	}
+
+	return nil
+}
+
 // FindById implements OrderItemRepository.
 func (repository *OrderItemRepositoryImpl) FindById(orderItemId int, tenantId int) (*model.OrderItemWithStore, []*model.PurchasedItem, error) {
 	type row struct {
@@ -180,14 +199,14 @@ func (repository *OrderItemRepositoryImpl) FindById(orderItemId int, tenantId in
 		ItemNameSnapshot            string `gorm:"column:item_name_snapshot"`
 
 		// order_item
-		OrderItemId             int              `gorm:"column:order_item_id"`
-		PurchasedPrice          int              `gorm:"column:purchased_price"`
-		Subtotal                int              `gorm:"column:subtotal"`
-		TotalQuantity           int              `gorm:"column:total_quantity"`
-		OrderItemTotalAmount    int              `gorm:"column:order_item_total_amount"`
-		OrderItemDiscountAmount int              `gorm:"column:order_item_discount_amount"`
-		CreatedAt               time.Time        `gorm:"column:created_at"`
-		StoreId                 int              `gorm:"column:store_id"`
+		OrderItemId             int               `gorm:"column:order_item_id"`
+		PurchasedPrice          int               `gorm:"column:purchased_price"`
+		Subtotal                int               `gorm:"column:subtotal"`
+		TotalQuantity           int               `gorm:"column:total_quantity"`
+		OrderItemTotalAmount    int               `gorm:"column:order_item_total_amount"`
+		OrderItemDiscountAmount int               `gorm:"column:order_item_discount_amount"`
+		CreatedAt               time.Time         `gorm:"column:created_at"`
+		StoreId                 int               `gorm:"column:store_id"`
 		PaymentType             model.PaymentType `gorm:"column:payment_type"`
 
 		// store

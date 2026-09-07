@@ -33,6 +33,11 @@ type OrderItemService interface {
 	Transactions(params *repository.CreateTransactionParams) (*repository.TransactionDataReturn, error)
 
 	/*
+		Check payment gateway transaction status
+	*/
+	CheckTransaction(orderId string) (model.PaymentStatusResponse, error)
+
+	/*
 		Using aggregate function from SQL to get report
 	*/
 	GetSalesReport(tenantId int, storeId int, dateFilter *query.DateFilter) (*repository.SalesReport, error)
