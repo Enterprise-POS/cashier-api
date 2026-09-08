@@ -24,7 +24,7 @@ const (
 	PaymentStatusRefunded          PaymentStatus = "REFUNDED"
 	PaymentStatusFailed            PaymentStatus = "FAILED"
 	PaymentStatusExpired           PaymentStatus = "EXPIRED"
-	PaymentStatusCanceled          PaymentStatus = "CANCELLED"
+	PaymentStatusCancelled         PaymentStatus = "CANCELLED"
 	PaymentStatusPartiallyRefunded PaymentStatus = "PARTIALLY_REFUNDED"
 )
 

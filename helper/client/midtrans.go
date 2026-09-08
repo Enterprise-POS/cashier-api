@@ -4,7 +4,9 @@ import (
 	"cashier-api/model"
 	"errors"
 	"fmt"
+	"net/http"
 	"os"
+	"strconv"
 
 	"github.com/midtrans/midtrans-go"
 	"github.com/midtrans/midtrans-go/coreapi"
@@ -209,7 +211,7 @@ func (m *MidtransProvider) CheckTransaction(orderId string) (model.PaymentStatus
 				paymentStatus = model.PaymentStatusPending
 				break
 			case "cancel", "expire":
-				paymentStatus = model.PaymentStatusCanceled
+				paymentStatus = model.PaymentStatusCancelled
 				break
 			case "pending":
 				paymentStatus = model.PaymentStatusPending
@@ -227,4 +229,46 @@ func (m *MidtransProvider) CheckTransaction(orderId string) (model.PaymentStatus
 	log.Debugf("Transaction status: %s. For transaction id: %s", transactionStatusResp.TransactionStatus, orderId)
 
 	return model.PaymentStatusResponse{PaymentStatus: paymentStatus, StatusCode: transactionStatusResp.StatusCode}, nil
+}
+
+func (m *MidtransProvider) CancelTransaction(orderId string) (model.PaymentStatusResponse, error) {
+
+	cancelResponse, err := m.coreApi.CancelTransaction(orderId)
+	var paymentStatus model.PaymentStatus
+	if err != nil {
+		// 412
+		// Already deleted
+		if err.StatusCode == http.StatusPreconditionFailed {
+			code := strconv.Itoa(err.StatusCode)
+			return model.PaymentStatusResponse{
+				PaymentStatus: model.PaymentStatusCancelled,
+				StatusCode:    code,
+				Message:       "Already deleted",
+			}, nil
+		}
+		return model.PaymentStatusResponse{}, err
+	} else {
+		if cancelResponse != nil {
+			// Do set transaction status based on response from check transaction status
+			switch cancelResponse.TransactionStatus {
+			case "cancel":
+				paymentStatus = model.PaymentStatusCancelled
+				break
+			default:
+				log.Errorf("[FATAL ERROR] Failed to cancel transaction. Transaction status: %s. From transaction id: %s", cancelResponse.TransactionStatus, orderId)
+				return model.PaymentStatusResponse{}, fmt.Errorf("[FATAL ERROR] Failed to cancel transaction. Transaction status: %s. From transaction id: %s", cancelResponse.TransactionStatus, orderId)
+			}
+		} else {
+			log.Errorf("[FATAL ERROR] Something gone wrong while canceling transaction id: %s", orderId)
+			return model.PaymentStatusResponse{}, fmt.Errorf("[FATAL ERROR] Something gone wrong while canceling transaction id: %s", orderId)
+		}
+	}
+
+	res := model.PaymentStatusResponse{
+		PaymentStatus: paymentStatus,
+		StatusCode:    cancelResponse.StatusCode,
+		Message:       "Cancelled successfully",
+	}
+
+	return res, nil
 }

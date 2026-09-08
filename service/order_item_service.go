@@ -35,7 +35,12 @@ type OrderItemService interface {
 	/*
 		Check payment gateway transaction status
 	*/
-	CheckTransaction(orderId string) (model.PaymentStatusResponse, error)
+	CheckTransaction(transactionId string) (model.PaymentStatusResponse, error)
+
+	/*
+		Cancel payment gateway transaction also with write CANCELED to database
+	*/
+	CancelTransaction(orderItemId int, transactionId string, tenantId int) (model.PaymentStatusResponse, error)
 
 	/*
 		Using aggregate function from SQL to get report

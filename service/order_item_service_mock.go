@@ -52,8 +52,18 @@ func (service *OrderItemServiceMock) Transactions(params *repository.CreateTrans
 }
 
 // CheckTransaction implements [OrderItemService].
-func (service *OrderItemServiceMock) CheckTransaction(orderId string) (model.PaymentStatusResponse, error) {
-	args := service.Mock.Called(orderId)
+func (service *OrderItemServiceMock) CheckTransaction(transactionId string) (model.PaymentStatusResponse, error) {
+	args := service.Mock.Called(transactionId)
+	if args.Get(0) == nil {
+		return model.PaymentStatusResponse{}, args.Error(1)
+	}
+
+	return args.Get(0).(model.PaymentStatusResponse), nil
+}
+
+// CancelTransaction implements [OrderItemService].
+func (service *OrderItemServiceMock) CancelTransaction(orderId int, transactionId string, tenantId int) (model.PaymentStatusResponse, error) {
+	args := service.Mock.Called(orderId, transactionId, tenantId)
 	if args.Get(0) == nil {
 		return model.PaymentStatusResponse{}, args.Error(1)
 	}

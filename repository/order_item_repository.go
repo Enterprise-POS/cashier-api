@@ -83,6 +83,11 @@ type CreateTransactionParams struct {
 
 	// unique transaction id
 	TransactionId string `json:"transaction_id"`
+
+	// When payment gateway is used then this is required. Can be passed with empty / nil
+	// It's not something that user defined
+	PaymentURL   string
+	PaymentToken string
 }
 
 type SalesReport struct {

@@ -183,6 +183,34 @@ func (controller *OrderItemControllerImpl) CheckTransaction(ctx *fiber.Ctx) erro
 		JSON(common.NewWebResponse(200, common.StatusSuccess, response))
 }
 
+// CancelTransaction implements [OrderItemController].
+func (controller *OrderItemControllerImpl) CancelTransaction(ctx *fiber.Ctx) error {
+	tenantId, err := strconv.Atoi(ctx.Params("tenantId"))
+	if err != nil {
+		return ctx.Status(fiber.StatusBadRequest).
+			JSON(common.NewWebResponseError(400, common.StatusError, "Invalid tenant ID"))
+	}
+
+	var body struct {
+		OrderItemId   int    `json:"order_item_id"`
+		TransactionId string `json:"transaction_id"`
+	}
+
+	if err := ctx.BodyParser(&body); err != nil {
+		return ctx.Status(fiber.StatusBadRequest).
+			JSON(common.NewWebResponseError(400, common.StatusError, "Something gone wrong ! The request body is malformed"))
+	}
+
+	response, err := controller.Service.CancelTransaction(body.OrderItemId, body.TransactionId, tenantId)
+	if err != nil {
+		return ctx.Status(fiber.StatusBadRequest).
+			JSON(common.NewWebResponseError(400, common.StatusError, fmt.Sprintf("Failed to cancel payment status. Reason: %s", err.Error())))
+	}
+
+	return ctx.Status(fiber.StatusOK).
+		JSON(common.NewWebResponse(200, common.StatusSuccess, response))
+}
+
 // ExportProfitExcel implements OrderItemController.
 func (controller *OrderItemControllerImpl) ExportProfitExcel(ctx *fiber.Ctx) error {
 	tenantId, err := strconv.Atoi(ctx.Params("tenantId"))

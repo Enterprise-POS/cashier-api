@@ -14,6 +14,11 @@ type PaymentProviderImpl struct {
 	MidtransProvider client.MidtransProvider
 }
 
+// CancelTransaction implements [PaymentProvider].
+func (p *PaymentProviderImpl) CancelTransaction(transactionId string) (model.PaymentStatusResponse, error) {
+	return p.MidtransProvider.CancelTransaction(transactionId)
+}
+
 // CheckTransaction implements [PaymentProvider].
 func (p *PaymentProviderImpl) CheckTransaction(transactionId string) (model.PaymentStatusResponse, error) {
 	return p.MidtransProvider.CheckTransaction(transactionId)
@@ -40,6 +45,7 @@ func (p *PaymentProviderImpl) CreateTransaction(params *repository.CreateTransac
 		CreditCard: &snap.CreditCardDetails{
 			Secure: true,
 		},
+
 		Items: &items,
 	}
 

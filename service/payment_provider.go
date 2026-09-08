@@ -8,4 +8,5 @@ import (
 type PaymentProvider interface {
 	CreateTransaction(params *repository.CreateTransactionParams) (*model.PaymentProviderResponse, error)
 	CheckTransaction(transactionId string) (model.PaymentStatusResponse, error)
+	CancelTransaction(transactionId string) (model.PaymentStatusResponse, error)
 }

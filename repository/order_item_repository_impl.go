@@ -136,7 +136,7 @@ func (repository *OrderItemRepositoryImpl) Transactions(params *CreateTransactio
 
 	var transactionDataReturn *TransactionDataReturn
 	// Because it's return row, use SELECT *
-	result := repository.Client.Raw("SELECT * FROM test_transactions($1, $2, $3, $4, $5, $6::JSONB, $7, $8, $9, $10, $11)",
+	result := repository.Client.Raw("SELECT * FROM test_transactions($1, $2, $3, $4, $5, $6::JSONB, $7, $8, $9, $10, $11, $12, $13)",
 		params.PurchasedPrice,
 		params.TotalQuantity,
 		params.TotalAmount,
@@ -150,6 +150,8 @@ func (repository *OrderItemRepositoryImpl) Transactions(params *CreateTransactio
 		params.StoreId,
 		string(params.PaymentType),
 		string(params.TransactionId),
+		params.PaymentURL,
+		params.PaymentToken,
 	).Scan(&transactionDataReturn)
 
 	if result.Error != nil {
@@ -199,15 +201,17 @@ func (repository *OrderItemRepositoryImpl) FindById(orderItemId int, tenantId in
 		ItemNameSnapshot            string `gorm:"column:item_name_snapshot"`
 
 		// order_item
-		OrderItemId             int               `gorm:"column:order_item_id"`
-		PurchasedPrice          int               `gorm:"column:purchased_price"`
-		Subtotal                int               `gorm:"column:subtotal"`
-		TotalQuantity           int               `gorm:"column:total_quantity"`
-		OrderItemTotalAmount    int               `gorm:"column:order_item_total_amount"`
-		OrderItemDiscountAmount int               `gorm:"column:order_item_discount_amount"`
-		CreatedAt               time.Time         `gorm:"column:created_at"`
-		StoreId                 int               `gorm:"column:store_id"`
-		PaymentType             model.PaymentType `gorm:"column:payment_type"`
+		OrderItemId             int                 `gorm:"column:order_item_id"`
+		PurchasedPrice          int                 `gorm:"column:purchased_price"`
+		Subtotal                int                 `gorm:"column:subtotal"`
+		TotalQuantity           int                 `gorm:"column:total_quantity"`
+		OrderItemTotalAmount    int                 `gorm:"column:order_item_total_amount"`
+		OrderItemDiscountAmount int                 `gorm:"column:order_item_discount_amount"`
+		CreatedAt               time.Time           `gorm:"column:created_at"`
+		StoreId                 int                 `gorm:"column:store_id"`
+		PaymentType             model.PaymentType   `gorm:"column:payment_type"`
+		PaymentStatus           model.PaymentStatus `gorm:"column:payment_status"`
+		TransactionId           string              `gorm:"column:transaction_id"`
 
 		// store
 		StoreName        string `gorm:"column:store_name"`
@@ -237,6 +241,8 @@ func (repository *OrderItemRepositoryImpl) FindById(orderItemId int, tenantId in
 			order_item.created_at,
 			order_item.store_id,
 			order_item.payment_type,
+			order_item.payment_status,
+			order_item.transaction_id,
 			store.name                              AS store_name,
 			store.address														AS store_address,
 			store.phone_number											AS store_phone_number
@@ -267,6 +273,8 @@ func (repository *OrderItemRepositoryImpl) FindById(orderItemId int, tenantId in
 		StoreId:          first.StoreId,
 		TenantId:         tenantId,
 		PaymentType:      first.PaymentType,
+		PaymentStatus:    first.PaymentStatus,
+		TransactionId:    first.TransactionId,
 		StoreName:        first.StoreName,
 		StoreAddress:     first.StoreAddress,
 		StorePhoneNumber: first.StorePhoneNumber,

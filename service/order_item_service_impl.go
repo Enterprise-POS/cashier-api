@@ -7,10 +7,12 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"strings"
 	"time"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/xuri/excelize/v2"
+	"gorm.io/gorm"
 )
 
 type OrderItemServiceImpl struct {
@@ -209,6 +211,9 @@ func (service *OrderItemServiceImpl) Transactions(params *repository.CreateTrans
 		break
 	}
 
+	params.PaymentToken = paymentToken
+	params.PaymentURL = paymentURL
+
 	transactionDataReturn, err := service.Repository.Transactions(params)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to create transaction: %w", err)
@@ -221,34 +226,105 @@ func (service *OrderItemServiceImpl) Transactions(params *repository.CreateTrans
 	return transactionDataReturn, nil
 }
 
-// CheckTransaction implements [OrderItemService].
 func (service *OrderItemServiceImpl) CheckTransaction(transactionId string) (model.PaymentStatusResponse, error) {
 	if transactionId == "" {
-		return model.PaymentStatusResponse{}, errors.New("Transaction id is required")
+		return model.PaymentStatusResponse{}, errors.New("transaction id is required")
 	}
 
 	paymentRes, err := service.PaymentProvider.CheckTransaction(transactionId)
 	if err != nil {
+		if strings.Contains(err.Error(), "404") {
+			// Payment gateway has no record of this transaction — likely the
+			// payment URL was never opened. Mark it cancelled in our DB too.
+			cancelErr := service.Repository.SetPaymentStatus(0, transactionId, model.PaymentStatusCancelled)
+
+			switch {
+			case cancelErr == nil:
+				log.Warnf("Transaction id %s not found at payment gateway; marked CANCELLED locally", transactionId)
+				return paymentRes, fmt.Errorf("transaction %s was never completed at the payment gateway and has been cancelled", transactionId)
+
+			case errors.Is(cancelErr, gorm.ErrRecordNotFound):
+				log.Errorf("Transaction id %s not found at gateway AND no matching local record exists", transactionId)
+				return paymentRes, fmt.Errorf("transaction %s not found: %w", transactionId, cancelErr)
+
+			default:
+				// A real infra/DB error — don't mask it as a normal cancellation.
+				log.Errorf("Failed to mark transaction %s as cancelled: %s", transactionId, cancelErr.Error())
+				return paymentRes, fmt.Errorf("failed to update transaction %s: %w", transactionId, cancelErr)
+			}
+		}
+
+		log.Errorf("OrderItemServiceImpl.CheckTransaction error: %s", err.Error())
 		return paymentRes, err
 	}
 
 	switch paymentRes.PaymentStatus {
 	case model.PaymentStatusSuccess, model.PaymentStatusPending, model.PaymentStatusRefunded, model.PaymentStatusFailed,
-		model.PaymentStatusExpired, model.PaymentStatusCanceled, model.PaymentStatusPartiallyRefunded:
-		// Also give a chance to database to confirm the transaction
-		err = service.Repository.SetPaymentStatus(0, transactionId, paymentRes.PaymentStatus)
-		if err != nil {
-			// Because this error is our database error we tell it's not payment error so no error return for this case
-			paymentRes.Message = fmt.Sprintf("Payment success but something gone wrong while writing data to database. Reason: %s", err.Error())
+		model.PaymentStatusExpired, model.PaymentStatusCancelled, model.PaymentStatusPartiallyRefunded:
+		if err := service.Repository.SetPaymentStatus(0, transactionId, paymentRes.PaymentStatus); err != nil {
+			// Payment gateway confirmed the status; our own DB write failing
+			// is a secondary concern, so we surface it as a message, not a hard error.
+			paymentRes.Message = fmt.Sprintf("Payment status confirmed, but failed to persist locally: %s", err.Error())
+			log.Errorf("SetPaymentStatus failed for transaction %s: %s", transactionId, err.Error())
 		}
 	default:
-		log.Errorf("Unknown error while confirming payment status. payment_status: %s", paymentRes.PaymentStatus)
+		log.Errorf("Unknown payment_status from gateway: %s", paymentRes.PaymentStatus)
 	}
 
 	return paymentRes, nil
 }
 
-// FindById implements OrderItemService.
+// CancelTransaction implements [OrderItemService].
+func (service *OrderItemServiceImpl) CancelTransaction(orderItemId int, transactionId string, tenantId int) (model.PaymentStatusResponse, error) {
+	var resolvedOrderItemId int
+	var resolvedTransactionId string
+
+	switch {
+	case transactionId != "":
+		// transactionId takes priority when both are supplied
+		resolvedTransactionId = transactionId
+		resolvedOrderItemId = orderItemId // may be 0 if caller didn't have it — see note in SetPaymentStatus call below
+
+	case orderItemId > 0:
+		orderItem, _, err := service.Repository.FindById(orderItemId, tenantId)
+		if err != nil {
+			log.Errorf("CancelTransaction: FindById failed for order_item_id %d, tenant_id %d. Cause: %s", orderItemId, tenantId, err.Error())
+			return model.PaymentStatusResponse{}, err
+		}
+		resolvedOrderItemId = orderItem.Id
+		resolvedTransactionId = orderItem.TransactionId
+
+	default:
+		log.Errorf("CancelTransaction called with no order_item_id or transaction_id (tenant_id %d)", tenantId)
+		return model.PaymentStatusResponse{}, errors.New("either order_item id or transaction_id is required")
+	}
+
+	log.Infof("CancelTransaction: requesting cancellation at payment gateway for transaction_id %s (order_item_id %d, tenant_id %d)",
+		resolvedTransactionId, resolvedOrderItemId, tenantId)
+
+	paymentRes, err := service.PaymentProvider.CancelTransaction(resolvedTransactionId)
+	if err != nil {
+		log.Errorf("CancelTransaction: payment gateway rejected cancellation for transaction_id %s. Cause: %s", resolvedTransactionId, err.Error())
+		return model.PaymentStatusResponse{}, err
+	}
+
+	// Payment gateway confirmed cancellation — persist locally.
+	if dbErr := service.Repository.SetPaymentStatus(resolvedOrderItemId, resolvedTransactionId, model.PaymentStatusCancelled); dbErr != nil {
+		// The cancellation itself succeeded at the gateway; a local DB write
+		// failure is a secondary concern, so we surface it as a message rather
+		// than a hard error — same pattern as CheckTransaction.
+		paymentRes.Message = fmt.Sprintf("payment cancelled successfully, but failed while writing to database locally: %s", dbErr.Error())
+		log.Errorf("CancelTransaction: gateway cancelled transaction_id %s but SetPaymentStatus failed (order_item_id %d). Cause: %s",
+			resolvedTransactionId, resolvedOrderItemId, dbErr.Error())
+	} else {
+		log.Infof("CancelTransaction: transaction_id %s cancelled and write record successfully (order_item_id %d)",
+			resolvedTransactionId, resolvedOrderItemId)
+	}
+
+	return paymentRes, nil
+}
+
+// FindById implements [OrderItemService].
 func (service *OrderItemServiceImpl) FindById(orderItemid int, tenantId int) (*model.OrderItemWithStore, []*model.PurchasedItem, error) {
 	if tenantId <= 0 || orderItemid <= 0 {
 		return nil, nil, errors.New("Tenant id or Order item id Required !")
