@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"
 	log "github.com/sirupsen/logrus"
 	"gorm.io/gorm"
@@ -28,6 +29,9 @@ func NewOrderItemRepositoryImpl(client *gorm.DB) OrderItemRepository {
 }
 
 func (repository *OrderItemRepositoryImpl) PlaceOrderItem(orderItem *model.OrderItem) (*model.OrderItem, error) {
+	if orderItem.TransactionId == "" {
+		orderItem.TransactionId = fmt.Sprintf("TEST-%s", uuid.NewString())
+	}
 	err := repository.Client.Create(orderItem).Error
 
 	if err != nil {
@@ -136,7 +140,7 @@ func (repository *OrderItemRepositoryImpl) Transactions(params *CreateTransactio
 
 	var transactionDataReturn *TransactionDataReturn
 	// Because it's return row, use SELECT *
-	result := repository.Client.Raw("SELECT * FROM transactions($1, $2, $3, $4, $5, $6::JSONB, $7, $8, $9, $10)",
+	result := repository.Client.Raw("SELECT * FROM test_transactions($1, $2, $3, $4, $5, $6::JSONB, $7, $8, $9, $10, $11, $12, $13)",
 		params.PurchasedPrice,
 		params.TotalQuantity,
 		params.TotalAmount,
@@ -149,6 +153,9 @@ func (repository *OrderItemRepositoryImpl) Transactions(params *CreateTransactio
 		params.TenantId,
 		params.StoreId,
 		string(params.PaymentType),
+		string(params.TransactionId),
+		params.PaymentURL,
+		params.PaymentToken,
 	).Scan(&transactionDataReturn)
 
 	if result.Error != nil {
@@ -166,6 +173,38 @@ func (repository *OrderItemRepositoryImpl) Transactions(params *CreateTransactio
 	return transactionDataReturn, nil
 }
 
+// SetPaymentStatus implements [OrderItemRepository].
+func (repository *OrderItemRepositoryImpl) SetPaymentStatus(orderItemId int, transactionId string, setTo model.PaymentStatus) error {
+	return repository.Client.Transaction(func(tx *gorm.DB) error {
+		db := tx.Model(&model.OrderItem{})
+
+		if transactionId != "" {
+			db = db.Where("transaction_id = ? OR id = ?", transactionId, orderItemId)
+		} else {
+			db = db.Where("id = ?", orderItemId)
+		}
+
+		result := db.Update("payment_status", setTo)
+		if result.Error != nil {
+			return result.Error
+		}
+
+		if result.RowsAffected == 0 {
+			return gorm.ErrRecordNotFound
+		}
+
+		if result.RowsAffected > 1 {
+			// Safety net: this should only ever touch a single order item.
+			// If more than one row matched, something is wrong with the
+			// filter (e.g. an empty/duplicate transaction_id) — abort and
+			// roll back instead of silently mutating unrelated rows.
+			return fmt.Errorf("expected to update exactly 1 order item, but matched %d — rolled back", result.RowsAffected)
+		}
+
+		return nil
+	})
+}
+
 // FindById implements OrderItemRepository.
 func (repository *OrderItemRepositoryImpl) FindById(orderItemId int, tenantId int) (*model.OrderItemWithStore, []*model.PurchasedItem, error) {
 	type row struct {
@@ -180,15 +219,19 @@ func (repository *OrderItemRepositoryImpl) FindById(orderItemId int, tenantId in
 		ItemNameSnapshot            string `gorm:"column:item_name_snapshot"`
 
 		// order_item
-		OrderItemId             int              `gorm:"column:order_item_id"`
-		PurchasedPrice          int              `gorm:"column:purchased_price"`
-		Subtotal                int              `gorm:"column:subtotal"`
-		TotalQuantity           int              `gorm:"column:total_quantity"`
-		OrderItemTotalAmount    int              `gorm:"column:order_item_total_amount"`
-		OrderItemDiscountAmount int              `gorm:"column:order_item_discount_amount"`
-		CreatedAt               time.Time        `gorm:"column:created_at"`
-		StoreId                 int              `gorm:"column:store_id"`
-		PaymentType             model.PaymentType `gorm:"column:payment_type"`
+		OrderItemId             int                 `gorm:"column:order_item_id"`
+		PurchasedPrice          int                 `gorm:"column:purchased_price"`
+		Subtotal                int                 `gorm:"column:subtotal"`
+		TotalQuantity           int                 `gorm:"column:total_quantity"`
+		OrderItemTotalAmount    int                 `gorm:"column:order_item_total_amount"`
+		OrderItemDiscountAmount int                 `gorm:"column:order_item_discount_amount"`
+		CreatedAt               time.Time           `gorm:"column:created_at"`
+		StoreId                 int                 `gorm:"column:store_id"`
+		PaymentType             model.PaymentType   `gorm:"column:payment_type"`
+		PaymentStatus           model.PaymentStatus `gorm:"column:payment_status"`
+		TransactionId           string              `gorm:"column:transaction_id"`
+		PaymentURL              *string             `gorm:"column:payment_url"`
+		PaymentToken            *string             `gorm:"column:payment_token"`
 
 		// store
 		StoreName        string `gorm:"column:store_name"`
@@ -218,6 +261,10 @@ func (repository *OrderItemRepositoryImpl) FindById(orderItemId int, tenantId in
 			order_item.created_at,
 			order_item.store_id,
 			order_item.payment_type,
+			order_item.payment_status,
+			order_item.transaction_id,
+			order_item.payment_url,
+			order_item.payment_token,
 			store.name                              AS store_name,
 			store.address														AS store_address,
 			store.phone_number											AS store_phone_number
@@ -237,6 +284,7 @@ func (repository *OrderItemRepositoryImpl) FindById(orderItemId int, tenantId in
 
 	// Extract OrderItem from first row (since it's the same for all rows)
 	first := rows[0]
+
 	orderItem := &model.OrderItemWithStore{
 		Id:               first.OrderItemId,
 		PurchasedPrice:   first.PurchasedPrice,
@@ -248,6 +296,10 @@ func (repository *OrderItemRepositoryImpl) FindById(orderItemId int, tenantId in
 		StoreId:          first.StoreId,
 		TenantId:         tenantId,
 		PaymentType:      first.PaymentType,
+		PaymentStatus:    first.PaymentStatus,
+		PaymentURL:       first.PaymentURL,
+		PaymentToken:     first.PaymentToken,
+		TransactionId:    first.TransactionId,
 		StoreName:        first.StoreName,
 		StoreAddress:     first.StoreAddress,
 		StorePhoneNumber: first.StorePhoneNumber,

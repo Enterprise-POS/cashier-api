@@ -142,7 +142,13 @@ func (controller *OrderItemControllerImpl) Transactions(ctx *fiber.Ctx) error {
 			JSON(common.NewWebResponseError(400, common.StatusError, "Something gone wrong ! The request body is malformed"))
 	}
 
-	transactionReturnData, err := controller.Service.Transactions(&body)
+	midtransServerKey, ok := ctx.Locals("midtransServerKey").(string)
+	if !ok {
+		return ctx.Status(fiber.StatusInternalServerError).
+			JSON(common.NewWebResponseError(500, common.StatusError, "Unexpected behavior ! could not get midtrans server key"))
+	}
+
+	transactionReturnData, err := controller.Service.Transactions(&body, midtransServerKey)
 	if err != nil {
 		if pgErr, ok := err.(*exception.PostgreSQLException); ok {
 			errMessage := pgErr.Message
@@ -168,6 +174,58 @@ func (controller *OrderItemControllerImpl) Transactions(ctx *fiber.Ctx) error {
 
 	return ctx.Status(fiber.StatusOK).
 		JSON(common.NewWebResponse(200, common.StatusSuccess, transactionReturnData))
+}
+
+// CheckTransaction implements [OrderItemController].
+func (controller *OrderItemControllerImpl) CheckTransaction(ctx *fiber.Ctx) error {
+	paramTransactionId := ctx.Query("transaction_id", "") // default 5
+	midtransServerKey, ok := ctx.Locals("midtransServerKey").(string)
+	if !ok {
+		return ctx.Status(fiber.StatusInternalServerError).
+			JSON(common.NewWebResponseError(500, common.StatusError, "Unexpected behavior ! could not get midtrans server key"))
+	}
+
+	response, err := controller.Service.CheckTransaction(paramTransactionId, midtransServerKey)
+	if err != nil {
+		return ctx.Status(fiber.StatusBadRequest).
+			JSON(common.NewWebResponseError(400, common.StatusError, fmt.Sprintf("Failed to check payment status. Reason: %s", err.Error())))
+	}
+
+	return ctx.Status(fiber.StatusOK).
+		JSON(common.NewWebResponse(200, common.StatusSuccess, response))
+}
+
+// CancelTransaction implements [OrderItemController].
+func (controller *OrderItemControllerImpl) CancelTransaction(ctx *fiber.Ctx) error {
+	tenantId, err := strconv.Atoi(ctx.Params("tenantId"))
+	if err != nil {
+		return ctx.Status(fiber.StatusBadRequest).
+			JSON(common.NewWebResponseError(400, common.StatusError, "Invalid tenant ID"))
+	}
+
+	var body struct {
+		OrderItemId   int    `json:"order_item_id"`
+		TransactionId string `json:"transaction_id"`
+	}
+
+	if err := ctx.BodyParser(&body); err != nil {
+		return ctx.Status(fiber.StatusBadRequest).
+			JSON(common.NewWebResponseError(400, common.StatusError, "Something gone wrong ! The request body is malformed"))
+	}
+
+	midtransServerKey, ok := ctx.Locals("midtransServerKey").(string)
+	if !ok {
+		return ctx.Status(fiber.StatusInternalServerError).
+			JSON(common.NewWebResponseError(500, common.StatusError, "Unexpected behavior ! could not get midtrans server key"))
+	}
+	response, err := controller.Service.CancelTransaction(body.OrderItemId, body.TransactionId, tenantId, midtransServerKey)
+	if err != nil {
+		return ctx.Status(fiber.StatusBadRequest).
+			JSON(common.NewWebResponseError(400, common.StatusError, fmt.Sprintf("Failed to cancel payment status. Reason: %s", err.Error())))
+	}
+
+	return ctx.Status(fiber.StatusOK).
+		JSON(common.NewWebResponse(200, common.StatusSuccess, response))
 }
 
 // ExportProfitExcel implements OrderItemController.

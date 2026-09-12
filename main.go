@@ -46,6 +46,9 @@ func main() {
 	// DB client
 	gormClient := client.CreateGormClient()
 
+	// Payment provider
+	paymentProvider := service.NewPaymentProviderImpl()
+
 	// 02 Middleware, Security
 	app.Use(cors.New(cors.Config{
 		AllowOrigins:     "http://localhost:3000, https://enterprisepos.vercel.app",
@@ -70,6 +73,7 @@ func main() {
 	})
 
 	// public
+	// user
 	userRepository := repository.NewUserRepositoryImpl(gormClient)
 	userService := service.NewUserServiceImpl(userRepository)
 	userController := controller.NewUserControllerImpl(userService)
@@ -77,6 +81,11 @@ func main() {
 	apiV1.Post("/users/sign_up", userController.SignUpWithEmailAndPassword)
 	apiV1.Post("/users/sign_in", userController.SignInWithEmailAndPassword)
 	apiV1.Delete("/users/sign_out", userController.SignOut)
+
+	// webhook
+	webhookController := controller.NewWebhookControllerImpl()
+	// /api/v1/order_items/transactions/webhook?provider=midtrans
+	apiV1.Post("/order_items/transactions/webhook", webhookController.HandlePaymentGateWayWebhook)
 
 	// protected only login user
 	apiV1.Use(middleware.ProtectedRoute)
@@ -144,15 +153,18 @@ func main() {
 	apiV1.Delete("/store_stocks/withdraw/:tenantId", tenantRestriction, storeStockController.Withdraw)
 
 	orderItemRepository := repository.NewOrderItemRepositoryImpl(gormClient)
-	orderItemService := service.NewOrderItemServiceImpl(orderItemRepository)
+	orderItemService := service.NewOrderItemServiceImpl(orderItemRepository, paymentProvider)
 	orderItemController := controller.NewOrderItemControllerImpl(orderItemService)
 
 	// GET /order_items/:tenantId?order_item_id=99
 	apiV1.Get("/order_items/details/:tenantId", tenantRestriction, orderItemController.FindById)
+	// GET /order_items/transactions/:tenantId?transaction_id=00
+	apiV1.Get("/order_items/transactions/:tenantId", tenantRestriction, orderItemController.CheckTransaction)
 	apiV1.Post("/order_items/search/:tenantId", tenantRestriction, orderItemController.Get)
 	apiV1.Post("/order_items/transactions/:tenantId", tenantRestriction, orderItemController.Transactions)
 	apiV1.Post("/order_items/sales_report/:tenantId", tenantRestriction, orderItemController.GetSalesReport)
 	apiV1.Post("/order_items/export_profit/:tenantId", tenantRestriction, orderItemController.ExportProfitExcel)
+	apiV1.Patch("/order_items/transactions/:tenantId", tenantRestriction, orderItemController.CancelTransaction)
 	apiV1.Delete("/order_items/:tenantId", tenantRestriction, orderItemController.DeleteInvoice)
 
 	purchasedItemRepository := repository.NewPurchasedItemRepositoryImpl(gormClient)

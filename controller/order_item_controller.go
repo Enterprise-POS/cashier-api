@@ -1,6 +1,8 @@
 package controller
 
-import "github.com/gofiber/fiber/v2"
+import (
+	"github.com/gofiber/fiber/v2"
+)
 
 type OrderItemController interface {
 	/*
@@ -24,6 +26,16 @@ type OrderItemController interface {
 		This method will insert into 2 table
 	*/
 	Transactions(ctx *fiber.Ctx) error
+
+	/*
+		Check payment gateway transaction status
+	*/
+	CheckTransaction(ctx *fiber.Ctx) error
+
+	/*
+		Cancel payment gateway transaction also with write CANCELED to database
+	*/
+	CancelTransaction(ctx *fiber.Ctx) error
 
 	/*
 		Using aggregate function from SQL to get report

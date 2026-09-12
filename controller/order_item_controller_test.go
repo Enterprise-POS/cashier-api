@@ -286,6 +286,232 @@ func TestOrderItemControllerImpl(t *testing.T) {
 		})
 	})
 
+	t.Run("CheckTransaction", func(t *testing.T) {
+		app.Get("/order_items/transactions/:tenantId", tenantRestriction, orderItemController.CheckTransaction)
+
+		t.Run("NormalCheckTransaction", func(t *testing.T) {
+			const TRANSACTION_ID = "MID-QRIS-65f6f7c0-4778-4c9c-90e9-e3934fb9c722"
+
+			expectedResponse := model.PaymentStatusResponse{
+				PaymentStatus: model.PaymentStatusSuccess,
+				StatusCode:    "200",
+			}
+
+			orderItemServiceMock.Mock = &mock.Mock{}
+			orderItemServiceMock.Mock.On("CheckTransaction", TRANSACTION_ID).Return(expectedResponse, nil)
+
+			baseURL := fmt.Sprintf("/order_items/transactions/%d", createdTestTenant.Id)
+			parsedURL, err := url.Parse(baseURL)
+			require.NoError(t, err)
+			params := url.Values{}
+			params.Add("transaction_id", TRANSACTION_ID)
+			parsedURL.RawQuery = params.Encode()
+
+			request = httptest.NewRequest("GET", parsedURL.String(), nil)
+			request.Header.Set("Content-Type", "application/json")
+			request.AddCookie(enterprisePOSCookie)
+			response, err = app.Test(request, testTimeout)
+			assert.NoError(t, err)
+			assert.NotNil(t, response)
+			assert.Equal(t, http.StatusOK, response.StatusCode)
+			orderItemServiceMock.Mock.AssertExpectations(t)
+		})
+
+		t.Run("ServiceReturnsError", func(t *testing.T) {
+			const TRANSACTION_ID = "MID-QRIS-NONEXISTENT"
+
+			orderItemServiceMock.Mock = &mock.Mock{}
+			orderItemServiceMock.Mock.On("CheckTransaction", TRANSACTION_ID).
+				Return(nil, errors.New("transaction id is required"))
+
+			baseURL := fmt.Sprintf("/order_items/transactions/%d", createdTestTenant.Id)
+			parsedURL, err := url.Parse(baseURL)
+			require.NoError(t, err)
+			params := url.Values{}
+			params.Add("transaction_id", TRANSACTION_ID)
+			parsedURL.RawQuery = params.Encode()
+
+			request = httptest.NewRequest("GET", parsedURL.String(), nil)
+			request.Header.Set("Content-Type", "application/json")
+			request.AddCookie(enterprisePOSCookie)
+			response, err = app.Test(request, testTimeout)
+			assert.NoError(t, err)
+			assert.NotNil(t, response)
+			assert.Equal(t, http.StatusBadRequest, response.StatusCode)
+
+			byteResponseBody, err := io.ReadAll(response.Body)
+			assert.NoError(t, err)
+			assert.Contains(t, string(byteResponseBody), "Failed to check payment status")
+			orderItemServiceMock.Mock.AssertExpectations(t)
+		})
+
+		t.Run("Unauthorized", func(t *testing.T) {
+			baseURL := fmt.Sprintf("/order_items/transactions/%d", createdTestTenant.Id)
+			parsedURL, err := url.Parse(baseURL)
+			require.NoError(t, err)
+			params := url.Values{}
+			params.Add("transaction_id", "some-transaction-id")
+			parsedURL.RawQuery = params.Encode()
+
+			request = httptest.NewRequest("GET", parsedURL.String(), nil)
+			request.Header.Set("Content-Type", "application/json")
+			// No cookie attached
+			response, err = app.Test(request, testTimeout)
+			assert.NoError(t, err)
+			assert.NotNil(t, response)
+			assert.Equal(t, http.StatusUnauthorized, response.StatusCode)
+		})
+	})
+
+	t.Run("CancelTransaction", func(t *testing.T) {
+		app.Patch("/order_items/transactions/:tenantId", tenantRestriction, orderItemController.CancelTransaction)
+
+		t.Run("NormalCancelTransaction_ByTransactionId", func(t *testing.T) {
+			const TRANSACTION_ID = "MID-QRIS-cancel-1"
+
+			expectedResponse := model.PaymentStatusResponse{
+				PaymentStatus: model.PaymentStatusCancelled,
+				StatusCode:    "200",
+			}
+
+			orderItemServiceMock.Mock = &mock.Mock{}
+			orderItemServiceMock.Mock.On("CancelTransaction", 0, TRANSACTION_ID, createdTestTenant.Id).
+				Return(expectedResponse, nil)
+
+			byteBody, err := json.Marshal(fiber.Map{
+				"transaction_id": TRANSACTION_ID,
+			})
+			require.NoError(t, err)
+			requestBody := strings.NewReader(string(byteBody))
+
+			request = httptest.NewRequest("PATCH", fmt.Sprintf("/order_items/transactions/%d", createdTestTenant.Id), requestBody)
+			request.Header.Set("Content-Type", "application/json")
+			request.AddCookie(enterprisePOSCookie)
+			response, err = app.Test(request, testTimeout)
+			assert.NoError(t, err)
+			assert.NotNil(t, response)
+			assert.Equal(t, http.StatusOK, response.StatusCode)
+			orderItemServiceMock.Mock.AssertExpectations(t)
+		})
+
+		t.Run("NormalCancelTransaction_ByOrderItemId", func(t *testing.T) {
+			const ORDER_ITEM_ID = 42
+
+			expectedResponse := model.PaymentStatusResponse{
+				PaymentStatus: model.PaymentStatusCancelled,
+				StatusCode:    "200",
+			}
+
+			orderItemServiceMock.Mock = &mock.Mock{}
+			orderItemServiceMock.Mock.On("CancelTransaction", ORDER_ITEM_ID, "", createdTestTenant.Id).
+				Return(expectedResponse, nil)
+
+			byteBody, err := json.Marshal(fiber.Map{
+				"order_item_id": ORDER_ITEM_ID,
+			})
+			require.NoError(t, err)
+			requestBody := strings.NewReader(string(byteBody))
+
+			request = httptest.NewRequest("PATCH", fmt.Sprintf("/order_items/transactions/%d", createdTestTenant.Id), requestBody)
+			request.Header.Set("Content-Type", "application/json")
+			request.AddCookie(enterprisePOSCookie)
+			response, err = app.Test(request, testTimeout)
+			assert.NoError(t, err)
+			assert.NotNil(t, response)
+			assert.Equal(t, http.StatusOK, response.StatusCode)
+			orderItemServiceMock.Mock.AssertExpectations(t)
+		})
+
+		t.Run("InvalidTenantIdInPath", func(t *testing.T) {
+			orderItemServiceMock.Mock = &mock.Mock{}
+
+			byteBody, err := json.Marshal(fiber.Map{
+				"transaction_id": "some-transaction-id",
+			})
+			require.NoError(t, err)
+			requestBody := strings.NewReader(string(byteBody))
+
+			request = httptest.NewRequest("PATCH", "/order_items/transactions/not_an_int", requestBody)
+			request.Header.Set("Content-Type", "application/json")
+			request.AddCookie(enterprisePOSCookie)
+			response, err = app.Test(request, testTimeout)
+			assert.NoError(t, err)
+			assert.NotNil(t, response)
+			assert.Equal(t, http.StatusBadRequest, response.StatusCode)
+
+			byteResponseBody, err := io.ReadAll(response.Body)
+			assert.NoError(t, err)
+			assert.Contains(t, string(byteResponseBody), "TenantId is not int")
+			orderItemServiceMock.Mock.AssertNotCalled(t, "CancelTransaction", mock.Anything, mock.Anything, mock.Anything)
+		})
+
+		t.Run("MalformedBody", func(t *testing.T) {
+			orderItemServiceMock.Mock = &mock.Mock{}
+
+			byteBody, err := json.Marshal(fiber.Map{
+				"order_item_id": "not_an_int", // should be int
+			})
+			require.NoError(t, err)
+			requestBody := strings.NewReader(string(byteBody))
+
+			request = httptest.NewRequest("PATCH", fmt.Sprintf("/order_items/transactions/%d", createdTestTenant.Id), requestBody)
+			request.Header.Set("Content-Type", "application/json")
+			request.AddCookie(enterprisePOSCookie)
+			response, err = app.Test(request, testTimeout)
+			assert.NoError(t, err)
+			assert.NotNil(t, response)
+			assert.Equal(t, http.StatusBadRequest, response.StatusCode)
+
+			byteResponseBody, err := io.ReadAll(response.Body)
+			assert.NoError(t, err)
+			assert.Contains(t, string(byteResponseBody), "Something gone wrong ! The request body is malformed")
+			orderItemServiceMock.Mock.AssertNotCalled(t, "CancelTransaction", mock.Anything, mock.Anything, mock.Anything)
+		})
+
+		t.Run("ServiceReturnsError", func(t *testing.T) {
+			const TRANSACTION_ID = "MID-QRIS-cancel-error"
+
+			orderItemServiceMock.Mock = &mock.Mock{}
+			orderItemServiceMock.Mock.On("CancelTransaction", 0, TRANSACTION_ID, createdTestTenant.Id).
+				Return(nil, errors.New("either order_item id or transaction_id is required"))
+
+			byteBody, err := json.Marshal(fiber.Map{
+				"transaction_id": TRANSACTION_ID,
+			})
+			require.NoError(t, err)
+			requestBody := strings.NewReader(string(byteBody))
+
+			request = httptest.NewRequest("PATCH", fmt.Sprintf("/order_items/transactions/%d", createdTestTenant.Id), requestBody)
+			request.Header.Set("Content-Type", "application/json")
+			request.AddCookie(enterprisePOSCookie)
+			response, err = app.Test(request, testTimeout)
+			assert.NoError(t, err)
+			assert.NotNil(t, response)
+			assert.Equal(t, http.StatusBadRequest, response.StatusCode)
+
+			byteResponseBody, err := io.ReadAll(response.Body)
+			assert.NoError(t, err)
+			assert.Contains(t, string(byteResponseBody), "Failed to cancel payment status")
+			orderItemServiceMock.Mock.AssertExpectations(t)
+		})
+
+		t.Run("Unauthorized", func(t *testing.T) {
+			byteBody, err := json.Marshal(fiber.Map{
+				"transaction_id": "some-transaction-id",
+			})
+			require.NoError(t, err)
+			requestBody := strings.NewReader(string(byteBody))
+
+			request = httptest.NewRequest("PATCH", fmt.Sprintf("/order_items/transactions/%d", createdTestTenant.Id), requestBody)
+			request.Header.Set("Content-Type", "application/json")
+			// No cookie attached
+			response, err = app.Test(request, testTimeout)
+			assert.NoError(t, err)
+			assert.NotNil(t, response)
+			assert.Equal(t, http.StatusUnauthorized, response.StatusCode)
+		})
+	})
+
 	t.Run("FindById", func(t *testing.T) {
 		t.Run("NormalFindById", func(t *testing.T) {
 			baseURL := fmt.Sprintf("/order_items/details/%d", createdTestTenant.Id)

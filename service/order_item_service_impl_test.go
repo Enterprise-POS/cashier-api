@@ -11,6 +11,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"gorm.io/gorm"
 )
 
 func TestOrderItemServiceImpl(t *testing.T) {
@@ -22,9 +23,11 @@ func TestOrderItemServiceImpl(t *testing.T) {
 	const PAGE = 1
 
 	t.Run("Get", func(t *testing.T) {
+		paymentProvider := NewPaymentProviderImpl()
+
 		t.Run("NormalGet", func(t *testing.T) {
 			orderItemRepo := repository.NewOrderItemRepositoryMock(&mock.Mock{}).(*repository.OrderItemRepositoryMock)
-			orderItemService := NewOrderItemServiceImpl(orderItemRepo)
+			orderItemService := NewOrderItemServiceImpl(orderItemRepo, paymentProvider)
 			// filters := []*query.QueryFilter{}
 			// // dateFilters := nil
 			// orderItemRepo.Mock = &mock.Mock{}
@@ -58,7 +61,7 @@ func TestOrderItemServiceImpl(t *testing.T) {
 
 		t.Run("TenantIdIsNotProvided", func(t *testing.T) {
 			orderItemRepo := repository.NewOrderItemRepositoryMock(&mock.Mock{}).(*repository.OrderItemRepositoryMock)
-			orderItemService := NewOrderItemServiceImpl(orderItemRepo)
+			orderItemService := NewOrderItemServiceImpl(orderItemRepo, paymentProvider)
 			// Invalid tenant id
 			orderItems, count, err := orderItemService.Get(0, STORE_ID, LIMIT, PAGE, nil, nil)
 			assert.Error(t, err)
@@ -68,7 +71,7 @@ func TestOrderItemServiceImpl(t *testing.T) {
 
 		t.Run("InvalidLimitAndPageParams", func(t *testing.T) {
 			orderItemRepo := repository.NewOrderItemRepositoryMock(&mock.Mock{}).(*repository.OrderItemRepositoryMock)
-			orderItemService := NewOrderItemServiceImpl(orderItemRepo)
+			orderItemService := NewOrderItemServiceImpl(orderItemRepo, paymentProvider)
 
 			// Test invalid limit (0)
 			orderItems, count, err := orderItemService.Get(TENANT_ID, STORE_ID, 0, PAGE, nil, nil)
@@ -99,7 +102,7 @@ func TestOrderItemServiceImpl(t *testing.T) {
 
 		t.Run("InvalidPage_Zero", func(t *testing.T) {
 			orderItemRepo := repository.NewOrderItemRepositoryMock(&mock.Mock{}).(*repository.OrderItemRepositoryMock)
-			orderItemService := NewOrderItemServiceImpl(orderItemRepo)
+			orderItemService := NewOrderItemServiceImpl(orderItemRepo, paymentProvider)
 
 			orderItems, count, err := orderItemService.Get(TENANT_ID, STORE_ID, LIMIT, 0, nil, nil)
 
@@ -111,7 +114,7 @@ func TestOrderItemServiceImpl(t *testing.T) {
 
 		t.Run("InvalidPage_Negative", func(t *testing.T) {
 			orderItemRepo := repository.NewOrderItemRepositoryMock(&mock.Mock{}).(*repository.OrderItemRepositoryMock)
-			orderItemService := NewOrderItemServiceImpl(orderItemRepo)
+			orderItemService := NewOrderItemServiceImpl(orderItemRepo, paymentProvider)
 
 			orderItems, count, err := orderItemService.Get(TENANT_ID, STORE_ID, LIMIT, -1, nil, nil)
 
@@ -123,7 +126,7 @@ func TestOrderItemServiceImpl(t *testing.T) {
 
 		t.Run("DateFilter_StartDateAfterEndDate", func(t *testing.T) {
 			orderItemRepo := repository.NewOrderItemRepositoryMock(&mock.Mock{}).(*repository.OrderItemRepositoryMock)
-			orderItemService := NewOrderItemServiceImpl(orderItemRepo)
+			orderItemService := NewOrderItemServiceImpl(orderItemRepo, paymentProvider)
 
 			startDate := int64(1700000000)
 			endDate := int64(1600000000)
@@ -143,7 +146,7 @@ func TestOrderItemServiceImpl(t *testing.T) {
 
 		t.Run("DateFilter_NegativeStartDate", func(t *testing.T) {
 			orderItemRepo := repository.NewOrderItemRepositoryMock(&mock.Mock{}).(*repository.OrderItemRepositoryMock)
-			orderItemService := NewOrderItemServiceImpl(orderItemRepo)
+			orderItemService := NewOrderItemServiceImpl(orderItemRepo, paymentProvider)
 
 			startDate := int64(-1000)
 			dateFilter := &query.DateFilter{
@@ -160,7 +163,7 @@ func TestOrderItemServiceImpl(t *testing.T) {
 
 		t.Run("DateFilter_NegativeEndDate", func(t *testing.T) {
 			orderItemRepo := repository.NewOrderItemRepositoryMock(&mock.Mock{}).(*repository.OrderItemRepositoryMock)
-			orderItemService := NewOrderItemServiceImpl(orderItemRepo)
+			orderItemService := NewOrderItemServiceImpl(orderItemRepo, paymentProvider)
 
 			endDate := int64(-1000)
 			dateFilter := &query.DateFilter{
@@ -177,7 +180,7 @@ func TestOrderItemServiceImpl(t *testing.T) {
 
 		t.Run("DateFilter_StartDateTooFarInFuture", func(t *testing.T) {
 			orderItemRepo := repository.NewOrderItemRepositoryMock(&mock.Mock{}).(*repository.OrderItemRepositoryMock)
-			orderItemService := NewOrderItemServiceImpl(orderItemRepo)
+			orderItemService := NewOrderItemServiceImpl(orderItemRepo, paymentProvider)
 
 			startDate := int64(5000000000) // 2100+
 			dateFilter := &query.DateFilter{
@@ -194,7 +197,7 @@ func TestOrderItemServiceImpl(t *testing.T) {
 
 		t.Run("DateFilter_EndDateTooFarInFuture", func(t *testing.T) {
 			orderItemRepo := repository.NewOrderItemRepositoryMock(&mock.Mock{}).(*repository.OrderItemRepositoryMock)
-			orderItemService := NewOrderItemServiceImpl(orderItemRepo)
+			orderItemService := NewOrderItemServiceImpl(orderItemRepo, paymentProvider)
 
 			endDate := int64(5000000000) // Way beyond 2100
 			dateFilter := &query.DateFilter{
@@ -211,7 +214,7 @@ func TestOrderItemServiceImpl(t *testing.T) {
 
 		t.Run("DateFilter_ValidDateRange", func(t *testing.T) {
 			orderItemRepo := repository.NewOrderItemRepositoryMock(&mock.Mock{}).(*repository.OrderItemRepositoryMock)
-			orderItemService := NewOrderItemServiceImpl(orderItemRepo)
+			orderItemService := NewOrderItemServiceImpl(orderItemRepo, paymentProvider)
 
 			startDate := int64(1600000000)
 			endDate := int64(1700000000)
@@ -236,7 +239,7 @@ func TestOrderItemServiceImpl(t *testing.T) {
 
 		t.Run("RepositoryReturnsError", func(t *testing.T) {
 			orderItemRepo := repository.NewOrderItemRepositoryMock(&mock.Mock{}).(*repository.OrderItemRepositoryMock)
-			orderItemService := NewOrderItemServiceImpl(orderItemRepo)
+			orderItemService := NewOrderItemServiceImpl(orderItemRepo, paymentProvider)
 
 			expectedError := errors.New("database connection failed")
 
@@ -254,9 +257,11 @@ func TestOrderItemServiceImpl(t *testing.T) {
 	})
 
 	t.Run("FindById", func(t *testing.T) {
+		paymentProvider := NewPaymentProviderImpl()
+
 		t.Run("NormalFindById", func(t *testing.T) {
 			orderItemRepo := repository.NewOrderItemRepositoryMock(&mock.Mock{}).(*repository.OrderItemRepositoryMock)
-			orderItemService := NewOrderItemServiceImpl(orderItemRepo)
+			orderItemService := NewOrderItemServiceImpl(orderItemRepo, paymentProvider)
 
 			expectedOrderItem := &model.OrderItemWithStore{
 				Id:             1,
@@ -312,7 +317,7 @@ func TestOrderItemServiceImpl(t *testing.T) {
 
 		t.Run("InvalidParameter", func(t *testing.T) {
 			orderItemRepo := repository.NewOrderItemRepositoryMock(&mock.Mock{}).(*repository.OrderItemRepositoryMock)
-			orderItemService := NewOrderItemServiceImpl(orderItemRepo)
+			orderItemService := NewOrderItemServiceImpl(orderItemRepo, paymentProvider)
 
 			const (
 				TENANT_ID     = 1
@@ -336,8 +341,34 @@ func TestOrderItemServiceImpl(t *testing.T) {
 	})
 
 	t.Run("Transactions", func(t *testing.T) {
+		cashServerKey := "NOT_SERVER_KEY_THIS_KEY_WILL_BE_USE_FOR_CASH_PAYMENT_METHOD" // Will not payment gateway for this case
+		paymentProvider := NewPaymentProviderImpl()
+
 		orderItemRepo := repository.NewOrderItemRepositoryMock(&mock.Mock{}).(*repository.OrderItemRepositoryMock)
-		orderItemService := NewOrderItemServiceImpl(orderItemRepo)
+		orderItemService := NewOrderItemServiceImpl(orderItemRepo, paymentProvider)
+
+		baseValidParams := func() *repository.CreateTransactionParams {
+			return &repository.CreateTransactionParams{
+				PurchasedPrice: 10_000,
+				TotalQuantity:  1,
+				TotalAmount:    10_000,
+				DiscountAmount: 0,
+				SubTotal:       10_000,
+				Items: []*model.PurchasedItem{
+					{
+						Quantity:           1,
+						StorePriceSnapshot: 10_000,
+						DiscountAmount:     0,
+						TotalAmount:        10_000,
+						ItemId:             1,
+						ItemNameSnapshot:   "Item Name Snapshot",
+					},
+				},
+				UserId:   USER_ID,
+				TenantId: TENANT_ID,
+				StoreId:  STORE_ID,
+			}
+		}
 
 		t.Run("NormalTransactions", func(t *testing.T) {
 			expectedParams := &repository.CreateTransactionParams{
@@ -370,7 +401,7 @@ func TestOrderItemServiceImpl(t *testing.T) {
 				CreatedAt:          &now,
 			}
 			orderItemRepo.Mock.On("Transactions", expectedParams).Return(expectedTransactionDataReturn, nil)
-			transactionDataReturn, err := orderItemService.Transactions(expectedParams)
+			transactionDataReturn, err := orderItemService.Transactions(expectedParams, cashServerKey)
 			assert.Nil(t, err)
 			assert.Equal(t, expectedTransactionDataReturn.CreatedOrderItemId, transactionDataReturn.CreatedOrderItemId)
 			assert.NotNil(t, transactionDataReturn.CreatedAt)
@@ -383,7 +414,7 @@ func TestOrderItemServiceImpl(t *testing.T) {
 				StoreId:  STORE_ID,
 			}
 
-			transactionDataReturn, err := orderItemService.Transactions(invalidParams)
+			transactionDataReturn, err := orderItemService.Transactions(invalidParams, cashServerKey)
 			assert.Error(t, err)
 			assert.Nil(t, transactionDataReturn)
 
@@ -392,7 +423,7 @@ func TestOrderItemServiceImpl(t *testing.T) {
 				// TenantId: TENANT_ID,
 				StoreId: STORE_ID,
 			}
-			transactionDataReturn, err = orderItemService.Transactions(invalidParams)
+			transactionDataReturn, err = orderItemService.Transactions(invalidParams, cashServerKey)
 			assert.Error(t, err)
 			assert.Nil(t, transactionDataReturn)
 
@@ -401,7 +432,7 @@ func TestOrderItemServiceImpl(t *testing.T) {
 				TenantId: TENANT_ID,
 				// StoreId: STORE_ID,
 			}
-			transactionDataReturn, err = orderItemService.Transactions(invalidParams)
+			transactionDataReturn, err = orderItemService.Transactions(invalidParams, cashServerKey)
 			assert.Error(t, err)
 			assert.Nil(t, transactionDataReturn)
 		})
@@ -414,7 +445,7 @@ func TestOrderItemServiceImpl(t *testing.T) {
 
 				Items: nil,
 			}
-			transactionDataReturn, err := orderItemService.Transactions(invalidParams)
+			transactionDataReturn, err := orderItemService.Transactions(invalidParams, cashServerKey)
 			assert.Error(t, err)
 			assert.Nil(t, transactionDataReturn)
 			assert.Equal(t, "At least one item is required", err.Error())
@@ -426,7 +457,7 @@ func TestOrderItemServiceImpl(t *testing.T) {
 
 				Items: []*model.PurchasedItem{},
 			}
-			transactionDataReturn, err = orderItemService.Transactions(invalidParams)
+			transactionDataReturn, err = orderItemService.Transactions(invalidParams, cashServerKey)
 			assert.Error(t, err)
 			assert.Nil(t, transactionDataReturn)
 		})
@@ -467,7 +498,7 @@ func TestOrderItemServiceImpl(t *testing.T) {
 				StoreId:  STORE_ID,
 			}
 
-			transactionDataReturn, err := orderItemService.Transactions(expectedParams)
+			transactionDataReturn, err := orderItemService.Transactions(expectedParams, cashServerKey)
 			assert.Error(t, err)
 			assert.Nil(t, transactionDataReturn)
 			assert.ErrorContains(t, err, "Price mismatch")
@@ -497,7 +528,7 @@ func TestOrderItemServiceImpl(t *testing.T) {
 				StoreId:  STORE_ID,
 			}
 
-			transactionDataReturn, err := orderItemService.Transactions(expectedParams)
+			transactionDataReturn, err := orderItemService.Transactions(expectedParams, cashServerKey)
 			assert.Error(t, err)
 			assert.Nil(t, transactionDataReturn)
 			assert.ErrorContains(t, err, "total mismatch")
@@ -527,7 +558,7 @@ func TestOrderItemServiceImpl(t *testing.T) {
 				StoreId:  STORE_ID,
 			}
 
-			transactionDataReturn, err := orderItemService.Transactions(expectedParams)
+			transactionDataReturn, err := orderItemService.Transactions(expectedParams, cashServerKey)
 			assert.Error(t, err)
 			assert.Nil(t, transactionDataReturn)
 			assert.ErrorContains(t, err, "Total quantity")
@@ -557,7 +588,7 @@ func TestOrderItemServiceImpl(t *testing.T) {
 				StoreId:  STORE_ID,
 			}
 
-			transactionDataReturn, err := orderItemService.Transactions(expectedParams)
+			transactionDataReturn, err := orderItemService.Transactions(expectedParams, cashServerKey)
 			assert.Error(t, err)
 			assert.Nil(t, transactionDataReturn)
 			assert.ErrorContains(t, err, "Subtotal mismatch")
@@ -587,7 +618,7 @@ func TestOrderItemServiceImpl(t *testing.T) {
 				StoreId:  STORE_ID,
 			}
 
-			transactionDataReturn, err := orderItemService.Transactions(expectedParams)
+			transactionDataReturn, err := orderItemService.Transactions(expectedParams, cashServerKey)
 			assert.Error(t, err)
 			assert.Nil(t, transactionDataReturn)
 			assert.ErrorContains(t, err, "Total amount mismatch")
@@ -617,7 +648,7 @@ func TestOrderItemServiceImpl(t *testing.T) {
 				StoreId:  STORE_ID,
 			}
 
-			transactionDataReturn, err := orderItemService.Transactions(expectedParams)
+			transactionDataReturn, err := orderItemService.Transactions(expectedParams, cashServerKey)
 			assert.Error(t, err)
 			assert.Nil(t, transactionDataReturn)
 			assert.ErrorContains(t, err, "Discount amount mismatch")
@@ -645,7 +676,7 @@ func TestOrderItemServiceImpl(t *testing.T) {
 				StoreId:  STORE_ID,
 			}
 
-			transactionDataReturn, err = orderItemService.Transactions(expectedParams)
+			transactionDataReturn, err = orderItemService.Transactions(expectedParams, cashServerKey)
 			assert.Error(t, err)
 			assert.Nil(t, transactionDataReturn)
 
@@ -676,7 +707,7 @@ func TestOrderItemServiceImpl(t *testing.T) {
 				StoreId:  STORE_ID,
 			}
 
-			transactionDataReturn, err := orderItemService.Transactions(expectedParams)
+			transactionDataReturn, err := orderItemService.Transactions(expectedParams, cashServerKey)
 			assert.Error(t, err)
 			assert.Nil(t, transactionDataReturn)
 			assert.ErrorContains(t, err, "Insufficient payment")
@@ -707,7 +738,7 @@ func TestOrderItemServiceImpl(t *testing.T) {
 				StoreId:  STORE_ID,
 			}
 
-			transactionDataReturn, err := orderItemService.Transactions(invalidParams)
+			transactionDataReturn, err := orderItemService.Transactions(invalidParams, cashServerKey)
 			assert.Error(t, err)
 			assert.Nil(t, transactionDataReturn)
 			assert.ErrorContains(t, err, "invalid payment_type")
@@ -739,7 +770,7 @@ func TestOrderItemServiceImpl(t *testing.T) {
 				StoreId:        STORE_ID,
 			}
 
-			transactionDataReturn, err := orderItemService.Transactions(expectedParams)
+			transactionDataReturn, err := orderItemService.Transactions(expectedParams, cashServerKey)
 			assert.Error(t, err)
 			assert.Nil(t, transactionDataReturn)
 			assert.ErrorContains(t, err, "Too many items")
@@ -778,7 +809,7 @@ func TestOrderItemServiceImpl(t *testing.T) {
 			}
 			orderItemRepo.Mock = &mock.Mock{}
 			orderItemRepo.Mock.On("Transactions", expectedParams).Return(expectedTransactionDataReturn)
-			transactionReturnData, err := orderItemService.Transactions(expectedParams)
+			transactionReturnData, err := orderItemService.Transactions(expectedParams, cashServerKey)
 			assert.Nil(t, err)
 			assert.Equal(t, expectedTransactionDataReturn.CreatedOrderItemId, transactionReturnData.CreatedOrderItemId)
 			assert.NotNil(t, transactionReturnData.CreatedAt)
@@ -824,7 +855,7 @@ func TestOrderItemServiceImpl(t *testing.T) {
 			}
 			orderItemRepo.Mock = &mock.Mock{}
 			orderItemRepo.Mock.On("Transactions", expectedParams).Return(expectedTransactionDataReturn)
-			transactionDataReturn, err := orderItemService.Transactions(expectedParams)
+			transactionDataReturn, err := orderItemService.Transactions(expectedParams, cashServerKey)
 			assert.Nil(t, err)
 			assert.Equal(t, expectedTransactionDataReturn.CreatedOrderItemId, transactionDataReturn.CreatedOrderItemId)
 		})
@@ -856,17 +887,662 @@ func TestOrderItemServiceImpl(t *testing.T) {
 
 			orderItemRepo.Mock = &mock.Mock{}
 			orderItemRepo.Mock.On("Transactions", expectedParams).Return(nil, errors.New("database error"))
-			transactionDataReturn, err := orderItemService.Transactions(expectedParams)
+			transactionDataReturn, err := orderItemService.Transactions(expectedParams, "")
 			assert.Error(t, err)
 			assert.Nil(t, transactionDataReturn)
 			assert.ErrorContains(t, err, "Failed to create transaction")
 		})
+
+		t.Run("NegativePrice", func(t *testing.T) {
+			orderItemRepo := repository.NewOrderItemRepositoryMock(&mock.Mock{}).(*repository.OrderItemRepositoryMock)
+			paymentProviderMock := NewPaymentProviderMock(&mock.Mock{}).(*PaymentProviderMock)
+			orderItemService := NewOrderItemServiceImpl(orderItemRepo, paymentProviderMock)
+
+			params := baseValidParams()
+			params.Items[0].StorePriceSnapshot = -10_000
+			params.Items[0].TotalAmount = -10_000
+			params.PurchasedPrice = -10_000
+			params.TotalAmount = -10_000
+			params.SubTotal = -10_000
+
+			transactionDataReturn, err := orderItemService.Transactions(params, cashServerKey)
+
+			assert.Error(t, err)
+			assert.Nil(t, transactionDataReturn)
+			assert.ErrorContains(t, err, "price cannot be negative")
+			paymentProviderMock.Mock.AssertNotCalled(t, "CreateTransaction", mock.Anything, mock.Anything)
+			orderItemRepo.Mock.AssertNotCalled(t, "Transactions", mock.Anything)
+		})
+
+		t.Run("NegativeDiscountAmount", func(t *testing.T) {
+			orderItemRepo := repository.NewOrderItemRepositoryMock(&mock.Mock{}).(*repository.OrderItemRepositoryMock)
+			paymentProviderMock := NewPaymentProviderMock(&mock.Mock{}).(*PaymentProviderMock)
+			orderItemService := NewOrderItemServiceImpl(orderItemRepo, paymentProviderMock)
+
+			params := baseValidParams()
+			params.Items[0].DiscountAmount = -100
+
+			transactionDataReturn, err := orderItemService.Transactions(params, cashServerKey)
+
+			assert.Error(t, err)
+			assert.Nil(t, transactionDataReturn)
+			assert.ErrorContains(t, err, "discount amount is invalid")
+		})
+
+		t.Run("DiscountExceedsPrice", func(t *testing.T) {
+			orderItemRepo := repository.NewOrderItemRepositoryMock(&mock.Mock{}).(*repository.OrderItemRepositoryMock)
+			paymentProviderMock := NewPaymentProviderMock(&mock.Mock{}).(*PaymentProviderMock)
+			orderItemService := NewOrderItemServiceImpl(orderItemRepo, paymentProviderMock)
+
+			params := baseValidParams()
+			params.Items[0].DiscountAmount = 10_001 // exceeds StorePriceSnapshot of 10_000
+			params.Items[0].TotalAmount = -1
+
+			transactionDataReturn, err := orderItemService.Transactions(params, cashServerKey)
+
+			assert.Error(t, err)
+			assert.Nil(t, transactionDataReturn)
+			assert.ErrorContains(t, err, "discount amount is invalid")
+		})
+
+		t.Run("InvalidItemNameSnapshot", func(t *testing.T) {
+			orderItemRepo := repository.NewOrderItemRepositoryMock(&mock.Mock{}).(*repository.OrderItemRepositoryMock)
+			paymentProviderMock := NewPaymentProviderMock(&mock.Mock{}).(*PaymentProviderMock)
+			orderItemService := NewOrderItemServiceImpl(orderItemRepo, paymentProviderMock)
+
+			params := baseValidParams()
+			params.Items[0].ItemNameSnapshot = "<script>alert(1)</script>"
+
+			transactionDataReturn, err := orderItemService.Transactions(params, cashServerKey)
+
+			assert.Error(t, err)
+			assert.Nil(t, transactionDataReturn)
+			assert.ErrorContains(t, err, "Illegal input from item name snapshot")
+		})
+
+		t.Run("DefaultPaymentTypeWhenEmpty", func(t *testing.T) {
+			orderItemRepo := repository.NewOrderItemRepositoryMock(&mock.Mock{}).(*repository.OrderItemRepositoryMock)
+			paymentProviderMock := NewPaymentProviderMock(&mock.Mock{}).(*PaymentProviderMock)
+			orderItemService := NewOrderItemServiceImpl(orderItemRepo, paymentProviderMock)
+
+			params := baseValidParams()
+			params.PaymentType = "" // should default to Cash
+
+			expectedRepoParams := *params
+			expectedRepoParams.PaymentType = model.PaymentTypeCash
+			expectedRepoParams.PaymentToken = ""
+			expectedRepoParams.PaymentURL = ""
+
+			expectedReturn := &repository.TransactionDataReturn{CreatedOrderItemId: 1}
+			orderItemRepo.Mock.On("Transactions", &expectedRepoParams).Return(expectedReturn, nil)
+
+			transactionDataReturn, err := orderItemService.Transactions(params, cashServerKey)
+
+			assert.NoError(t, err)
+			assert.Equal(t, model.PaymentTypeCash, params.PaymentType)
+			assert.Equal(t, expectedReturn.CreatedOrderItemId, transactionDataReturn.CreatedOrderItemId)
+			paymentProviderMock.Mock.AssertNotCalled(t, "CreateTransaction", mock.Anything, mock.Anything)
+		})
+
+		t.Run("QRISPaymentType_CreatesGatewayTransactionAndPersistsToken", func(t *testing.T) {
+			orderItemRepo := repository.NewOrderItemRepositoryMock(&mock.Mock{}).(*repository.OrderItemRepositoryMock)
+			paymentProviderMock := NewPaymentProviderMock(&mock.Mock{}).(*PaymentProviderMock)
+			orderItemService := NewOrderItemServiceImpl(orderItemRepo, paymentProviderMock)
+
+			params := baseValidParams()
+			params.PaymentType = model.PaymentTypeQRIS
+
+			gatewayResponse := &model.PaymentProviderResponse{
+				Token:       "snap-token-123",
+				RedirectURL: "https://app.midtrans.com/snap/v3/redirection/snap-token-123",
+			}
+			paymentProviderMock.Mock.On("CreateTransaction", mock.Anything, params).Return(gatewayResponse, nil)
+
+			expectedRepoParams := *params
+			expectedRepoParams.PaymentToken = gatewayResponse.Token
+			expectedRepoParams.PaymentURL = gatewayResponse.RedirectURL
+
+			expectedReturn := &repository.TransactionDataReturn{CreatedOrderItemId: 1}
+			orderItemRepo.Mock.On("Transactions", &expectedRepoParams).Return(expectedReturn, nil)
+
+			transactionDataReturn, err := orderItemService.Transactions(params, "some-server-key")
+
+			assert.NoError(t, err)
+			assert.Equal(t, gatewayResponse.Token, transactionDataReturn.PaymentToken)
+			assert.Equal(t, gatewayResponse.RedirectURL, transactionDataReturn.PaymentURL)
+			paymentProviderMock.Mock.AssertExpectations(t)
+			orderItemRepo.Mock.AssertExpectations(t)
+		})
+
+		t.Run("CardPaymentType_CreatesGatewayTransaction", func(t *testing.T) {
+			orderItemRepo := repository.NewOrderItemRepositoryMock(&mock.Mock{}).(*repository.OrderItemRepositoryMock)
+			paymentProviderMock := NewPaymentProviderMock(&mock.Mock{}).(*PaymentProviderMock)
+			orderItemService := NewOrderItemServiceImpl(orderItemRepo, paymentProviderMock)
+
+			params := baseValidParams()
+			params.PaymentType = model.PaymentTypeCard
+
+			gatewayResponse := &model.PaymentProviderResponse{
+				Token:       "snap-token-card",
+				RedirectURL: "https://app.midtrans.com/snap/v3/redirection/snap-token-card",
+			}
+			paymentProviderMock.Mock.On("CreateTransaction", mock.Anything, params).Return(gatewayResponse, nil)
+
+			expectedRepoParams := *params
+			expectedRepoParams.PaymentToken = gatewayResponse.Token
+			expectedRepoParams.PaymentURL = gatewayResponse.RedirectURL
+
+			expectedReturn := &repository.TransactionDataReturn{CreatedOrderItemId: 2}
+			orderItemRepo.Mock.On("Transactions", &expectedRepoParams).Return(expectedReturn, nil)
+
+			transactionDataReturn, err := orderItemService.Transactions(params, "some-server-key")
+
+			assert.NoError(t, err)
+			assert.Equal(t, gatewayResponse.Token, transactionDataReturn.PaymentToken)
+			paymentProviderMock.Mock.AssertExpectations(t)
+		})
+
+		t.Run("EWalletPaymentType_CreatesGatewayTransaction", func(t *testing.T) {
+			orderItemRepo := repository.NewOrderItemRepositoryMock(&mock.Mock{}).(*repository.OrderItemRepositoryMock)
+			paymentProviderMock := NewPaymentProviderMock(&mock.Mock{}).(*PaymentProviderMock)
+			orderItemService := NewOrderItemServiceImpl(orderItemRepo, paymentProviderMock)
+
+			params := baseValidParams()
+			params.PaymentType = model.PaymentTypeEWallet
+
+			gatewayResponse := &model.PaymentProviderResponse{
+				Token:       "snap-token-ewallet",
+				RedirectURL: "https://app.midtrans.com/snap/v3/redirection/snap-token-ewallet",
+			}
+			paymentProviderMock.Mock.On("CreateTransaction", mock.Anything, params).Return(gatewayResponse, nil)
+
+			expectedRepoParams := *params
+			expectedRepoParams.PaymentToken = gatewayResponse.Token
+			expectedRepoParams.PaymentURL = gatewayResponse.RedirectURL
+
+			expectedReturn := &repository.TransactionDataReturn{CreatedOrderItemId: 3}
+			orderItemRepo.Mock.On("Transactions", &expectedRepoParams).Return(expectedReturn, nil)
+
+			transactionDataReturn, err := orderItemService.Transactions(params, "some-server-key")
+
+			assert.NoError(t, err)
+			assert.Equal(t, gatewayResponse.Token, transactionDataReturn.PaymentToken)
+			paymentProviderMock.Mock.AssertExpectations(t)
+		})
+
+		t.Run("OtherPaymentType_NoGatewayCall", func(t *testing.T) {
+			orderItemRepo := repository.NewOrderItemRepositoryMock(&mock.Mock{}).(*repository.OrderItemRepositoryMock)
+			paymentProviderMock := NewPaymentProviderMock(&mock.Mock{}).(*PaymentProviderMock)
+			orderItemService := NewOrderItemServiceImpl(orderItemRepo, paymentProviderMock)
+
+			params := baseValidParams()
+			params.PaymentType = model.PaymentTypeOther
+
+			expectedRepoParams := *params
+			expectedRepoParams.PaymentToken = ""
+			expectedRepoParams.PaymentURL = ""
+
+			expectedReturn := &repository.TransactionDataReturn{CreatedOrderItemId: 4}
+			orderItemRepo.Mock.On("Transactions", &expectedRepoParams).Return(expectedReturn, nil)
+
+			transactionDataReturn, err := orderItemService.Transactions(params, "some-server-key")
+
+			assert.NoError(t, err)
+			assert.Empty(t, transactionDataReturn.PaymentToken)
+			assert.Empty(t, transactionDataReturn.PaymentURL)
+			paymentProviderMock.Mock.AssertNotCalled(t, "CreateTransaction", mock.Anything, mock.Anything)
+		})
+
+		t.Run("GatewayCreateTransactionFails", func(t *testing.T) {
+			orderItemRepo := repository.NewOrderItemRepositoryMock(&mock.Mock{}).(*repository.OrderItemRepositoryMock)
+			paymentProviderMock := NewPaymentProviderMock(&mock.Mock{}).(*PaymentProviderMock)
+			orderItemService := NewOrderItemServiceImpl(orderItemRepo, paymentProviderMock)
+
+			params := baseValidParams()
+			params.PaymentType = model.PaymentTypeQRIS
+
+			gatewayErr := errors.New("gateway unreachable")
+			paymentProviderMock.Mock.On("CreateTransaction", mock.Anything, params).Return(nil, gatewayErr)
+
+			transactionDataReturn, err := orderItemService.Transactions(params, "some-server-key")
+
+			assert.Error(t, err)
+			assert.Equal(t, gatewayErr, err)
+			assert.Nil(t, transactionDataReturn)
+			// Repository must never be touched if the gateway call itself failed.
+			orderItemRepo.Mock.AssertNotCalled(t, "Transactions", mock.Anything)
+		})
+
+		/*
+			t.Run("RepositoryError_NoCompensatingCancelCalled", func(t *testing.T) {
+				orderItemRepo := repository.NewOrderItemRepositoryMock(&mock.Mock{}).(*repository.OrderItemRepositoryMock)
+				paymentProviderMock := NewPaymentProviderMock(&mock.Mock{}).(*PaymentProviderMock)
+				orderItemService := NewOrderItemServiceImpl(orderItemRepo, paymentProviderMock)
+
+				params := baseValidParams()
+				params.PaymentType = model.PaymentTypeQRIS
+
+				gatewayResponse := &model.PaymentProviderResponse{
+					Token:       "snap-token-orphan",
+					RedirectURL: "https://app.midtrans.com/snap/v3/redirection/snap-token-orphan",
+				}
+				paymentProviderMock.Mock.On("CreateTransaction", mock.Anything, params).Return(gatewayResponse, nil)
+
+				expectedRepoParams := *params
+				expectedRepoParams.PaymentToken = gatewayResponse.Token
+				expectedRepoParams.PaymentURL = gatewayResponse.RedirectURL
+
+				dbErr := errors.New("database error")
+				orderItemRepo.Mock.On("Transactions", &expectedRepoParams).Return(nil, dbErr)
+
+				transactionDataReturn, err := orderItemService.Transactions(params, "some-server-key")
+
+				assert.Error(t, err)
+				assert.Nil(t, transactionDataReturn)
+				assert.ErrorContains(t, err, "Failed to create transaction")
+				paymentProviderMock.Mock.AssertNotCalled(t, "CancelTransaction", mock.Anything, mock.Anything)
+			})
+		*/
+	})
+
+	t.Run("CheckTransaction", func(t *testing.T) {
+		const TRANSACTION_ID = "MID-QRIS-65f6f7c0-4778-4c9c-90e9-e3934fb9c722"
+		const SERVER_KEY = "dummy-server-key"
+
+		t.Run("EmptyTransactionId", func(t *testing.T) {
+			orderItemRepo := repository.NewOrderItemRepositoryMock(&mock.Mock{}).(*repository.OrderItemRepositoryMock)
+			paymentProviderMock := NewPaymentProviderMock(&mock.Mock{}).(*PaymentProviderMock)
+			orderItemService := NewOrderItemServiceImpl(orderItemRepo, paymentProviderMock)
+
+			response, err := orderItemService.CheckTransaction("", SERVER_KEY)
+
+			assert.Error(t, err)
+			assert.Contains(t, err.Error(), "transaction id is required")
+			assert.Equal(t, model.PaymentStatusResponse{}, response)
+			paymentProviderMock.Mock.AssertNotCalled(t, "CheckTransaction", mock.Anything, mock.Anything)
+		})
+
+		t.Run("Success_KnownStatuses", func(t *testing.T) {
+			statuses := []model.PaymentStatus{
+				model.PaymentStatusSuccess,
+				model.PaymentStatusPending,
+				model.PaymentStatusRefunded,
+				model.PaymentStatusFailed,
+				model.PaymentStatusExpired,
+				model.PaymentStatusCancelled,
+				model.PaymentStatusPartiallyRefunded,
+			}
+
+			for _, status := range statuses {
+				t.Run(string(status), func(t *testing.T) {
+					orderItemRepo := repository.NewOrderItemRepositoryMock(&mock.Mock{}).(*repository.OrderItemRepositoryMock)
+					paymentProviderMock := NewPaymentProviderMock(&mock.Mock{}).(*PaymentProviderMock)
+					orderItemService := NewOrderItemServiceImpl(orderItemRepo, paymentProviderMock)
+
+					expectedResponse := model.PaymentStatusResponse{
+						PaymentStatus: status,
+					}
+
+					paymentProviderMock.Mock.On("CheckTransaction", mock.Anything, TRANSACTION_ID).
+						Return(expectedResponse, nil)
+					orderItemRepo.Mock.On("SetPaymentStatus", 0, TRANSACTION_ID, status).
+						Return(nil)
+
+					response, err := orderItemService.CheckTransaction(TRANSACTION_ID, SERVER_KEY)
+
+					assert.NoError(t, err)
+					assert.Equal(t, status, response.PaymentStatus)
+					assert.Empty(t, response.Message)
+					paymentProviderMock.Mock.AssertExpectations(t)
+					orderItemRepo.Mock.AssertExpectations(t)
+				})
+			}
+		})
+
+		t.Run("SetPaymentStatus_LocalPersistFails", func(t *testing.T) {
+			orderItemRepo := repository.NewOrderItemRepositoryMock(&mock.Mock{}).(*repository.OrderItemRepositoryMock)
+			paymentProviderMock := NewPaymentProviderMock(&mock.Mock{}).(*PaymentProviderMock)
+			orderItemService := NewOrderItemServiceImpl(orderItemRepo, paymentProviderMock)
+
+			expectedResponse := model.PaymentStatusResponse{
+				PaymentStatus: model.PaymentStatusSuccess,
+			}
+
+			paymentProviderMock.Mock.On("CheckTransaction", mock.Anything, TRANSACTION_ID).
+				Return(expectedResponse, nil)
+			orderItemRepo.Mock.On("SetPaymentStatus", 0, TRANSACTION_ID, model.PaymentStatusSuccess).
+				Return(errors.New("db write failed"))
+
+			response, err := orderItemService.CheckTransaction(TRANSACTION_ID, SERVER_KEY)
+
+			// Gateway confirmed status, so this is NOT a hard error — only a message.
+			assert.NoError(t, err)
+			assert.Equal(t, model.PaymentStatusSuccess, response.PaymentStatus)
+			assert.Contains(t, response.Message, "failed to persist locally")
+			assert.Contains(t, response.Message, "db write failed") // It;s mock message
+		})
+
+		t.Run("UnknownPaymentStatus", func(t *testing.T) {
+			orderItemRepo := repository.NewOrderItemRepositoryMock(&mock.Mock{}).(*repository.OrderItemRepositoryMock)
+			paymentProviderMock := NewPaymentProviderMock(&mock.Mock{}).(*PaymentProviderMock)
+			orderItemService := NewOrderItemServiceImpl(orderItemRepo, paymentProviderMock)
+
+			expectedResponse := model.PaymentStatusResponse{
+				PaymentStatus: model.PaymentStatus("SOME_UNKNOWN_STATUS"),
+			}
+
+			paymentProviderMock.Mock.On("CheckTransaction", mock.Anything, TRANSACTION_ID).
+				Return(expectedResponse, nil)
+
+			response, err := orderItemService.CheckTransaction(TRANSACTION_ID, SERVER_KEY)
+
+			assert.NoError(t, err)
+			assert.Equal(t, expectedResponse.PaymentStatus, response.PaymentStatus)
+			// SetPaymentStatus should never be reached for an unrecognized status.
+			orderItemRepo.Mock.AssertNotCalled(t, "SetPaymentStatus", mock.Anything, mock.Anything, mock.Anything)
+		})
+
+		t.Run("GatewayError_NonNotFound", func(t *testing.T) {
+			orderItemRepo := repository.NewOrderItemRepositoryMock(&mock.Mock{}).(*repository.OrderItemRepositoryMock)
+			paymentProviderMock := NewPaymentProviderMock(&mock.Mock{}).(*PaymentProviderMock)
+			orderItemService := NewOrderItemServiceImpl(orderItemRepo, paymentProviderMock)
+
+			gatewayErr := errors.New("500 internal server error")
+
+			paymentProviderMock.Mock.On("CheckTransaction", mock.Anything, TRANSACTION_ID).
+				Return(nil, gatewayErr)
+
+			response, err := orderItemService.CheckTransaction(TRANSACTION_ID, SERVER_KEY)
+
+			assert.Error(t, err)
+			assert.Equal(t, gatewayErr, err)
+			assert.Equal(t, model.PaymentStatusResponse{}, response)
+			orderItemRepo.Mock.AssertNotCalled(t, "SetPaymentStatus", mock.Anything, mock.Anything, mock.Anything)
+		})
+
+		t.Run("GatewayError_404_CancelSucceeds", func(t *testing.T) {
+			orderItemRepo := repository.NewOrderItemRepositoryMock(&mock.Mock{}).(*repository.OrderItemRepositoryMock)
+			paymentProviderMock := NewPaymentProviderMock(&mock.Mock{}).(*PaymentProviderMock)
+			orderItemService := NewOrderItemServiceImpl(orderItemRepo, paymentProviderMock)
+
+			gatewayErr := errors.New("404 transaction not found")
+
+			paymentProviderMock.Mock.On("CheckTransaction", mock.Anything, TRANSACTION_ID).
+				Return(nil, gatewayErr)
+			orderItemRepo.Mock.On("SetPaymentStatus", 0, TRANSACTION_ID, model.PaymentStatusCancelled).
+				Return(nil)
+
+			response, err := orderItemService.CheckTransaction(TRANSACTION_ID, SERVER_KEY)
+
+			assert.Error(t, err)
+			assert.Contains(t, err.Error(), "never completed at the payment gateway")
+			assert.Contains(t, err.Error(), "cancelled")
+			assert.Equal(t, model.PaymentStatusResponse{}, response)
+			orderItemRepo.Mock.AssertExpectations(t)
+		})
+
+		t.Run("GatewayError_404_NoLocalRecord", func(t *testing.T) {
+			orderItemRepo := repository.NewOrderItemRepositoryMock(&mock.Mock{}).(*repository.OrderItemRepositoryMock)
+			paymentProviderMock := NewPaymentProviderMock(&mock.Mock{}).(*PaymentProviderMock)
+			orderItemService := NewOrderItemServiceImpl(orderItemRepo, paymentProviderMock)
+
+			gatewayErr := errors.New("404 transaction not found")
+
+			paymentProviderMock.Mock.On("CheckTransaction", mock.Anything, TRANSACTION_ID).
+				Return(nil, gatewayErr)
+			orderItemRepo.Mock.On("SetPaymentStatus", 0, TRANSACTION_ID, model.PaymentStatusCancelled).
+				Return(gorm.ErrRecordNotFound)
+
+			response, err := orderItemService.CheckTransaction(TRANSACTION_ID, SERVER_KEY)
+
+			assert.Error(t, err)
+			assert.ErrorIs(t, err, gorm.ErrRecordNotFound)
+			assert.Contains(t, err.Error(), "not found")
+			assert.Equal(t, model.PaymentStatusResponse{}, response)
+			orderItemRepo.Mock.AssertExpectations(t)
+		})
+
+		t.Run("GatewayError_404_CancelFailsWithInfraError", func(t *testing.T) {
+			orderItemRepo := repository.NewOrderItemRepositoryMock(&mock.Mock{}).(*repository.OrderItemRepositoryMock)
+			paymentProviderMock := NewPaymentProviderMock(&mock.Mock{}).(*PaymentProviderMock)
+			orderItemService := NewOrderItemServiceImpl(orderItemRepo, paymentProviderMock)
+
+			gatewayErr := errors.New("404 transaction not found")
+			dbErr := errors.New("connection refused")
+
+			paymentProviderMock.Mock.On("CheckTransaction", mock.Anything, TRANSACTION_ID).
+				Return(nil, gatewayErr)
+			orderItemRepo.Mock.On("SetPaymentStatus", 0, TRANSACTION_ID, model.PaymentStatusCancelled).
+				Return(dbErr)
+
+			response, err := orderItemService.CheckTransaction(TRANSACTION_ID, SERVER_KEY)
+
+			assert.Error(t, err)
+			assert.ErrorIs(t, err, dbErr)
+			assert.Contains(t, err.Error(), "failed to update transaction")
+			assert.Equal(t, model.PaymentStatusResponse{}, response)
+			orderItemRepo.Mock.AssertExpectations(t)
+		})
+	})
+
+	t.Run("CancelTransaction", func(t *testing.T) {
+		const SERVER_KEY = "dummy-server-key"
+
+		t.Run("NoOrderItemIdOrTransactionId", func(t *testing.T) {
+			orderItemRepo := repository.NewOrderItemRepositoryMock(&mock.Mock{}).(*repository.OrderItemRepositoryMock)
+			paymentProviderMock := NewPaymentProviderMock(&mock.Mock{}).(*PaymentProviderMock)
+			orderItemService := NewOrderItemServiceImpl(orderItemRepo, paymentProviderMock)
+
+			response, err := orderItemService.CancelTransaction(0, "", TENANT_ID, SERVER_KEY)
+
+			assert.Error(t, err)
+			assert.Contains(t, err.Error(), "either order_item id or transaction_id is required")
+			assert.Equal(t, model.PaymentStatusResponse{}, response)
+			orderItemRepo.Mock.AssertNotCalled(t, "FindById", mock.Anything, mock.Anything)
+			orderItemRepo.Mock.AssertNotCalled(t, "SetPaymentStatus", mock.Anything, mock.Anything, mock.Anything)
+			paymentProviderMock.Mock.AssertNotCalled(t, "CancelTransaction", mock.Anything, mock.Anything)
+		})
+
+		t.Run("NegativeOrderItemIdNoTransactionId", func(t *testing.T) {
+			orderItemRepo := repository.NewOrderItemRepositoryMock(&mock.Mock{}).(*repository.OrderItemRepositoryMock)
+			paymentProviderMock := NewPaymentProviderMock(&mock.Mock{}).(*PaymentProviderMock)
+			orderItemService := NewOrderItemServiceImpl(orderItemRepo, paymentProviderMock)
+
+			response, err := orderItemService.CancelTransaction(-5, "", TENANT_ID, SERVER_KEY)
+
+			assert.Error(t, err)
+			assert.Contains(t, err.Error(), "either order_item id or transaction_id is required")
+			assert.Equal(t, model.PaymentStatusResponse{}, response)
+			orderItemRepo.Mock.AssertNotCalled(t, "FindById", mock.Anything, mock.Anything)
+		})
+
+		t.Run("TransactionIdTakesPriority_WithZeroOrderItemId", func(t *testing.T) {
+			orderItemRepo := repository.NewOrderItemRepositoryMock(&mock.Mock{}).(*repository.OrderItemRepositoryMock)
+			paymentProviderMock := NewPaymentProviderMock(&mock.Mock{}).(*PaymentProviderMock)
+			orderItemService := NewOrderItemServiceImpl(orderItemRepo, paymentProviderMock)
+
+			const TRANSACTION_ID = "TRX-DIRECT-1"
+
+			expectedResponse := model.PaymentStatusResponse{
+				PaymentStatus: model.PaymentStatusCancelled,
+			}
+
+			paymentProviderMock.Mock.On("CancelTransaction", mock.Anything, TRANSACTION_ID).
+				Return(expectedResponse, nil)
+			orderItemRepo.Mock.On("SetPaymentStatus", 0, TRANSACTION_ID, model.PaymentStatusCancelled).
+				Return(nil)
+
+			response, err := orderItemService.CancelTransaction(0, TRANSACTION_ID, TENANT_ID, SERVER_KEY)
+
+			assert.NoError(t, err)
+			assert.Equal(t, model.PaymentStatusCancelled, response.PaymentStatus)
+			assert.Empty(t, response.Message)
+			orderItemRepo.Mock.AssertNotCalled(t, "FindById", mock.Anything, mock.Anything)
+			paymentProviderMock.Mock.AssertExpectations(t)
+			orderItemRepo.Mock.AssertExpectations(t)
+		})
+
+		t.Run("TransactionIdTakesPriority_OverPositiveOrderItemId", func(t *testing.T) {
+			orderItemRepo := repository.NewOrderItemRepositoryMock(&mock.Mock{}).(*repository.OrderItemRepositoryMock)
+			paymentProviderMock := NewPaymentProviderMock(&mock.Mock{}).(*PaymentProviderMock)
+			orderItemService := NewOrderItemServiceImpl(orderItemRepo, paymentProviderMock)
+
+			const ORDER_ITEM_ID = 5
+			const TRANSACTION_ID = "TRX-DIRECT-2"
+
+			expectedResponse := model.PaymentStatusResponse{
+				PaymentStatus: model.PaymentStatusCancelled,
+			}
+
+			paymentProviderMock.Mock.On("CancelTransaction", mock.Anything, TRANSACTION_ID).
+				Return(expectedResponse, nil)
+			orderItemRepo.Mock.On("SetPaymentStatus", ORDER_ITEM_ID, TRANSACTION_ID, model.PaymentStatusCancelled).
+				Return(nil)
+
+			response, err := orderItemService.CancelTransaction(ORDER_ITEM_ID, TRANSACTION_ID, TENANT_ID, SERVER_KEY)
+
+			assert.NoError(t, err)
+			assert.Equal(t, model.PaymentStatusCancelled, response.PaymentStatus)
+			// FindById should be skipped entirely — transactionId wins when both are supplied.
+			orderItemRepo.Mock.AssertNotCalled(t, "FindById", mock.Anything, mock.Anything)
+			paymentProviderMock.Mock.AssertExpectations(t)
+			orderItemRepo.Mock.AssertExpectations(t)
+		})
+
+		t.Run("ResolvesTransactionIdViaFindById", func(t *testing.T) {
+			orderItemRepo := repository.NewOrderItemRepositoryMock(&mock.Mock{}).(*repository.OrderItemRepositoryMock)
+			paymentProviderMock := NewPaymentProviderMock(&mock.Mock{}).(*PaymentProviderMock)
+			orderItemService := NewOrderItemServiceImpl(orderItemRepo, paymentProviderMock)
+
+			const ORDER_ITEM_ID = 7
+
+			foundOrderItem := &model.OrderItemWithStore{
+				Id:            ORDER_ITEM_ID,
+				TransactionId: "TRX-FOUND-1",
+			}
+
+			expectedResponse := model.PaymentStatusResponse{
+				PaymentStatus: model.PaymentStatusCancelled,
+			}
+
+			// The FindById mock returns nil for BOTH values if EITHER argument passed
+			// to .Return(...) is nil — so an empty (non-nil) slice is used here rather
+			// than literal nil, or orderItem itself would come back nil too.
+			orderItemRepo.Mock.On("FindById", ORDER_ITEM_ID, TENANT_ID).
+				Return(foundOrderItem, []*model.PurchasedItem{}, nil)
+			paymentProviderMock.Mock.On("CancelTransaction", mock.Anything, "TRX-FOUND-1").
+				Return(expectedResponse, nil)
+			orderItemRepo.Mock.On("SetPaymentStatus", ORDER_ITEM_ID, "TRX-FOUND-1", model.PaymentStatusCancelled).
+				Return(nil)
+
+			response, err := orderItemService.CancelTransaction(ORDER_ITEM_ID, "", TENANT_ID, SERVER_KEY)
+
+			assert.NoError(t, err)
+			assert.Equal(t, model.PaymentStatusCancelled, response.PaymentStatus)
+			orderItemRepo.Mock.AssertExpectations(t)
+			paymentProviderMock.Mock.AssertExpectations(t)
+		})
+
+		t.Run("FindByIdFails", func(t *testing.T) {
+			orderItemRepo := repository.NewOrderItemRepositoryMock(&mock.Mock{}).(*repository.OrderItemRepositoryMock)
+			paymentProviderMock := NewPaymentProviderMock(&mock.Mock{}).(*PaymentProviderMock)
+			orderItemService := NewOrderItemServiceImpl(orderItemRepo, paymentProviderMock)
+
+			const ORDER_ITEM_ID = 999
+
+			findErr := errors.New("order item not found")
+
+			orderItemRepo.Mock.On("FindById", ORDER_ITEM_ID, TENANT_ID).
+				Return(nil, nil, findErr)
+
+			response, err := orderItemService.CancelTransaction(ORDER_ITEM_ID, "", TENANT_ID, SERVER_KEY)
+
+			assert.Error(t, err)
+			assert.Equal(t, findErr, err)
+			assert.Equal(t, model.PaymentStatusResponse{}, response)
+			paymentProviderMock.Mock.AssertNotCalled(t, "CancelTransaction", mock.Anything, mock.Anything)
+			orderItemRepo.Mock.AssertNotCalled(t, "SetPaymentStatus", mock.Anything, mock.Anything, mock.Anything)
+		})
+
+		t.Run("PaymentGatewayRejectsCancellation", func(t *testing.T) {
+			orderItemRepo := repository.NewOrderItemRepositoryMock(&mock.Mock{}).(*repository.OrderItemRepositoryMock)
+			paymentProviderMock := NewPaymentProviderMock(&mock.Mock{}).(*PaymentProviderMock)
+			orderItemService := NewOrderItemServiceImpl(orderItemRepo, paymentProviderMock)
+
+			const TRANSACTION_ID = "TRX-REJECT-1"
+
+			gatewayErr := errors.New("412 already settled, cannot cancel")
+
+			paymentProviderMock.Mock.On("CancelTransaction", mock.Anything, TRANSACTION_ID).
+				Return(nil, gatewayErr)
+
+			response, err := orderItemService.CancelTransaction(0, TRANSACTION_ID, TENANT_ID, SERVER_KEY)
+
+			assert.Error(t, err)
+			assert.Equal(t, gatewayErr, err)
+			assert.Equal(t, model.PaymentStatusResponse{}, response)
+			orderItemRepo.Mock.AssertNotCalled(t, "SetPaymentStatus", mock.Anything, mock.Anything, mock.Anything)
+		})
+
+		t.Run("SetPaymentStatus_LocalPersistFails", func(t *testing.T) {
+			orderItemRepo := repository.NewOrderItemRepositoryMock(&mock.Mock{}).(*repository.OrderItemRepositoryMock)
+			paymentProviderMock := NewPaymentProviderMock(&mock.Mock{}).(*PaymentProviderMock)
+			orderItemService := NewOrderItemServiceImpl(orderItemRepo, paymentProviderMock)
+
+			const TRANSACTION_ID = "TRX-PERSIST-FAIL"
+
+			expectedResponse := model.PaymentStatusResponse{
+				PaymentStatus: model.PaymentStatusCancelled,
+			}
+
+			paymentProviderMock.Mock.On("CancelTransaction", mock.Anything, TRANSACTION_ID).
+				Return(expectedResponse, nil)
+			orderItemRepo.Mock.On("SetPaymentStatus", 0, TRANSACTION_ID, model.PaymentStatusCancelled).
+				Return(errors.New("db write failed"))
+
+			response, err := orderItemService.CancelTransaction(0, TRANSACTION_ID, TENANT_ID, SERVER_KEY)
+
+			// Cancellation succeeded at the gateway, so this stays a soft failure — no hard error.
+			assert.NoError(t, err)
+			assert.Equal(t, model.PaymentStatusCancelled, response.PaymentStatus)
+			assert.Contains(t, response.Message, "payment cancelled successfully")
+			assert.Contains(t, response.Message, "db write failed")
+		})
+
+		t.Run("Success_NoMessage", func(t *testing.T) {
+			orderItemRepo := repository.NewOrderItemRepositoryMock(&mock.Mock{}).(*repository.OrderItemRepositoryMock)
+			paymentProviderMock := NewPaymentProviderMock(&mock.Mock{}).(*PaymentProviderMock)
+			orderItemService := NewOrderItemServiceImpl(orderItemRepo, paymentProviderMock)
+
+			const TRANSACTION_ID = "TRX-SUCCESS-1"
+
+			expectedResponse := model.PaymentStatusResponse{
+				PaymentStatus: model.PaymentStatusCancelled,
+				StatusCode:    "200",
+			}
+
+			paymentProviderMock.Mock.On("CancelTransaction", mock.Anything, TRANSACTION_ID).
+				Return(expectedResponse, nil)
+			orderItemRepo.Mock.On("SetPaymentStatus", 0, TRANSACTION_ID, model.PaymentStatusCancelled).
+				Return(nil)
+
+			response, err := orderItemService.CancelTransaction(0, TRANSACTION_ID, TENANT_ID, SERVER_KEY)
+
+			assert.NoError(t, err)
+			assert.Equal(t, model.PaymentStatusCancelled, response.PaymentStatus)
+			assert.Equal(t, "200", response.StatusCode)
+			assert.Empty(t, response.Message)
+			orderItemRepo.Mock.AssertExpectations(t)
+			paymentProviderMock.Mock.AssertExpectations(t)
+		})
 	})
 
 	t.Run("DeleteInvoice", func(t *testing.T) {
+		paymentProvider := NewPaymentProviderImpl()
+
 		t.Run("SuccessCase", func(t *testing.T) {
 			orderItemRepo := repository.NewOrderItemRepositoryMock(&mock.Mock{}).(*repository.OrderItemRepositoryMock)
-			orderItemService := NewOrderItemServiceImpl(orderItemRepo)
+			orderItemService := NewOrderItemServiceImpl(orderItemRepo, paymentProvider)
 
 			const ORDER_ITEM_ID = 1
 
@@ -880,7 +1556,7 @@ func TestOrderItemServiceImpl(t *testing.T) {
 
 		t.Run("InvalidOrderItemId_Zero", func(t *testing.T) {
 			orderItemRepo := repository.NewOrderItemRepositoryMock(&mock.Mock{}).(*repository.OrderItemRepositoryMock)
-			orderItemService := NewOrderItemServiceImpl(orderItemRepo)
+			orderItemService := NewOrderItemServiceImpl(orderItemRepo, paymentProvider)
 
 			err := orderItemService.DeleteInvoice(0, TENANT_ID)
 
@@ -892,7 +1568,7 @@ func TestOrderItemServiceImpl(t *testing.T) {
 
 		t.Run("InvalidOrderItemId_Negative", func(t *testing.T) {
 			orderItemRepo := repository.NewOrderItemRepositoryMock(&mock.Mock{}).(*repository.OrderItemRepositoryMock)
-			orderItemService := NewOrderItemServiceImpl(orderItemRepo)
+			orderItemService := NewOrderItemServiceImpl(orderItemRepo, paymentProvider)
 
 			err := orderItemService.DeleteInvoice(-1, TENANT_ID)
 
@@ -903,7 +1579,7 @@ func TestOrderItemServiceImpl(t *testing.T) {
 
 		t.Run("InvalidTenantId_Zero", func(t *testing.T) {
 			orderItemRepo := repository.NewOrderItemRepositoryMock(&mock.Mock{}).(*repository.OrderItemRepositoryMock)
-			orderItemService := NewOrderItemServiceImpl(orderItemRepo)
+			orderItemService := NewOrderItemServiceImpl(orderItemRepo, paymentProvider)
 
 			err := orderItemService.DeleteInvoice(1, 0)
 
@@ -914,7 +1590,7 @@ func TestOrderItemServiceImpl(t *testing.T) {
 
 		t.Run("InvalidTenantId_Negative", func(t *testing.T) {
 			orderItemRepo := repository.NewOrderItemRepositoryMock(&mock.Mock{}).(*repository.OrderItemRepositoryMock)
-			orderItemService := NewOrderItemServiceImpl(orderItemRepo)
+			orderItemService := NewOrderItemServiceImpl(orderItemRepo, paymentProvider)
 
 			err := orderItemService.DeleteInvoice(1, -1)
 
@@ -925,7 +1601,7 @@ func TestOrderItemServiceImpl(t *testing.T) {
 
 		t.Run("NotFound", func(t *testing.T) {
 			orderItemRepo := repository.NewOrderItemRepositoryMock(&mock.Mock{}).(*repository.OrderItemRepositoryMock)
-			orderItemService := NewOrderItemServiceImpl(orderItemRepo)
+			orderItemService := NewOrderItemServiceImpl(orderItemRepo, paymentProvider)
 
 			const ORDER_ITEM_ID = 999999
 
@@ -941,7 +1617,7 @@ func TestOrderItemServiceImpl(t *testing.T) {
 
 		t.Run("RepositoryError", func(t *testing.T) {
 			orderItemRepo := repository.NewOrderItemRepositoryMock(&mock.Mock{}).(*repository.OrderItemRepositoryMock)
-			orderItemService := NewOrderItemServiceImpl(orderItemRepo)
+			orderItemService := NewOrderItemServiceImpl(orderItemRepo, paymentProvider)
 
 			const ORDER_ITEM_ID = 1
 

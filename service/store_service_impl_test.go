@@ -264,7 +264,7 @@ func TestStoreServiceImpl(t *testing.T) {
 	t.Run("GetSalesReport", func(t *testing.T) {
 		storeId := 1
 		orderItemRepository := repository.NewOrderItemRepositoryMock(&mock.Mock{}).(*repository.OrderItemRepositoryMock)
-		orderItemService := NewOrderItemServiceImpl(orderItemRepository)
+		orderItemService := NewOrderItemServiceImpl(orderItemRepository, nil)
 
 		t.Run("NormalGetSalesReport", func(t *testing.T) {
 			startDate := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC).Unix()

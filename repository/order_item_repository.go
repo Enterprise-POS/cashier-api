@@ -10,6 +10,7 @@ type OrderItemRepository interface {
 	/*
 		When cashier app press the button, then
 		this will called
+		!Will not be use for client face route
 	*/
 	PlaceOrderItem(*model.OrderItem) (*model.OrderItem, error)
 
@@ -28,6 +29,11 @@ type OrderItemRepository interface {
 		This method will insert into 2 table
 	*/
 	Transactions(params *CreateTransactionParams) (*TransactionDataReturn, error)
+
+	/*
+		Write / Edit transaction status
+	*/
+	SetPaymentStatus(orderItemId int, transactionId string, setTo model.PaymentStatus) error
 
 	// Edit(quantity int, item *model.Item) error
 
@@ -61,11 +67,11 @@ type OrderItemRepository interface {
 
 type CreateTransactionParams struct {
 	// Order summary
-	PurchasedPrice int             `json:"purchased_price"`
-	TotalQuantity  int             `json:"total_quantity"`
-	TotalAmount    int             `json:"total_amount"`
-	DiscountAmount int             `json:"discount_amount"`
-	SubTotal       int             `json:"sub_total"`
+	PurchasedPrice int               `json:"purchased_price"`
+	TotalQuantity  int               `json:"total_quantity"`
+	TotalAmount    int               `json:"total_amount"`
+	DiscountAmount int               `json:"discount_amount"`
+	SubTotal       int               `json:"sub_total"`
 	PaymentType    model.PaymentType `json:"payment_type"`
 
 	// Items
@@ -75,6 +81,14 @@ type CreateTransactionParams struct {
 	UserId   int `json:"user_id"`
 	TenantId int `json:"tenant_id"`
 	StoreId  int `json:"store_id"`
+
+	// unique transaction id
+	TransactionId string `json:"transaction_id"`
+
+	// When payment gateway is used then this is required. Can be passed with empty / nil
+	// It's not something that user defined
+	PaymentURL   string
+	PaymentToken string
 }
 
 type SalesReport struct {
@@ -110,9 +124,12 @@ type OrderDetailRow struct {
 }
 
 type TransactionDataReturn struct {
-	CreatedOrderItemId int              `json:"created_order_item_id"         gorm:"column:v_id"`
-	CreatedAt          *time.Time       `json:"created_at" gorm:"column:v_created_at"`
-	TotalAmount        int              `json:"total_amount" gorm:"column:v_total_amount"`
-	CashIn             int              `json:"purchased_price" gorm:"column:v_purchased_price"`
-	PaymentType        model.PaymentType `json:"payment_type" gorm:"-"`
+	CreatedOrderItemId int                 `json:"created_order_item_id"         gorm:"column:v_id"`
+	CreatedAt          *time.Time          `json:"created_at" gorm:"column:v_created_at"`
+	TotalAmount        int                 `json:"total_amount" gorm:"column:v_total_amount"`
+	CashIn             int                 `json:"purchased_price" gorm:"column:v_purchased_price"`
+	PaymentType        model.PaymentType   `json:"payment_type" gorm:"-"`
+	PaymentStatus      model.PaymentStatus `json:"payment_status" gorm:"column:v_payment_status"`
+	PaymentToken       string              `json:"payment_token" gorm:"-"`
+	PaymentURL         string              `json:"payment_url" gorm:"-"`
 }
