@@ -10,6 +10,7 @@ type OrderItemRepository interface {
 	/*
 		When cashier app press the button, then
 		this will called
+		!Will not be use for client face route
 	*/
 	PlaceOrderItem(*model.OrderItem) (*model.OrderItem, error)
 

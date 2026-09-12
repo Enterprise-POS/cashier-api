@@ -154,12 +154,26 @@ type MidtransProvider struct {
 	coreApi    coreapi.Client
 }
 
-func NewMidtransProvider() *MidtransProvider {
+// func NewMidtransProvider() *MidtransProvider {
+// 	var s snap.Client
+// 	s.New(MIDTRANS_SERVER_KEY, midtrans.Sandbox)
+
+// 	var c coreapi.Client
+// 	c.New(MIDTRANS_SERVER_KEY, midtrans.Sandbox)
+
+// 	return &MidtransProvider{snapClient: s, coreApi: c}
+// }
+
+// newMidtransProvider builds ONE immutable client bound to a single server key.
+// Nothing on this struct is ever mutated after construction — that immutability
+// is what guarantees tenant A's requests can never end up running against
+// tenant B's key.
+func NewMidtransProvider(serverKey string) *MidtransProvider {
 	var s snap.Client
-	s.New(MIDTRANS_SERVER_KEY, midtrans.Sandbox)
+	s.New(serverKey, midtrans.Sandbox)
 
 	var c coreapi.Client
-	c.New(MIDTRANS_SERVER_KEY, midtrans.Sandbox)
+	c.New(serverKey, midtrans.Sandbox)
 
 	return &MidtransProvider{snapClient: s, coreApi: c}
 }
@@ -167,7 +181,7 @@ func NewMidtransProvider() *MidtransProvider {
 func (m *MidtransProvider) CreateTransaction(req *snap.Request) (*model.PaymentProviderResponse, error) {
 	resp, err := m.snapClient.CreateTransaction(req)
 	if err != nil {
-		return nil, errors.New(fmt.Sprintf("%s (%s)", err.GetMessage(), err.GetStatusCode()))
+		return nil, errors.New(fmt.Sprintf("%s (%d)", err.GetMessage(), err.GetStatusCode()))
 	}
 
 	response := model.PaymentProviderResponse{

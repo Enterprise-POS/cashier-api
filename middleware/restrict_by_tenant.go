@@ -38,10 +38,15 @@ func RestrictByTenant(client *gorm.DB) fiber.Handler {
 				JSON(common.NewWebResponseError(400, common.StatusError, "TenantId is not int"))
 		}
 
-		// Check if relation exists in user_mtm_tenant
-		// supabase returns error when no rows found
-		var exist model.UserMtmTenant
-		err = client.Select("user_id, tenant_id").Where("user_id", userId).Where("tenant_id", paramTenantId).Take(&exist).Error
+		var tenant model.Tenant
+		err = client.
+			Select("tenant.id, tenant.midtrans_server_key").
+			Joins("INNER JOIN user_mtm_tenant ON user_mtm_tenant.tenant_id = tenant.id").
+			Where("user_mtm_tenant.user_id = ?", userId).
+			Where("tenant.id = ?", paramTenantId).
+			Take(&tenant).Error
+
+		ctx.Locals("midtransServerKey", tenant.MidtransServerKey)
 
 		if err != nil {
 			log.Warnf("Forbidden action detected. Current user is not associate with requested tenant. From userId: %d, requesting for tenantId: %s", userId, paramTenantId)

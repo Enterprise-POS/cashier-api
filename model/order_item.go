@@ -41,6 +41,8 @@ type OrderItem struct {
 	PaymentType    PaymentType    `json:"payment_type" gorm:"column:payment_type"`
 	PaymentStatus  PaymentStatus  `json:"payment_status" gorm:"column:payment_status"`
 	TransactionId  string         `json:"transaction_id" gorm:"column:transaction_id"`
+	PaymentURL     *string        `json:"payment_url"`
+	PaymentToken   *string        `json:"payment_token"`
 	DeletedAt      gorm.DeletedAt `json:"-"` // Soft delete
 }
 
@@ -49,21 +51,24 @@ func (orderItem *OrderItem) TableName() string {
 }
 
 type OrderItemWithStore struct {
-	Id               int           `json:"id"`
-	PurchasedPrice   int           `json:"purchased_price"`
-	CreatedAt        time.Time     `json:"created_at"`
-	TotalQuantity    int           `json:"total_quantity"`
-	TotalAmount      int           `json:"total_amount"`
-	DiscountAmount   int           `json:"discount_amount"`
-	Subtotal         int           `json:"subtotal"`
-	StoreId          int           `json:"store_id"`
-	TenantId         int           `json:"tenant_id"`
-	PaymentType      PaymentType   `json:"payment_type"`
-	StoreName        string        `json:"store_name"` // Joined field
-	StoreAddress     string        `json:"store_address"`
-	StorePhoneNumber string        `json:"store_phone_number"`
-	PaymentStatus    PaymentStatus `json:"payment_status"`
-	TransactionId    string        `json:"transaction_id"`
+	Id             int           `json:"id"`
+	PurchasedPrice int           `json:"purchased_price"`
+	CreatedAt      time.Time     `json:"created_at"`
+	TotalQuantity  int           `json:"total_quantity"`
+	TotalAmount    int           `json:"total_amount"`
+	DiscountAmount int           `json:"discount_amount"`
+	Subtotal       int           `json:"subtotal"`
+	StoreId        int           `json:"store_id"`
+	TenantId       int           `json:"tenant_id"`
+	PaymentType    PaymentType   `json:"payment_type"`
+	PaymentStatus  PaymentStatus `json:"payment_status"`
+	TransactionId  string        `json:"transaction_id"`
+	PaymentURL     *string       `json:"payment_url"`
+	PaymentToken   *string       `json:"payment_token"`
+
+	StoreName        string `json:"store_name"` // Joined field
+	StoreAddress     string `json:"store_address"`
+	StorePhoneNumber string `json:"store_phone_number"`
 }
 
 type PaymentProviderResponse struct {

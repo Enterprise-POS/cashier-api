@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -90,6 +91,7 @@ func TestOrderItemRepository(t *testing.T) {
 				TenantId:       tenantId,
 				StoreId:        storeId,
 				PaymentType:    model.PaymentTypeCash,
+				PaymentStatus:  model.PaymentStatusSuccess,
 			}
 
 			result, err := orderItemRepo.PlaceOrderItem(input)
@@ -115,6 +117,8 @@ func TestOrderItemRepository(t *testing.T) {
 				TenantId:       tenantId,
 				StoreId:        storeId,
 				PaymentType:    model.PaymentTypeCash,
+				TransactionId:  "",
+				PaymentStatus:  model.PaymentStatusSuccess,
 			}
 
 			result, err := repo.PlaceOrderItem(input)
@@ -143,6 +147,8 @@ func TestOrderItemRepository(t *testing.T) {
 				TenantId:       tenantId,
 				StoreId:        storeId,
 				PaymentType:    model.PaymentTypeCash,
+				TransactionId:  "",
+				PaymentStatus:  model.PaymentStatusSuccess,
 			}
 
 			result, err := repo.PlaceOrderItem(input)
@@ -171,6 +177,8 @@ func TestOrderItemRepository(t *testing.T) {
 				TenantId:       tenantId,
 				StoreId:        storeId,
 				PaymentType:    model.PaymentTypeCash,
+				TransactionId:  "",
+				PaymentStatus:  model.PaymentStatusSuccess,
 			}
 
 			result, err := repo.PlaceOrderItem(input)
@@ -199,6 +207,8 @@ func TestOrderItemRepository(t *testing.T) {
 				TenantId:       tenantId,
 				StoreId:        0, // Invalid: FK violation expected
 				PaymentType:    model.PaymentTypeCash,
+				TransactionId:  "",
+				PaymentStatus:  model.PaymentStatusSuccess,
 			}
 
 			result, err := repo.PlaceOrderItem(input)
@@ -227,6 +237,8 @@ func TestOrderItemRepository(t *testing.T) {
 				TenantId:       0, // Invalid: FK violation expected
 				StoreId:        storeId,
 				PaymentType:    model.PaymentTypeCash,
+				TransactionId:  "",
+				PaymentStatus:  model.PaymentStatusSuccess,
 			}
 
 			result, err := repo.PlaceOrderItem(input)
@@ -248,12 +260,17 @@ func TestOrderItemRepository(t *testing.T) {
 			tenantId, storeId := seedOrderItemTestDependencies(t, tx, "orderitem_test@example.com", "Order Item")
 			orderItemRepo := NewOrderItemRepositoryImpl(tx)
 
+			transactionId1 := fmt.Sprintf("TEST-%s", uuid.NewString())
+			transactionId2 := fmt.Sprintf("TEST-%s", uuid.NewString())
+			transactionId3 := fmt.Sprintf("TEST-%s", uuid.NewString())
+			transactionId4 := fmt.Sprintf("TEST-%s", uuid.NewString())
+			transactionId5 := fmt.Sprintf("TEST-%s", uuid.NewString())
 			dummyOrderItems := []*model.OrderItem{
-				{PurchasedPrice: 10000, TotalQuantity: 1, TotalAmount: 10000, DiscountAmount: 0, Subtotal: 10000, TenantId: tenantId, StoreId: storeId, PaymentType: model.PaymentTypeCash},
-				{PurchasedPrice: 20000, TotalQuantity: 2, TotalAmount: 40000, DiscountAmount: 0, Subtotal: 40000, TenantId: tenantId, StoreId: storeId, PaymentType: model.PaymentTypeCash},
-				{PurchasedPrice: 30000, TotalQuantity: 3, TotalAmount: 90000, DiscountAmount: 0, Subtotal: 90000, TenantId: tenantId, StoreId: storeId, PaymentType: model.PaymentTypeCash},
-				{PurchasedPrice: 40000, TotalQuantity: 4, TotalAmount: 100000, DiscountAmount: 60000, Subtotal: 160000, TenantId: tenantId, StoreId: storeId, PaymentType: model.PaymentTypeCash},
-				{PurchasedPrice: 50000, TotalQuantity: 5, TotalAmount: 250000, DiscountAmount: 0, Subtotal: 250000, TenantId: tenantId, StoreId: storeId, PaymentType: model.PaymentTypeCash},
+				{PurchasedPrice: 10000, TotalQuantity: 1, TotalAmount: 10000, DiscountAmount: 0, Subtotal: 10000, TenantId: tenantId, StoreId: storeId, PaymentType: model.PaymentTypeCash, PaymentStatus: model.PaymentStatusSuccess, TransactionId: transactionId1},
+				{PurchasedPrice: 20000, TotalQuantity: 2, TotalAmount: 40000, DiscountAmount: 0, Subtotal: 40000, TenantId: tenantId, StoreId: storeId, PaymentType: model.PaymentTypeCash, PaymentStatus: model.PaymentStatusSuccess, TransactionId: transactionId2},
+				{PurchasedPrice: 30000, TotalQuantity: 3, TotalAmount: 90000, DiscountAmount: 0, Subtotal: 90000, TenantId: tenantId, StoreId: storeId, PaymentType: model.PaymentTypeCash, PaymentStatus: model.PaymentStatusSuccess, TransactionId: transactionId3},
+				{PurchasedPrice: 40000, TotalQuantity: 4, TotalAmount: 100000, DiscountAmount: 60000, Subtotal: 160000, TenantId: tenantId, StoreId: storeId, PaymentType: model.PaymentTypeCash, PaymentStatus: model.PaymentStatusSuccess, TransactionId: transactionId4},
+				{PurchasedPrice: 50000, TotalQuantity: 5, TotalAmount: 250000, DiscountAmount: 0, Subtotal: 250000, TenantId: tenantId, StoreId: storeId, PaymentType: model.PaymentTypeCash, PaymentStatus: model.PaymentStatusSuccess, TransactionId: transactionId5},
 			}
 
 			for _, item := range dummyOrderItems {
@@ -302,6 +319,7 @@ func TestOrderItemRepository(t *testing.T) {
 					StoreId:        storeId,
 					CreatedAt:      dates[i],
 					PaymentType:    model.PaymentTypeCash,
+					PaymentStatus:  model.PaymentStatusSuccess,
 				})
 				assert.Nil(t, err)
 			}
@@ -345,6 +363,7 @@ func TestOrderItemRepository(t *testing.T) {
 					TenantId:       tenantId,
 					StoreId:        storeId,
 					PaymentType:    model.PaymentTypeCash,
+					PaymentStatus:  model.PaymentStatusSuccess,
 				})
 				assert.Nil(t, err)
 			}
@@ -374,6 +393,127 @@ func TestOrderItemRepository(t *testing.T) {
 		t.Skip("DBMS relation too deep")
 	})
 
+	t.Run("SetPaymentStatus", func(t *testing.T) {
+		t.Run("SuccessByTransactionId", func(t *testing.T) {
+			tx := gormClient.Begin()
+			defer tx.Rollback()
+
+			tenantId, storeId := seedOrderItemTestDependencies(t, tx, "orderitem_test_setpaymentstatus@example.com", "Order Item")
+			repo := NewOrderItemRepositoryImpl(tx)
+
+			created, err := repo.PlaceOrderItem(&model.OrderItem{
+				PurchasedPrice: 20000,
+				TotalQuantity:  2,
+				TotalAmount:    40000,
+				DiscountAmount: 0,
+				Subtotal:       40000,
+				TenantId:       tenantId,
+				StoreId:        storeId,
+				PaymentType:    model.PaymentTypeQRIS,
+				PaymentStatus:  model.PaymentStatusPending,
+			})
+			require.NoError(t, err)
+			require.NotZero(t, created.Id)
+
+			err = repo.SetPaymentStatus(0, created.TransactionId, model.PaymentStatusSuccess)
+			assert.NoError(t, err)
+
+			var updated model.OrderItem
+			err = tx.First(&updated, created.Id).Error
+			require.NoError(t, err)
+			assert.Equal(t, model.PaymentStatusSuccess, updated.PaymentStatus)
+		})
+
+		t.Run("SuccessByOrderItemId", func(t *testing.T) {
+			tx := gormClient.Begin()
+			defer tx.Rollback()
+
+			tenantId, storeId := seedOrderItemTestDependencies(t, tx, "orderitem_test_setpaymentstatus@example.com", "Order Item")
+			repo := NewOrderItemRepositoryImpl(tx)
+
+			created, err := repo.PlaceOrderItem(&model.OrderItem{
+				PurchasedPrice: 20000,
+				TotalQuantity:  2,
+				TotalAmount:    40000,
+				DiscountAmount: 0,
+				Subtotal:       40000,
+				TenantId:       tenantId,
+				StoreId:        storeId,
+				PaymentType:    model.PaymentTypeQRIS,
+				PaymentStatus:  model.PaymentStatusPending,
+			})
+			require.NoError(t, err)
+			require.NotZero(t, created.Id)
+
+			// Pass a transaction id that won't match anything, but the correct order item id.
+			err = repo.SetPaymentStatus(created.Id, "", model.PaymentStatusExpired)
+			assert.NoError(t, err)
+
+			var updated model.OrderItem
+			err = tx.First(&updated, created.Id).Error
+			require.NoError(t, err)
+			assert.Equal(t, model.PaymentStatusExpired, updated.PaymentStatus)
+		})
+
+		t.Run("NotFound", func(t *testing.T) {
+			tx := gormClient.Begin()
+			defer tx.Rollback()
+
+			_, _ = seedOrderItemTestDependencies(t, tx, "orderitem_test_setpaymentstatus@example.com", "Order Item")
+			repo := NewOrderItemRepositoryImpl(tx)
+
+			err := repo.SetPaymentStatus(999999, "", model.PaymentStatusSuccess)
+			assert.Error(t, err)
+			assert.ErrorIs(t, err, gorm.ErrRecordNotFound)
+		})
+
+		t.Run("MultipleMatchesRollsBackAndErrors", func(t *testing.T) {
+			tx := gormClient.Begin()
+			defer tx.Rollback()
+
+			tenantId, storeId := seedOrderItemTestDependencies(t, tx, "orderitem_test_setpaymentstatus@example.com", "Order Item")
+			repo := NewOrderItemRepositoryImpl(tx)
+
+			rowA, err := repo.PlaceOrderItem(&model.OrderItem{
+				PurchasedPrice: 20000,
+				TotalQuantity:  2,
+				TotalAmount:    40000,
+				DiscountAmount: 0,
+				Subtotal:       40000,
+				TenantId:       tenantId,
+				StoreId:        storeId,
+				PaymentType:    model.PaymentTypeQRIS,
+				PaymentStatus:  model.PaymentStatusPending,
+				TransactionId:  "",
+			})
+			require.NoError(t, err)
+
+			rowB, err := repo.PlaceOrderItem(&model.OrderItem{
+				PurchasedPrice: 10000,
+				TotalQuantity:  1,
+				TotalAmount:    10000,
+				DiscountAmount: 0,
+				Subtotal:       10000,
+				TenantId:       tenantId,
+				StoreId:        storeId,
+				PaymentType:    model.PaymentTypeQRIS,
+				PaymentStatus:  model.PaymentStatusPending,
+				TransactionId:  "", // distinct, non-empty — avoids the unique constraint entirely
+			})
+			require.NoError(t, err)
+
+			// rowA's real transactionId, but rowB's id — the OR clause matches both rows.
+			err = repo.SetPaymentStatus(rowB.Id, rowA.TransactionId, model.PaymentStatusSuccess)
+			assert.Error(t, err)
+
+			var reloadedA, reloadedB model.OrderItem
+			require.NoError(t, tx.First(&reloadedA, rowA.Id).Error)
+			require.NoError(t, tx.First(&reloadedB, rowB.Id).Error)
+			assert.Equal(t, model.PaymentStatusPending, reloadedA.PaymentStatus)
+			assert.Equal(t, model.PaymentStatusPending, reloadedB.PaymentStatus)
+		})
+	})
+
 	t.Run("CheckTransaction", func(t *testing.T) {
 		tx := gormClient.Begin()
 		defer tx.Rollback()
@@ -381,11 +521,15 @@ func TestOrderItemRepository(t *testing.T) {
 		tenantId, storeId := seedOrderItemTestDependencies(t, tx, "orderitem_test_checktransaction@example.com", "Order Item")
 		orderItemRepo := NewOrderItemRepositoryImpl(tx)
 
+		transactionId1 := fmt.Sprintf("TEST-%s", uuid.NewString())
+		transactionId2 := fmt.Sprintf("TEST-%s", uuid.NewString())
+		transactionId3 := fmt.Sprintf("TEST-%s", uuid.NewString())
+		transactionId4 := fmt.Sprintf("TEST-%s", uuid.NewString())
 		dummyOrderItems := []*model.OrderItem{
-			{PurchasedPrice: 20000, TotalQuantity: 2, TotalAmount: 40000, DiscountAmount: 0, Subtotal: 40000, TenantId: tenantId, StoreId: storeId, PaymentType: model.PaymentTypeQRIS, PaymentStatus: model.PaymentStatusPending, TransactionId: "527ae3d1-66b2-4c08-8bb2-e768552142ab"},
-			{PurchasedPrice: 30000, TotalQuantity: 3, TotalAmount: 90000, DiscountAmount: 0, Subtotal: 90000, TenantId: tenantId, StoreId: storeId, PaymentType: model.PaymentTypeQRIS, PaymentStatus: model.PaymentStatusCancelled, TransactionId: "c23a9b9c-d62b-4efc-9914-4e0257fd64f5"},
-			{PurchasedPrice: 40000, TotalQuantity: 4, TotalAmount: 100000, DiscountAmount: 60000, Subtotal: 160000, TenantId: tenantId, StoreId: storeId, PaymentType: model.PaymentTypeQRIS, PaymentStatus: model.PaymentStatusExpired, TransactionId: "a8800859-288d-45b8-b5f6-c342750ac146"},
-			{PurchasedPrice: 50000, TotalQuantity: 5, TotalAmount: 250000, DiscountAmount: 0, Subtotal: 250000, TenantId: tenantId, StoreId: storeId, PaymentType: model.PaymentTypeQRIS, PaymentStatus: model.PaymentStatusRefunded, TransactionId: "fb80a494-1737-4418-ba83-1aadabe71990"},
+			{PurchasedPrice: 20000, TotalQuantity: 2, TotalAmount: 40000, DiscountAmount: 0, Subtotal: 40000, TenantId: tenantId, StoreId: storeId, PaymentType: model.PaymentTypeQRIS, PaymentStatus: model.PaymentStatusPending, TransactionId: transactionId1},
+			{PurchasedPrice: 30000, TotalQuantity: 3, TotalAmount: 90000, DiscountAmount: 0, Subtotal: 90000, TenantId: tenantId, StoreId: storeId, PaymentType: model.PaymentTypeQRIS, PaymentStatus: model.PaymentStatusCancelled, TransactionId: transactionId2},
+			{PurchasedPrice: 40000, TotalQuantity: 4, TotalAmount: 100000, DiscountAmount: 60000, Subtotal: 160000, TenantId: tenantId, StoreId: storeId, PaymentType: model.PaymentTypeQRIS, PaymentStatus: model.PaymentStatusExpired, TransactionId: transactionId3},
+			{PurchasedPrice: 50000, TotalQuantity: 5, TotalAmount: 250000, DiscountAmount: 0, Subtotal: 250000, TenantId: tenantId, StoreId: storeId, PaymentType: model.PaymentTypeQRIS, PaymentStatus: model.PaymentStatusRefunded, TransactionId: transactionId4},
 		}
 
 		resultsOrderItems := make([]*model.OrderItem, 0)
@@ -434,6 +578,8 @@ func TestOrderItemRepository(t *testing.T) {
 				TenantId:       tenantId,
 				StoreId:        storeId,
 				PaymentType:    model.PaymentTypeCash,
+				PaymentStatus:  model.PaymentStatusSuccess,
+				TransactionId:  "",
 			})
 			require.NoError(t, err)
 			require.NotZero(t, created.Id)
@@ -484,6 +630,8 @@ func TestOrderItemRepository(t *testing.T) {
 				TenantId:       tenantId,
 				StoreId:        storeId,
 				PaymentType:    model.PaymentTypeCash,
+				PaymentStatus:  model.PaymentStatusSuccess,
+				TransactionId:  "",
 			})
 			require.NoError(t, err)
 			require.NotZero(t, created.Id)

@@ -42,7 +42,7 @@ func (service *OrderItemServiceMock) FindById(orderItemid int, tenantId int) (*m
 }
 
 // Transactions implements OrderItemService.
-func (service *OrderItemServiceMock) Transactions(params *repository.CreateTransactionParams) (*repository.TransactionDataReturn, error) {
+func (service *OrderItemServiceMock) Transactions(params *repository.CreateTransactionParams, serverKey string) (*repository.TransactionDataReturn, error) {
 	args := service.Mock.Called(params)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
@@ -52,7 +52,7 @@ func (service *OrderItemServiceMock) Transactions(params *repository.CreateTrans
 }
 
 // CheckTransaction implements [OrderItemService].
-func (service *OrderItemServiceMock) CheckTransaction(transactionId string) (model.PaymentStatusResponse, error) {
+func (service *OrderItemServiceMock) CheckTransaction(transactionId string, serverKey string) (model.PaymentStatusResponse, error) {
 	args := service.Mock.Called(transactionId)
 	if args.Get(0) == nil {
 		return model.PaymentStatusResponse{}, args.Error(1)
@@ -62,7 +62,7 @@ func (service *OrderItemServiceMock) CheckTransaction(transactionId string) (mod
 }
 
 // CancelTransaction implements [OrderItemService].
-func (service *OrderItemServiceMock) CancelTransaction(orderId int, transactionId string, tenantId int) (model.PaymentStatusResponse, error) {
+func (service *OrderItemServiceMock) CancelTransaction(orderId int, transactionId string, tenantId int, serverKey string) (model.PaymentStatusResponse, error) {
 	args := service.Mock.Called(orderId, transactionId, tenantId)
 	if args.Get(0) == nil {
 		return model.PaymentStatusResponse{}, args.Error(1)

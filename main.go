@@ -46,6 +46,9 @@ func main() {
 	// DB client
 	gormClient := client.CreateGormClient()
 
+	// Payment provider
+	paymentProvider := service.NewPaymentProviderImpl()
+
 	// 02 Middleware, Security
 	app.Use(cors.New(cors.Config{
 		AllowOrigins:     "http://localhost:3000, https://enterprisepos.vercel.app",
@@ -81,6 +84,7 @@ func main() {
 
 	// webhook
 	webhookController := controller.NewWebhookControllerImpl()
+	// /api/v1/order_items/transactions/webhook?provider=midtrans
 	apiV1.Post("/order_items/transactions/webhook", webhookController.HandlePaymentGateWayWebhook)
 
 	// protected only login user
@@ -149,7 +153,7 @@ func main() {
 	apiV1.Delete("/store_stocks/withdraw/:tenantId", tenantRestriction, storeStockController.Withdraw)
 
 	orderItemRepository := repository.NewOrderItemRepositoryImpl(gormClient)
-	orderItemService := service.NewOrderItemServiceImpl(orderItemRepository)
+	orderItemService := service.NewOrderItemServiceImpl(orderItemRepository, paymentProvider)
 	orderItemController := controller.NewOrderItemControllerImpl(orderItemService)
 
 	// GET /order_items/:tenantId?order_item_id=99

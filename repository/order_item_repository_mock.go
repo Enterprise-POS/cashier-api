@@ -52,12 +52,7 @@ func (repository *OrderItemRepositoryMock) Transactions(params *CreateTransactio
 // SetPaymentStatus implements [OrderItemRepository].
 func (repository *OrderItemRepositoryMock) SetPaymentStatus(orderItemId int, transactionId string, setTo model.PaymentStatus) error {
 	args := repository.Mock.Called(orderItemId, transactionId, setTo)
-
-	if args.Get(0) == nil {
-		return args.Error(0)
-	}
-
-	return nil
+	return args.Error(0)
 }
 
 // FindById implements OrderItemRepository.

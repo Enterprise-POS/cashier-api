@@ -1,6 +1,7 @@
 package service
 
 import (
+	"cashier-api/helper/client"
 	"cashier-api/helper/query"
 	"cashier-api/model"
 	"cashier-api/repository"
@@ -21,11 +22,11 @@ type OrderItemServiceImpl struct {
 	PaymentProvider   PaymentProvider
 }
 
-func NewOrderItemServiceImpl(repository repository.OrderItemRepository) OrderItemService {
+func NewOrderItemServiceImpl(repository repository.OrderItemRepository, paymentProvider PaymentProvider) OrderItemService {
 	return &OrderItemServiceImpl{
 		Repository:        repository,
 		ItemNameRegexRule: regexp.MustCompile(`^[\p{Han}\p{Hiragana}\p{Katakana}a-zA-Z][\p{Han}\p{Hiragana}\p{Katakana}a-zA-Z0-9' ]*$`),
-		PaymentProvider:   NewPaymentProviderImpl(),
+		PaymentProvider:   paymentProvider,
 	}
 }
 
@@ -98,7 +99,7 @@ func (service *OrderItemServiceImpl) PlaceOrderItem(*model.OrderItem) (*model.Or
 }
 
 // Transactions implements OrderItemService.
-func (service *OrderItemServiceImpl) Transactions(params *repository.CreateTransactionParams) (*repository.TransactionDataReturn, error) {
+func (service *OrderItemServiceImpl) Transactions(params *repository.CreateTransactionParams, serverKey string) (*repository.TransactionDataReturn, error) {
 	if params.TenantId <= 0 || params.StoreId <= 0 || params.UserId <= 0 {
 		return nil, errors.New("Tenant id, Store id, User id is Required !")
 	}
@@ -135,6 +136,13 @@ func (service *OrderItemServiceImpl) Transactions(params *repository.CreateTrans
 
 		if item.Quantity < 1 {
 			return nil, fmt.Errorf("Given quantity %d, from item_id: %d. Quantity should never be <= 0", item.Quantity, item.Id)
+		}
+
+		if item.StorePriceSnapshot < 0 {
+			return nil, fmt.Errorf("item_id %d: price cannot be negative", item.ItemId)
+		}
+		if item.DiscountAmount < 0 || item.DiscountAmount > item.StorePriceSnapshot {
+			return nil, fmt.Errorf("item_id %d: discount amount is invalid", item.ItemId)
 		}
 
 		if !service.ItemNameRegexRule.MatchString(item.ItemNameSnapshot) {
@@ -198,17 +206,16 @@ func (service *OrderItemServiceImpl) Transactions(params *repository.CreateTrans
 
 	var paymentToken string = ""
 	var paymentURL string = ""
-	switch params.PaymentType {
-	case model.PaymentTypeQRIS, model.PaymentTypeCard, model.PaymentTypeEWallet:
-		res, err := service.PaymentProvider.CreateTransaction(params)
-		if err != nil {
-			return nil, err
+	if params.PaymentType != model.PaymentTypeCash && params.PaymentType != model.PaymentTypeOther {
+		switch params.PaymentType {
+		case model.PaymentTypeQRIS, model.PaymentTypeCard, model.PaymentTypeEWallet:
+			res, err := service.PaymentProvider.CreateTransaction(client.NewMidtransProvider(serverKey), params)
+			if err != nil {
+				return nil, err
+			}
+			paymentToken = res.Token
+			paymentURL = res.RedirectURL
 		}
-		paymentToken = res.Token
-		paymentURL = res.RedirectURL
-		break
-	default:
-		break
 	}
 
 	params.PaymentToken = paymentToken
@@ -216,6 +223,13 @@ func (service *OrderItemServiceImpl) Transactions(params *repository.CreateTrans
 
 	transactionDataReturn, err := service.Repository.Transactions(params)
 	if err != nil {
+		/*
+			if paymentToken != "" {
+				if _, cancelErr := service.PaymentProvider.CancelTransaction(client.NewMidtransProvider(serverKey), paymentToken); cancelErr != nil {
+					log.Errorf("Transactions: DB write failed AND gateway cleanup failed for an orphaned transaction. Manual reconciliation required. Cause: %s", cancelErr.Error())
+				}
+			}
+		*/
 		return nil, fmt.Errorf("Failed to create transaction: %w", err)
 	}
 
@@ -226,12 +240,12 @@ func (service *OrderItemServiceImpl) Transactions(params *repository.CreateTrans
 	return transactionDataReturn, nil
 }
 
-func (service *OrderItemServiceImpl) CheckTransaction(transactionId string) (model.PaymentStatusResponse, error) {
+func (service *OrderItemServiceImpl) CheckTransaction(transactionId string, serverKey string) (model.PaymentStatusResponse, error) {
 	if transactionId == "" {
 		return model.PaymentStatusResponse{}, errors.New("transaction id is required")
 	}
 
-	paymentRes, err := service.PaymentProvider.CheckTransaction(transactionId)
+	paymentRes, err := service.PaymentProvider.CheckTransaction(client.NewMidtransProvider(serverKey), transactionId)
 	if err != nil {
 		if strings.Contains(err.Error(), "404") {
 			// Payment gateway has no record of this transaction — likely the
@@ -255,7 +269,7 @@ func (service *OrderItemServiceImpl) CheckTransaction(transactionId string) (mod
 		}
 
 		log.Errorf("OrderItemServiceImpl.CheckTransaction error: %s", err.Error())
-		return paymentRes, err
+		return model.PaymentStatusResponse{}, err
 	}
 
 	switch paymentRes.PaymentStatus {
@@ -275,7 +289,7 @@ func (service *OrderItemServiceImpl) CheckTransaction(transactionId string) (mod
 }
 
 // CancelTransaction implements [OrderItemService].
-func (service *OrderItemServiceImpl) CancelTransaction(orderItemId int, transactionId string, tenantId int) (model.PaymentStatusResponse, error) {
+func (service *OrderItemServiceImpl) CancelTransaction(orderItemId int, transactionId string, tenantId int, serverKey string) (model.PaymentStatusResponse, error) {
 	var resolvedOrderItemId int
 	var resolvedTransactionId string
 
@@ -302,7 +316,7 @@ func (service *OrderItemServiceImpl) CancelTransaction(orderItemId int, transact
 	log.Infof("CancelTransaction: requesting cancellation at payment gateway for transaction_id %s (order_item_id %d, tenant_id %d)",
 		resolvedTransactionId, resolvedOrderItemId, tenantId)
 
-	paymentRes, err := service.PaymentProvider.CancelTransaction(resolvedTransactionId)
+	paymentRes, err := service.PaymentProvider.CancelTransaction(client.NewMidtransProvider(serverKey), resolvedTransactionId)
 	if err != nil {
 		log.Errorf("CancelTransaction: payment gateway rejected cancellation for transaction_id %s. Cause: %s", resolvedTransactionId, err.Error())
 		return model.PaymentStatusResponse{}, err

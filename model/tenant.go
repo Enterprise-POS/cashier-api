@@ -5,11 +5,12 @@ import (
 )
 
 type Tenant struct {
-	Id          int       `json:"id,omitempty" gorm:"primaryKey;autoIncrement;column:id"`
-	Name        string    `json:"name" gorm:"column:name"`
-	OwnerUserId int       `json:"owner_user_id" gorm:"column:owner_user_id"`
-	IsActive    bool      `json:"is_active" gorm:"column:is_active"` // by default at database is TRUE
-	CreatedAt   time.Time `json:"created_at,omitempty" gorm:"column:created_at;<-:create"`
+	Id                int       `json:"id,omitempty" gorm:"primaryKey;autoIncrement;column:id"`
+	Name              string    `json:"name" gorm:"column:name"`
+	OwnerUserId       int       `json:"owner_user_id" gorm:"column:owner_user_id"`
+	IsActive          bool      `json:"is_active" gorm:"column:is_active"` // by default at database is TRUE
+	CreatedAt         time.Time `json:"created_at,omitempty" gorm:"column:created_at;<-:create"`
+	MidtransServerKey string    `json:"midtrans_server_key" gorm:"column:midtrans_server_key"`
 
 	Users []User `json:"users,omitempty" gorm:"many2many:user_mtm_tenant;foreignKey:Id;joinForeignKey:TenantId;References:Id;joinReferences:UserId"`
 }

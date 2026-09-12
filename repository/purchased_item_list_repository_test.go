@@ -4,9 +4,11 @@ import (
 	"cashier-api/helper/client"
 	"cashier-api/helper/query"
 	"cashier-api/model"
+	"fmt"
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gorm.io/gorm"
@@ -53,6 +55,7 @@ func TestPurchasedItem(t *testing.T) {
 		require.NoError(t, tx.Create(peach).Error)
 		require.NotZero(t, peach.ItemId)
 
+		testTransactionId := fmt.Sprintf("TEST-%s", uuid.NewString())
 		orderItem := &model.OrderItem{
 			PurchasedPrice: 40000,
 			TotalQuantity:  4,
@@ -62,6 +65,8 @@ func TestPurchasedItem(t *testing.T) {
 			StoreId:        storeId,
 			TenantId:       tenantId,
 			PaymentType:    model.PaymentTypeCash,
+			TransactionId:  testTransactionId, // Only for test case
+			PaymentStatus:  model.PaymentStatusSuccess,
 		}
 		require.NoError(t, tx.Create(orderItem).Error)
 		require.NotZero(t, orderItem.Id)

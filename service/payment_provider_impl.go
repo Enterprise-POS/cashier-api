@@ -11,21 +11,21 @@ import (
 )
 
 type PaymentProviderImpl struct {
-	MidtransProvider client.MidtransProvider
+	// MidtransProvider client.MidtransProvider
 }
 
 // CancelTransaction implements [PaymentProvider].
-func (p *PaymentProviderImpl) CancelTransaction(transactionId string) (model.PaymentStatusResponse, error) {
-	return p.MidtransProvider.CancelTransaction(transactionId)
+func (p *PaymentProviderImpl) CancelTransaction(midClient *client.MidtransProvider, transactionId string) (model.PaymentStatusResponse, error) {
+	return midClient.CancelTransaction(transactionId)
 }
 
 // CheckTransaction implements [PaymentProvider].
-func (p *PaymentProviderImpl) CheckTransaction(transactionId string) (model.PaymentStatusResponse, error) {
-	return p.MidtransProvider.CheckTransaction(transactionId)
+func (p *PaymentProviderImpl) CheckTransaction(midClient *client.MidtransProvider, transactionId string) (model.PaymentStatusResponse, error) {
+	return midClient.CheckTransaction(transactionId)
 }
 
 // CreateTransaction implements [PaymentProvider].
-func (p *PaymentProviderImpl) CreateTransaction(params *repository.CreateTransactionParams) (*model.PaymentProviderResponse, error) {
+func (p *PaymentProviderImpl) CreateTransaction(midClient *client.MidtransProvider, params *repository.CreateTransactionParams) (*model.PaymentProviderResponse, error) {
 	// Initiate midtrans Snap Request
 	var items []midtrans.ItemDetails = make([]midtrans.ItemDetails, 0)
 	for _, item := range params.Items {
@@ -49,7 +49,7 @@ func (p *PaymentProviderImpl) CreateTransaction(params *repository.CreateTransac
 		Items: &items,
 	}
 
-	response, err := p.MidtransProvider.CreateTransaction(req)
+	response, err := midClient.CreateTransaction(req)
 	if err != nil {
 		return nil, err
 	}
@@ -59,6 +59,6 @@ func (p *PaymentProviderImpl) CreateTransaction(params *repository.CreateTransac
 
 func NewPaymentProviderImpl() PaymentProvider {
 	return &PaymentProviderImpl{
-		MidtransProvider: *client.NewMidtransProvider(),
+		// MidtransProvider: *client.NewMidtransProvider(midtransServerKey),
 	}
 }

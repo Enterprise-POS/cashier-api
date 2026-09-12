@@ -30,17 +30,17 @@ type OrderItemService interface {
 	/*
 		This method will insert into 2 table
 	*/
-	Transactions(params *repository.CreateTransactionParams) (*repository.TransactionDataReturn, error)
+	Transactions(params *repository.CreateTransactionParams, serverKey string) (*repository.TransactionDataReturn, error)
 
 	/*
 		Check payment gateway transaction status
 	*/
-	CheckTransaction(transactionId string) (model.PaymentStatusResponse, error)
+	CheckTransaction(transactionId string, serverKey string) (model.PaymentStatusResponse, error)
 
 	/*
 		Cancel payment gateway transaction also with write CANCELED to database
 	*/
-	CancelTransaction(orderItemId int, transactionId string, tenantId int) (model.PaymentStatusResponse, error)
+	CancelTransaction(orderItemId int, transactionId string, tenantId int, serverKey string) (model.PaymentStatusResponse, error)
 
 	/*
 		Using aggregate function from SQL to get report
