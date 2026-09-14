@@ -2,6 +2,7 @@ package service
 
 import (
 	"cashier-api/helper/client"
+	constant "cashier-api/helper/constant/cookie"
 	"cashier-api/helper/query"
 	"cashier-api/model"
 	"cashier-api/repository"
@@ -209,7 +210,7 @@ func (service *OrderItemServiceImpl) Transactions(params *repository.CreateTrans
 	if params.PaymentType != model.PaymentTypeCash && params.PaymentType != model.PaymentTypeOther {
 		switch params.PaymentType {
 		case model.PaymentTypeQRIS, model.PaymentTypeCard, model.PaymentTypeEWallet:
-			res, err := service.PaymentProvider.CreateTransaction(client.NewMidtransProvider(serverKey), params)
+			res, err := service.PaymentProvider.CreateTransaction(client.NewMidtransProvider(serverKey, constant.MidtransEnvironment), params)
 			if err != nil {
 				return nil, err
 			}
@@ -225,7 +226,7 @@ func (service *OrderItemServiceImpl) Transactions(params *repository.CreateTrans
 	if err != nil {
 		/*
 			if paymentToken != "" {
-				if _, cancelErr := service.PaymentProvider.CancelTransaction(client.NewMidtransProvider(serverKey), paymentToken); cancelErr != nil {
+				if _, cancelErr := service.PaymentProvider.CancelTransaction(client.NewMidtransProvider(serverKey, constant.MidtransEnvironment), paymentToken); cancelErr != nil {
 					log.Errorf("Transactions: DB write failed AND gateway cleanup failed for an orphaned transaction. Manual reconciliation required. Cause: %s", cancelErr.Error())
 				}
 			}
@@ -245,7 +246,7 @@ func (service *OrderItemServiceImpl) CheckTransaction(transactionId string, serv
 		return model.PaymentStatusResponse{}, errors.New("transaction id is required")
 	}
 
-	paymentRes, err := service.PaymentProvider.CheckTransaction(client.NewMidtransProvider(serverKey), transactionId)
+	paymentRes, err := service.PaymentProvider.CheckTransaction(client.NewMidtransProvider(serverKey, constant.MidtransEnvironment), transactionId)
 	if err != nil {
 		if strings.Contains(err.Error(), "404") {
 			// Payment gateway has no record of this transaction — likely the
@@ -316,7 +317,7 @@ func (service *OrderItemServiceImpl) CancelTransaction(orderItemId int, transact
 	log.Infof("CancelTransaction: requesting cancellation at payment gateway for transaction_id %s (order_item_id %d, tenant_id %d)",
 		resolvedTransactionId, resolvedOrderItemId, tenantId)
 
-	paymentRes, err := service.PaymentProvider.CancelTransaction(client.NewMidtransProvider(serverKey), resolvedTransactionId)
+	paymentRes, err := service.PaymentProvider.CancelTransaction(client.NewMidtransProvider(serverKey, constant.MidtransEnvironment), resolvedTransactionId)
 	if err != nil {
 		log.Errorf("CancelTransaction: payment gateway rejected cancellation for transaction_id %s. Cause: %s", resolvedTransactionId, err.Error())
 		return model.PaymentStatusResponse{}, err
