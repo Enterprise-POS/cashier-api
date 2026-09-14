@@ -8,14 +8,31 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gorm.io/gorm"
 )
 
 func TestTenantRepositoryImpl(t *testing.T) {
 	gormClient := client.CreateGormClient()
+	userRepo := NewUserRepositoryImpl(gormClient)
 
-	// This is test user id; Do not delete any accidentally
-	// delete may cause another test case throw panic
-	const UserId = 1
+	// Dynamically create a dedicated "owner" test user instead of relying on
+	// a hardcoded id that may not exist in every environment.
+	ownerUser := model.User{
+		Name:  "Test_TenantRepositoryImpl owner user_" + uuid.NewString(),
+		Email: "testtenantrepositoryimplowner" + uuid.NewString() + "@gmail.com",
+	}
+	createdOwnerUser, err := userRepo.CreateWithEmailAndPassword(ownerUser, "12345678")
+	require.Nil(t, err)
+	require.NotNil(t, createdOwnerUser)
+
+	// Use this instead of a hardcoded constant everywhere below
+	UserId := createdOwnerUser.Id
+
+	// Clean up the owner user once all subtests finish
+	defer func() {
+		err := gormClient.Delete(&model.User{}, UserId).Error
+		require.Nil(t, err, "If this fail, then delete data immediately: TestTenantRepositoryImpl owner user cleanup")
+	}()
 
 	t.Run("GetByUserId", func(t *testing.T) {
 		tenantRepo := NewTenantRepositoryImpl(gormClient)
@@ -485,5 +502,65 @@ func TestTenantRepositoryImpl(t *testing.T) {
 			Where("id", []int{newCreatedDummyUser.Id, newCreatedDummyUser2.Id}).
 			Delete(&model.User{}).Error
 		require.Nil(t, err, "If this fail, then delete data immediately TestTenantRepositoryImpl/Register 3")
+	})
+
+	t.Run("EditPaymentGatewayInformation", func(t *testing.T) {
+		tx := gormClient.Begin()
+		defer tx.Rollback()
+		require.Nil(t, tx.Error)
+
+		tenantRepo := NewTenantRepositoryImpl(tx)
+
+		t.Run("NormalEdit", func(t *testing.T) {
+			dummyTenant := &model.Tenant{
+				Name:        "Test_TenantRepositoryImpl/EditPaymentGatewayInformation/NormalEdit 1 Group_" + uuid.NewString(),
+				OwnerUserId: UserId,
+				IsActive:    true,
+			}
+			newDummyTenant, err := tenantRepo.Create(dummyTenant)
+			require.Nil(t, err)
+
+			newDummyTenant.MidtransServerKey = "SB-Mid-server-" + uuid.NewString()
+			err = tenantRepo.EditPaymentGatewayInformation(newDummyTenant)
+			assert.Nil(t, err)
+
+			var updatedTenant model.Tenant
+			err = tx.First(&updatedTenant, newDummyTenant.Id).Error
+			require.Nil(t, err)
+			assert.Equal(t, newDummyTenant.MidtransServerKey, updatedTenant.MidtransServerKey)
+		})
+
+		t.Run("EmptyMidtransServerKey", func(t *testing.T) {
+			dummyTenant := &model.Tenant{
+				Name:        "Test_TenantRepositoryImpl/EditPaymentGatewayInformation/EmptyMidtransServerKey 1 Group_" + uuid.NewString(),
+				OwnerUserId: UserId,
+				IsActive:    true,
+			}
+			newDummyTenant, err := tenantRepo.Create(dummyTenant)
+			require.Nil(t, err)
+
+			// MidtransServerKey intentionally left empty; anyUpdate stays false,
+			// so the method now returns an explicit error instead of a silent nil.
+			err = tenantRepo.EditPaymentGatewayInformation(newDummyTenant)
+			assert.NotNil(t, err)
+			assert.Equal(t, "No update affected", err.Error())
+
+			// Confirm nothing was actually changed
+			var updatedTenant model.Tenant
+			dbErr := tx.First(&updatedTenant, newDummyTenant.Id).Error
+			require.Nil(t, dbErr)
+			assert.Equal(t, "", updatedTenant.MidtransServerKey)
+		})
+
+		t.Run("TenantIdNotAvailable", func(t *testing.T) {
+			notAvailableTenant := &model.Tenant{
+				Id:                0,
+				MidtransServerKey: "SB-Mid-server-" + uuid.NewString(),
+			}
+
+			err := tenantRepo.EditPaymentGatewayInformation(notAvailableTenant)
+			assert.Error(t, err)
+			assert.ErrorIs(t, err, gorm.ErrRecordNotFound)
+		})
 	})
 }

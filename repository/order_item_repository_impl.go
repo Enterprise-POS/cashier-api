@@ -198,7 +198,7 @@ func (repository *OrderItemRepositoryImpl) SetPaymentStatus(orderItemId int, tra
 			// If more than one row matched, something is wrong with the
 			// filter (e.g. an empty/duplicate transaction_id) — abort and
 			// roll back instead of silently mutating unrelated rows.
-			return fmt.Errorf("expected to update exactly 1 order item, but matched %d — rolled back", result.RowsAffected)
+			return fmt.Errorf("Expected to update exactly 1 order item, but matched %d — rolled back", result.RowsAffected)
 		}
 
 		return nil

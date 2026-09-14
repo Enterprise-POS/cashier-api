@@ -39,7 +39,6 @@ func TestWarehouseControllerImpl(t *testing.T) {
 		but we still make use login
 	*/
 	app := fiber.New()
-	supabaseClient := client.CreateSupabaseClient()
 	gormClient := client.CreateGormClient()
 
 	warehouseRepo := repository.NewWarehouseRepositoryImpl(gormClient)
@@ -164,10 +163,7 @@ func TestWarehouseControllerImpl(t *testing.T) {
 			assert.Equal(t, "Test 1 item GetActiveItem NormalGetActiveItem", item.ItemName)
 
 			// Clean up
-			_, _, err = supabaseClient.From(repository.WarehouseTable).
-				Delete("", "").
-				Eq("item_id", strconv.Itoa(item.ItemId)).
-				Execute()
+			err = gormClient.Where("item_id = ?", item.ItemId).Delete(&model.Item{}).Error
 			require.NoError(t, err, "If this fail, then immediately delete the data from TestWarehouseControllerImpl/GetActiveItem/NormalGetActiveItem")
 		})
 	})
@@ -192,10 +188,7 @@ func TestWarehouseControllerImpl(t *testing.T) {
 			require.Equal(t, http.StatusOK, response.StatusCode)
 
 			// Clean up
-			_, _, err := supabaseClient.From(repository.WarehouseTable).
-				Delete("", "").
-				Eq("item_name", "Test 1 item").
-				Execute()
+			err := gormClient.Where("item_name = ?", "Test 1 item").Delete(&model.Item{}).Error
 			require.NoError(t, err, "If this fail, then immediately delete the data from TestWarehouseControllerImpl/CreateItem/NormalCreateItem")
 		})
 
@@ -231,10 +224,8 @@ func TestWarehouseControllerImpl(t *testing.T) {
 			assert.Contains(t, responseBody, "Test NormalCreateMultipleItem 2 item")
 			assert.Contains(t, responseBody, "Test NormalCreateMultipleItem 3 item")
 			// Clean up
-			_, _, err = supabaseClient.From(repository.WarehouseTable).
-				Delete("", "").
-				In("item_name", []string{"Test NormalCreateMultipleItem 1 item", "Test NormalCreateMultipleItem 2 item", "Test NormalCreateMultipleItem 3 item"}).
-				Execute()
+			err = gormClient.Where("item_name IN ?", []string{"Test NormalCreateMultipleItem 1 item", "Test NormalCreateMultipleItem 2 item", "Test NormalCreateMultipleItem 3 item"}).
+				Delete(&model.Item{}).Error
 			require.NoError(t, err, "If this fail, then immediately delete the data from TestWarehouseControllerImpl/CreateItem/NormalCreateMultipleItem")
 		})
 
@@ -352,10 +343,7 @@ func TestWarehouseControllerImpl(t *testing.T) {
 		})
 
 		// Clean up for FindById
-		_, _, err = supabaseClient.From(repository.WarehouseTable).
-			Delete("", "").
-			Eq("item_id", fmt.Sprint(item.ItemId)).
-			Execute()
+		err = gormClient.Where("item_id = ?", item.ItemId).Delete(&model.Item{}).Error
 		require.NoError(t, err, "If this fail, then immediately delete the data from TestWarehouseControllerImpl/CreateItem/FindById")
 	})
 
@@ -425,12 +413,8 @@ func TestWarehouseControllerImpl(t *testing.T) {
 			require.Equal(t, http.StatusAccepted, response.StatusCode)
 
 			// Check
-			var checkItem1 *model.Item
-			_, err = supabaseClient.From(repository.WarehouseTable).
-				Select("*", "", false).
-				Eq("item_id", strconv.Itoa(item1.ItemId)).
-				Single().
-				ExecuteTo(&checkItem1)
+			var checkItem1 model.Item
+			err = gormClient.Where("item_id = ?", item1.ItemId).First(&checkItem1).Error
 			assert.NoError(t, err)
 			assert.Equal(t, item1.Stocks-3, checkItem1.Stocks)
 			assert.Equal(t, item1.ItemName+" edited", checkItem1.ItemName)
@@ -487,10 +471,7 @@ func TestWarehouseControllerImpl(t *testing.T) {
 		})
 
 		// Clean up for Edit
-		_, _, err = supabaseClient.From(repository.WarehouseTable).
-			Delete("", "").
-			In("item_id", []string{fmt.Sprint(item1.ItemId), fmt.Sprint(item2.ItemId)}).
-			Execute()
+		err = gormClient.Where("item_id IN ?", []int{item1.ItemId, item2.ItemId}).Delete(&model.Item{}).Error
 		require.NoError(t, err, "If this fail, then immediately delete the data from TestWarehouseControllerImpl/CreateItem/Edit")
 	})
 
@@ -581,29 +562,17 @@ func TestWarehouseControllerImpl(t *testing.T) {
 		})
 
 		// Clean up for SetActivate
-		_, _, err = supabaseClient.From(repository.WarehouseTable).
-			Delete("", "").
-			Eq("item_id", fmt.Sprint(item1.ItemId)).
-			Execute()
+		err = gormClient.Where("item_id = ?", item1.ItemId).Delete(&model.Item{}).Error
 		require.NoError(t, err, "If this fail, then immediately delete the data from TestWarehouseControllerImpl/CreateItem/SetActivate")
 	})
 
 	// Clean up
-	_, _, err = supabaseClient.From(repository.UserMtmTenantTable).
-		Delete("", "").
-		Eq("user_id", fmt.Sprint(createdTestUser.Id)).
-		Eq("tenant_id", fmt.Sprint(createdTenant.Id)).
-		Execute()
+	err = gormClient.Where("user_id = ? AND tenant_id = ?", createdTestUser.Id, createdTenant.Id).
+		Delete(&model.UserMtmTenant{}).Error
 	require.NoError(t, err, "If this fail, then immediately delete the data from TestWarehouseControllerImpl/CreateItem/TestWarehouseControllerImpl (1)")
-	_, _, err = supabaseClient.From(repository.TenantTable).
-		Delete("", "").
-		Eq("id", fmt.Sprint(createdTenant.Id)).
-		Execute()
+	err = gormClient.Where("id = ?", createdTenant.Id).Delete(&model.Tenant{}).Error
 	require.NoError(t, err, "If this fail, then immediately delete the data from TestWarehouseControllerImpl/CreateItem/TestWarehouseControllerImpl (2)")
-	_, _, err = supabaseClient.From(repository.UserTable).
-		Delete("", "").
-		Eq("id", fmt.Sprint(createdTestUser.Id)).
-		Execute()
+	err = gormClient.Where("id = ?", createdTestUser.Id).Delete(&model.User{}).Error
 	require.NoError(t, err, "If this fail, then immediately delete the data from TestWarehouseControllerImpl/CreateItem/TestWarehouseControllerImpl (3)")
 }
 

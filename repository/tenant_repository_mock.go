@@ -16,7 +16,7 @@ func NewTenantRepositoryMock(mock *mock.Mock) TenantRepository {
 	}
 }
 
-// AddUserToTenant implements TenantRepository.
+// AddUserToTenant implements [TenantRepository].
 func (repository *TenantRepositoryMock) AddUserToTenant(userId int, tenantId int) (*model.UserMtmTenant, error) {
 	args := repository.Mock.Called(userId, tenantId)
 
@@ -27,22 +27,22 @@ func (repository *TenantRepositoryMock) AddUserToTenant(userId int, tenantId int
 	return args.Get(0).(*model.UserMtmTenant), nil
 }
 
-// Create implements TenantRepository.
+// Create implements [TenantRepository].
 func (t *TenantRepositoryMock) Create(tenant *model.Tenant) (*model.Tenant, error) {
 	panic("unimplemented")
 }
 
-// Delete implements TenantRepository.
+// Delete implements [TenantRepository].
 func (t *TenantRepositoryMock) Delete(tenantId int) error {
 	panic("unimplemented")
 }
 
-// GetByUserId implements TenantRepository.
+// GetByUserId implements [TenantRepository].
 func (t *TenantRepositoryMock) GetByUserId(userId int) ([]*model.Tenant, error) {
 	panic("unimplemented")
 }
 
-// GetTenantWithUser implements TenantRepository.
+// GetTenantWithUser implements [TenantRepository].
 func (repository *TenantRepositoryMock) GetTenantWithUser(userId int) ([]*model.Tenant, error) {
 	args := repository.Mock.Called(userId)
 
@@ -54,13 +54,13 @@ func (repository *TenantRepositoryMock) GetTenantWithUser(userId int) ([]*model.
 	return args.Get(0).([]*model.Tenant), nil
 }
 
-// NewTenant implements TenantRepository.
+// NewTenant implements [TenantRepository].
 func (repository *TenantRepositoryMock) NewTenant(tenant *model.Tenant) error {
 	args := repository.Mock.Called(tenant)
 	return args.Error(0)
 }
 
-// RemoveUserFromTenant implements TenantRepository.
+// RemoveUserFromTenant implements [TenantRepository].
 func (repository *TenantRepositoryMock) RemoveUserFromTenant(userMtmTenantId *model.UserMtmTenant, userId int) (string, error) {
 	args := repository.Mock.Called(userMtmTenantId, userId)
 
@@ -71,7 +71,7 @@ func (repository *TenantRepositoryMock) RemoveUserFromTenant(userMtmTenantId *mo
 	return args.String(0), nil
 }
 
-// GetTenantMembers implements TenantRepository.
+// GetTenantMembers implements [TenantRepository].
 func (repository *TenantRepositoryMock) GetTenantMembers(tenantId int) ([]*model.User, error) {
 	args := repository.Mock.Called(tenantId)
 
@@ -80,4 +80,10 @@ func (repository *TenantRepositoryMock) GetTenantMembers(tenantId int) ([]*model
 	}
 
 	return args.Get(0).([]*model.User), nil
+}
+
+// EditPaymentGatewayInformation implements [TenantRepository].
+func (repository *TenantRepositoryMock) EditPaymentGatewayInformation(tenant *model.Tenant) error {
+	args := repository.Mock.Called(tenant)
+	return args.Error(0)
 }

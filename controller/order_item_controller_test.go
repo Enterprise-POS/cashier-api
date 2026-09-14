@@ -15,7 +15,6 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"os"
-	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -36,7 +35,6 @@ func TestOrderItemControllerImpl(t *testing.T) {
 
 	//SETUP//
 	now := time.Now()
-	supabaseClient := client.CreateSupabaseClient()
 	gormClient := client.CreateGormClient()
 
 	testTimeout := int((time.Second * 5).Milliseconds())
@@ -696,23 +694,14 @@ func TestOrderItemControllerImpl(t *testing.T) {
 	})
 
 	t.Cleanup(func() {
-		_, _, err = supabaseClient.From(repository.UserMtmTenantTable).
-			Delete("", "").
-			Eq("user_id", strconv.Itoa(createdTestUser.Id)).
-			Eq("tenant_id", strconv.Itoa(createdTestTenant.Id)).
-			Execute()
+		err = gormClient.Where("user_id = ? AND tenant_id = ?", createdTestUser.Id, createdTestTenant.Id).
+			Delete(&model.UserMtmTenant{}).Error
 		require.NoError(t, err, "If this fail, then immediately delete the data from TestOrderItemControllerImpl (1)")
 
-		_, _, err = supabaseClient.From(repository.TenantTable).
-			Delete("", "").
-			Eq("id", strconv.Itoa(createdTestTenant.Id)).
-			Execute()
+		err = gormClient.Where("id = ?", createdTestTenant.Id).Delete(&model.Tenant{}).Error
 		require.NoError(t, err, "If this fail, then immediately delete the data from TestOrderItemControllerImpl (2)")
 
-		_, _, err = supabaseClient.From(repository.UserTable).
-			Delete("", "").
-			Eq("id", strconv.Itoa(createdTestUser.Id)).
-			Execute()
+		err = gormClient.Where("id = ?", createdTestUser.Id).Delete(&model.User{}).Error
 		require.NoError(t, err, "If this fail, then immediately delete the data from TestOrderItemControllerImpl (3)")
 	})
 }

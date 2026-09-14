@@ -32,7 +32,6 @@ func TestTenantControllerImpl(t *testing.T) {
 		t.Skip("Required ENV not available: JWT_S")
 	}
 
-	supabaseClient := client.CreateSupabaseClient()
 	gormClient := client.CreateGormClient()
 
 	// To create new user, User endpoint are needed
@@ -122,18 +121,12 @@ func TestTenantControllerImpl(t *testing.T) {
 
 			// Clean up
 			// user_mtm_tenant
-			_, _, err = supabaseClient.From(repository.UserMtmTenantTable).
-				Delete("", "").
-				Eq("user_id", fmt.Sprint(dummyUser.Id)).
-				Execute()
+			err = gormClient.Where("user_id = ?", dummyUser.Id).Delete(&model.UserMtmTenant{}).Error
 			require.NoError(t, err, "If this failed, then delete data at DB. error at TestTenantControllerImpl_NormalNewTenant 1")
 
 			// tenant
-			_, _, err = supabaseClient.From(repository.TenantTable).
-				Delete("", "").
-				Eq("owner_user_id", fmt.Sprint(dummyTenant.OwnerUserId)).
-				Eq("name", dummyTenant.Name).
-				Execute()
+			err = gormClient.Where("owner_user_id = ? AND name = ?", dummyTenant.OwnerUserId, dummyTenant.Name).
+				Delete(&model.Tenant{}).Error
 			require.NoError(t, err, "If this failed, then delete data at DB. error at TestTenantControllerImpl_NormalNewTenant 2")
 		})
 
@@ -160,12 +153,7 @@ func TestTenantControllerImpl(t *testing.T) {
 
 		// clean up
 		// user
-		_, _, err = supabaseClient.From(repository.UserTable).
-			Delete("", "").
-			Eq("email", dummyUser.Email).
-			Eq("name", dummyUser.Name).
-			Execute()
-
+		err = gormClient.Where("email = ? AND name = ?", dummyUser.Email, dummyUser.Name).Delete(&model.User{}).Error
 		require.Nil(t, err, "If this failed, then delete data at DB. error at TestTenantControllerImpl")
 	})
 
@@ -252,29 +240,18 @@ func TestTenantControllerImpl(t *testing.T) {
 			assert.Contains(t, responseBody, dummyTenant2.Name)
 
 			// user_mtm_tenant
-			_, _, err = supabaseClient.From(repository.UserMtmTenantTable).
-				Delete("", "").
-				Eq("user_id", fmt.Sprint(dummyUser.Id)).
-				Execute()
+			err = gormClient.Where("user_id = ?", dummyUser.Id).Delete(&model.UserMtmTenant{}).Error
 			require.NoError(t, err, "If this failed, then delete data at DB. error at TestTenantControllerImpl_NormalNewTenant 1")
 
 			// tenant
-			_, _, err = supabaseClient.From(repository.TenantTable).
-				Delete("", "").
-				Eq("owner_user_id", fmt.Sprint(dummyTenant.OwnerUserId)).
-				// Eq("name", dummyTenant.Name). by commenting this line, allow to supabase to delete 2 tenants
-				Execute()
+			// by not filtering on name, this allows deleting both tenants created above
+			err = gormClient.Where("owner_user_id = ?", dummyTenant.OwnerUserId).Delete(&model.Tenant{}).Error
 			require.NoError(t, err, "If this failed, then delete data at DB. error at TestTenantControllerImpl_NormalNewTenant 2")
 		})
 
 		// clean up
 		// user
-		_, _, err = supabaseClient.From(repository.UserTable).
-			Delete("", "").
-			Eq("email", dummyUser.Email).
-			Eq("name", dummyUser.Name).
-			Execute()
-
+		err = gormClient.Where("email = ? AND name = ?", dummyUser.Email, dummyUser.Name).Delete(&model.User{}).Error
 		require.Nil(t, err, "If this failed, then delete data at DB. error at TestTenantControllerImpl")
 	})
 
@@ -337,12 +314,8 @@ func TestTenantControllerImpl(t *testing.T) {
 		require.NoError(t, err)
 
 		// Manually get created tenant
-		var createdTenant *model.Tenant
-		_, err = supabaseClient.From(repository.TenantTable).
-			Select("*", "", false).
-			Eq("name", dummyTenant.Name).
-			Eq("owner_user_id", fmt.Sprint(dummyUser.Id)).
-			Single().ExecuteTo(&createdTenant)
+		var createdTenant model.Tenant
+		err = gormClient.Where("name = ? AND owner_user_id = ?", dummyTenant.Name, dummyUser.Id).First(&createdTenant).Error
 		require.NoError(t, err)
 
 		// Create 2nd user, without tenant
@@ -452,24 +425,16 @@ func TestTenantControllerImpl(t *testing.T) {
 
 		// Clean up
 		// user_mtm_tenant
-		_, _, err = supabaseClient.From(repository.UserMtmTenantTable).
-			Delete("", "").
-			Eq("tenant_id", fmt.Sprint(createdTenant.Id)).
-			Execute()
+		err = gormClient.Where("tenant_id = ?", createdTenant.Id).Delete(&model.UserMtmTenant{}).Error
 		require.NoError(t, err, "If this fail, then delete data at DB. error at TestTenantControllerImpl/AddUserToTenant")
 
 		// tenant
-		_, _, err = supabaseClient.From(repository.TenantTable).
-			Delete("", "").
-			Eq("id", fmt.Sprint(createdTenant.Id)).
-			Execute()
+		err = gormClient.Where("id = ?", createdTenant.Id).Delete(&model.Tenant{}).Error
 		require.NoError(t, err)
 
 		// user
-		_, _, err = supabaseClient.From(repository.UserTable).
-			Delete("", "").
-			In("id", []string{fmt.Sprint(dummyUser.Id), fmt.Sprint(dummyUser2.Id)}).
-			Execute()
+		err = gormClient.Where("id IN ?", []int{dummyUser.Id, dummyUser2.Id}).Delete(&model.User{}).Error
+		require.NoError(t, err)
 	})
 
 	t.Run("RemoveUserFromTenant", func(t *testing.T) {
@@ -531,12 +496,8 @@ func TestTenantControllerImpl(t *testing.T) {
 		require.NoError(t, err)
 
 		// Manually get created tenant
-		var createdTenant *model.Tenant
-		_, err = supabaseClient.From(repository.TenantTable).
-			Select("*", "", false).
-			Eq("name", dummyTenant.Name).
-			Eq("owner_user_id", fmt.Sprint(dummyUser.Id)).
-			Single().ExecuteTo(&createdTenant)
+		var createdTenant model.Tenant
+		err = gormClient.Where("name = ? AND owner_user_id = ?", dummyTenant.Name, dummyUser.Id).First(&createdTenant).Error
 		require.NoError(t, err)
 
 		// Create 2nd user, without tenant
@@ -630,24 +591,16 @@ func TestTenantControllerImpl(t *testing.T) {
 
 		// Clean up
 		// user_mtm_tenant
-		_, _, err = supabaseClient.From(repository.UserMtmTenantTable).
-			Delete("", "").
-			Eq("tenant_id", fmt.Sprint(createdTenant.Id)).
-			Execute()
+		err = gormClient.Where("tenant_id = ?", createdTenant.Id).Delete(&model.UserMtmTenant{}).Error
 		require.NoError(t, err, "If this fail, then delete data at DB. error at TestTenantControllerImpl/AddUserToTenant")
 
 		// tenant
-		_, _, err = supabaseClient.From(repository.TenantTable).
-			Delete("", "").
-			Eq("id", fmt.Sprint(createdTenant.Id)).
-			Execute()
+		err = gormClient.Where("id = ?", createdTenant.Id).Delete(&model.Tenant{}).Error
 		require.NoError(t, err)
 
 		// user
-		_, _, err = supabaseClient.From(repository.UserTable).
-			Delete("", "").
-			In("id", []string{fmt.Sprint(dummyUser.Id), fmt.Sprint(dummyUser2.Id)}).
-			Execute()
+		err = gormClient.Where("id IN ?", []int{dummyUser.Id, dummyUser2.Id}).Delete(&model.User{}).Error
+		require.NoError(t, err)
 	})
 
 	t.Run("GetTenantMembers", func(t *testing.T) {
@@ -751,12 +704,8 @@ func TestTenantControllerImpl(t *testing.T) {
 		require.NoError(t, err)
 
 		// Manually get created tenant
-		var createdTenant *model.Tenant
-		_, err = supabaseClient.From(repository.TenantTable).
-			Select("*", "", false).
-			Eq("name", dummyTenant.Name).
-			Eq("owner_user_id", fmt.Sprint(dummyUser.Id)).
-			Single().ExecuteTo(&createdTenant)
+		var createdTenant model.Tenant
+		err = gormClient.Where("name = ? AND owner_user_id = ?", dummyTenant.Name, dummyUser.Id).First(&createdTenant).Error
 		require.NoError(t, err)
 
 		// Interaction
@@ -831,23 +780,15 @@ func TestTenantControllerImpl(t *testing.T) {
 
 		// Clean up
 		// user_mtm_tenant
-		_, _, err = supabaseClient.From(repository.UserMtmTenantTable).
-			Delete("", "").
-			Eq("tenant_id", fmt.Sprint(createdTenant.Id)).
-			Execute()
+		err = gormClient.Where("tenant_id = ?", createdTenant.Id).Delete(&model.UserMtmTenant{}).Error
 		require.NoError(t, err, "If this fail, then delete data at DB. error at TestTenantControllerImpl/AddUserToTenant")
 
 		// tenant
-		_, _, err = supabaseClient.From(repository.TenantTable).
-			Delete("", "").
-			Eq("id", fmt.Sprint(createdTenant.Id)).
-			Execute()
+		err = gormClient.Where("id = ?", createdTenant.Id).Delete(&model.Tenant{}).Error
 		require.NoError(t, err)
 
 		// user
-		_, _, err = supabaseClient.From(repository.UserTable).
-			Delete("", "").
-			In("id", []string{fmt.Sprint(dummyUser.Id), fmt.Sprint(dummyUser2.Id)}).
-			Execute()
+		err = gormClient.Where("id IN ?", []int{dummyUser.Id, dummyUser2.Id}).Delete(&model.User{}).Error
+		require.NoError(t, err)
 	})
 }

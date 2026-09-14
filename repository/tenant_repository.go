@@ -52,4 +52,11 @@ type TenantRepository interface {
 		Get 1 tenant users/members
 	*/
 	GetTenantMembers(tenantId int) ([]*model.User, error)
+
+	/*
+		Edit payment gateway information for such as
+		- midtrans
+		- paypay
+	*/
+	EditPaymentGatewayInformation(tenant *model.Tenant) error
 }

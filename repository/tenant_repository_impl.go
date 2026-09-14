@@ -3,6 +3,7 @@ package repository
 import (
 	"cashier-api/model"
 	"errors"
+	"fmt"
 	"strings"
 
 	log "github.com/sirupsen/logrus"
@@ -142,4 +143,34 @@ func (repository *TenantRepositoryImpl) GetTenantMembers(tenantId int) ([]*model
 	}
 
 	return results, nil
+}
+
+// EditPaymentGatewayInformation implements [TenantRepository].
+func (repository *TenantRepositoryImpl) EditPaymentGatewayInformation(tenant *model.Tenant) error {
+	return repository.Client.Transaction(func(tx *gorm.DB) error {
+		anyUpdate := false
+		if tenant.MidtransServerKey != "" {
+			if result := tx.Model(&tenant).Update("midtrans_server_key", tenant.MidtransServerKey).Where("id = ?", tenant.Id); result.Error != nil {
+				if result.RowsAffected == 0 {
+					return gorm.ErrRecordNotFound
+				}
+
+				if result.RowsAffected > 1 {
+					return fmt.Errorf("Expected to update exactly 1 order item, but matched %d — rolled back", result.RowsAffected)
+				}
+			}
+
+			anyUpdate = true
+		}
+
+		// Later if any another payment gateway is available will write if here
+		// ...
+
+		if anyUpdate {
+			return nil
+		} else {
+			// If nothing is edited then error as a result
+			return errors.New("No update affected")
+		}
+	})
 }
