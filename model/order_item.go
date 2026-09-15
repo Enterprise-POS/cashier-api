@@ -29,21 +29,22 @@ const (
 )
 
 type OrderItem struct {
-	Id             int            `json:"id,omitempty" gorm:"primaryKey;autoIncrement;column:id"`
-	PurchasedPrice int            `json:"purchased_price" gorm:"column:purchased_price"`
-	CreatedAt      time.Time      `json:"created_at,omitempty" gorm:"column:created_at"`
-	TotalQuantity  int            `json:"total_quantity" gorm:"column:total_quantity"`
-	TotalAmount    int            `json:"total_amount" gorm:"column:total_amount"`
-	DiscountAmount int            `json:"discount_amount" gorm:"column:discount_amount"`
-	Subtotal       int            `json:"subtotal" gorm:"column:subtotal"`
-	StoreId        int            `json:"store_id" gorm:"column:store_id"`
-	TenantId       int            `json:"tenant_id" gorm:"column:tenant_id"`
-	PaymentType    PaymentType    `json:"payment_type" gorm:"column:payment_type"`
-	PaymentStatus  PaymentStatus  `json:"payment_status" gorm:"column:payment_status"`
-	TransactionId  string         `json:"transaction_id" gorm:"column:transaction_id"`
-	PaymentURL     *string        `json:"payment_url"`
-	PaymentToken   *string        `json:"payment_token"`
-	DeletedAt      gorm.DeletedAt `json:"-"` // Soft delete
+	Id              int            `json:"id,omitempty" gorm:"primaryKey;autoIncrement;column:id"`
+	PurchasedPrice  int            `json:"purchased_price" gorm:"column:purchased_price"`
+	CreatedAt       time.Time      `json:"created_at,omitempty" gorm:"column:created_at"`
+	TotalQuantity   int            `json:"total_quantity" gorm:"column:total_quantity"`
+	TotalAmount     int            `json:"total_amount" gorm:"column:total_amount"`
+	DiscountAmount  int            `json:"discount_amount" gorm:"column:discount_amount"`
+	Subtotal        int            `json:"subtotal" gorm:"column:subtotal"`
+	StoreId         int            `json:"store_id" gorm:"column:store_id"`
+	TenantId        int            `json:"tenant_id" gorm:"column:tenant_id"`
+	PaymentType     PaymentType    `json:"payment_type" gorm:"column:payment_type"`
+	PaymentStatus   PaymentStatus  `json:"payment_status" gorm:"column:payment_status"`
+	TransactionId   string         `json:"transaction_id" gorm:"column:transaction_id"`
+	PaymentURL      *string        `json:"payment_url" gorm:"column:payment_url"`
+	PaymentToken    *string        `json:"payment_token" gorm:"column:payment_token"`
+	IsDataStockSync bool           `json:"is_data_stock_sync" gorm:"column:is_data_stock_sync"`
+	DeletedAt       gorm.DeletedAt `json:"-"` // Soft delete
 }
 
 func (orderItem *OrderItem) TableName() string {

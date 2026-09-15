@@ -1146,8 +1146,9 @@ func TestOrderItemServiceImpl(t *testing.T) {
 	})
 
 	t.Run("CheckTransaction", func(t *testing.T) {
-		const TRANSACTION_ID = "MID-QRIS-65f6f7c0-4778-4c9c-90e9-e3934fb9c722"
+		const TRANSACTION_ID = "TEST_TRANSACTION_ID_NOT_REAL"
 		const SERVER_KEY = "dummy-server-key"
+		const ORDER_ITEM_ID = 501
 
 		t.Run("EmptyTransactionId", func(t *testing.T) {
 			orderItemRepo := repository.NewOrderItemRepositoryMock(&mock.Mock{}).(*repository.OrderItemRepositoryMock)
@@ -1162,9 +1163,10 @@ func TestOrderItemServiceImpl(t *testing.T) {
 			paymentProviderMock.Mock.AssertNotCalled(t, "CheckTransaction", mock.Anything, mock.Anything)
 		})
 
-		t.Run("Success_KnownStatuses", func(t *testing.T) {
+		// Non-success statuses: persist and return immediately. The stock-sync
+		// branch must never be touched for any of these.
+		t.Run("NonSuccessStatuses", func(t *testing.T) {
 			statuses := []model.PaymentStatus{
-				model.PaymentStatusSuccess,
 				model.PaymentStatusPending,
 				model.PaymentStatusRefunded,
 				model.PaymentStatusFailed,
@@ -1195,6 +1197,8 @@ func TestOrderItemServiceImpl(t *testing.T) {
 					assert.Empty(t, response.Message)
 					paymentProviderMock.Mock.AssertExpectations(t)
 					orderItemRepo.Mock.AssertExpectations(t)
+					orderItemRepo.Mock.AssertNotCalled(t, "GetOrderItemByTransactionId", mock.Anything)
+					orderItemRepo.Mock.AssertNotCalled(t, "SyncDataStock", mock.Anything)
 				})
 			}
 		})
@@ -1219,7 +1223,120 @@ func TestOrderItemServiceImpl(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Equal(t, model.PaymentStatusSuccess, response.PaymentStatus)
 			assert.Contains(t, response.Message, "failed to persist locally")
-			assert.Contains(t, response.Message, "db write failed") // It;s mock message
+			assert.Contains(t, response.Message, "db write failed")
+			// Must return before ever reaching the stock-sync branch.
+			orderItemRepo.Mock.AssertNotCalled(t, "GetOrderItemByTransactionId", mock.Anything)
+			orderItemRepo.Mock.AssertNotCalled(t, "SyncDataStock", mock.Anything)
+		})
+
+		// Success: gateway confirmed, local status persisted. From here the
+		// four sub-branches of the stock-sync logic are tested individually.
+		t.Run("Success_OrderLookupFails", func(t *testing.T) {
+			orderItemRepo := repository.NewOrderItemRepositoryMock(&mock.Mock{}).(*repository.OrderItemRepositoryMock)
+			paymentProviderMock := NewPaymentProviderMock(&mock.Mock{}).(*PaymentProviderMock)
+			orderItemService := NewOrderItemServiceImpl(orderItemRepo, paymentProviderMock)
+
+			expectedResponse := model.PaymentStatusResponse{
+				PaymentStatus: model.PaymentStatusSuccess,
+			}
+
+			paymentProviderMock.Mock.On("CheckTransaction", mock.Anything, TRANSACTION_ID).
+				Return(expectedResponse, nil)
+			orderItemRepo.Mock.On("SetPaymentStatus", 0, TRANSACTION_ID, model.PaymentStatusSuccess).
+				Return(nil)
+			orderItemRepo.Mock.On("GetOrderItemByTransactionId", TRANSACTION_ID).
+				Return(model.OrderItem{}, errors.New("record not found"))
+
+			response, err := orderItemService.CheckTransaction(TRANSACTION_ID, SERVER_KEY)
+
+			// Payment is still confirmed — a lookup failure must not surface as a payment failure.
+			assert.NoError(t, err)
+			assert.Equal(t, model.PaymentStatusSuccess, response.PaymentStatus)
+			assert.Contains(t, response.Message, "stock could not be synced")
+			orderItemRepo.Mock.AssertExpectations(t)
+			orderItemRepo.Mock.AssertNotCalled(t, "SyncDataStock", mock.Anything)
+		})
+
+		t.Run("Success_AlreadySynced", func(t *testing.T) {
+			orderItemRepo := repository.NewOrderItemRepositoryMock(&mock.Mock{}).(*repository.OrderItemRepositoryMock)
+			paymentProviderMock := NewPaymentProviderMock(&mock.Mock{}).(*PaymentProviderMock)
+			orderItemService := NewOrderItemServiceImpl(orderItemRepo, paymentProviderMock)
+
+			expectedResponse := model.PaymentStatusResponse{
+				PaymentStatus: model.PaymentStatusSuccess,
+			}
+			orderItem := model.OrderItem{Id: ORDER_ITEM_ID, IsDataStockSync: true}
+
+			paymentProviderMock.Mock.On("CheckTransaction", mock.Anything, TRANSACTION_ID).
+				Return(expectedResponse, nil)
+			orderItemRepo.Mock.On("SetPaymentStatus", 0, TRANSACTION_ID, model.PaymentStatusSuccess).
+				Return(nil)
+			orderItemRepo.Mock.On("GetOrderItemByTransactionId", TRANSACTION_ID).
+				Return(orderItem, nil)
+
+			response, err := orderItemService.CheckTransaction(TRANSACTION_ID, SERVER_KEY)
+
+			assert.NoError(t, err)
+			assert.Equal(t, model.PaymentStatusSuccess, response.PaymentStatus)
+			assert.Equal(t, "Payment completed", response.Message)
+			orderItemRepo.Mock.AssertExpectations(t)
+			// Already synced — SyncDataStock must be skipped entirely.
+			orderItemRepo.Mock.AssertNotCalled(t, "SyncDataStock", mock.Anything)
+		})
+
+		t.Run("Success_SyncFails", func(t *testing.T) {
+			orderItemRepo := repository.NewOrderItemRepositoryMock(&mock.Mock{}).(*repository.OrderItemRepositoryMock)
+			paymentProviderMock := NewPaymentProviderMock(&mock.Mock{}).(*PaymentProviderMock)
+			orderItemService := NewOrderItemServiceImpl(orderItemRepo, paymentProviderMock)
+
+			expectedResponse := model.PaymentStatusResponse{
+				PaymentStatus: model.PaymentStatusSuccess,
+			}
+			orderItem := model.OrderItem{Id: ORDER_ITEM_ID, IsDataStockSync: false}
+
+			paymentProviderMock.Mock.On("CheckTransaction", mock.Anything, TRANSACTION_ID).
+				Return(expectedResponse, nil)
+			orderItemRepo.Mock.On("SetPaymentStatus", 0, TRANSACTION_ID, model.PaymentStatusSuccess).
+				Return(nil)
+			orderItemRepo.Mock.On("GetOrderItemByTransactionId", TRANSACTION_ID).
+				Return(orderItem, nil)
+			orderItemRepo.Mock.On("SyncDataStock", ORDER_ITEM_ID).
+				Return(errors.New("stock decrement failed"))
+
+			response, err := orderItemService.CheckTransaction(TRANSACTION_ID, SERVER_KEY)
+
+			// Payment is still confirmed — sync failure must not look like a payment failure.
+			assert.NoError(t, err)
+			assert.Equal(t, model.PaymentStatusSuccess, response.PaymentStatus)
+			assert.Contains(t, response.Message, "stock sync failed")
+			orderItemRepo.Mock.AssertExpectations(t)
+		})
+
+		t.Run("Success_SyncSucceeds", func(t *testing.T) {
+			orderItemRepo := repository.NewOrderItemRepositoryMock(&mock.Mock{}).(*repository.OrderItemRepositoryMock)
+			paymentProviderMock := NewPaymentProviderMock(&mock.Mock{}).(*PaymentProviderMock)
+			orderItemService := NewOrderItemServiceImpl(orderItemRepo, paymentProviderMock)
+
+			expectedResponse := model.PaymentStatusResponse{
+				PaymentStatus: model.PaymentStatusSuccess,
+			}
+			orderItem := model.OrderItem{Id: ORDER_ITEM_ID, IsDataStockSync: false}
+
+			paymentProviderMock.Mock.On("CheckTransaction", mock.Anything, TRANSACTION_ID).
+				Return(expectedResponse, nil)
+			orderItemRepo.Mock.On("SetPaymentStatus", 0, TRANSACTION_ID, model.PaymentStatusSuccess).
+				Return(nil)
+			orderItemRepo.Mock.On("GetOrderItemByTransactionId", TRANSACTION_ID).
+				Return(orderItem, nil)
+			orderItemRepo.Mock.On("SyncDataStock", ORDER_ITEM_ID).
+				Return(nil)
+
+			response, err := orderItemService.CheckTransaction(TRANSACTION_ID, SERVER_KEY)
+
+			assert.NoError(t, err)
+			assert.Equal(t, model.PaymentStatusSuccess, response.PaymentStatus)
+			assert.Equal(t, "Payment completed and data synced successfully", response.Message)
+			orderItemRepo.Mock.AssertExpectations(t)
 		})
 
 		t.Run("UnknownPaymentStatus", func(t *testing.T) {
@@ -1238,8 +1355,8 @@ func TestOrderItemServiceImpl(t *testing.T) {
 
 			assert.NoError(t, err)
 			assert.Equal(t, expectedResponse.PaymentStatus, response.PaymentStatus)
-			// SetPaymentStatus should never be reached for an unrecognized status.
 			orderItemRepo.Mock.AssertNotCalled(t, "SetPaymentStatus", mock.Anything, mock.Anything, mock.Anything)
+			orderItemRepo.Mock.AssertNotCalled(t, "GetOrderItemByTransactionId", mock.Anything)
 		})
 
 		t.Run("GatewayError_NonNotFound", func(t *testing.T) {

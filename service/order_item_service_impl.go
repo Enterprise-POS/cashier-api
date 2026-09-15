@@ -277,16 +277,42 @@ func (service *OrderItemServiceImpl) CheckTransaction(transactionId string, serv
 	case model.PaymentStatusSuccess, model.PaymentStatusPending, model.PaymentStatusRefunded, model.PaymentStatusFailed,
 		model.PaymentStatusExpired, model.PaymentStatusCancelled, model.PaymentStatusPartiallyRefunded:
 		if err := service.Repository.SetPaymentStatus(0, transactionId, paymentRes.PaymentStatus); err != nil {
-			// Payment gateway confirmed the status; our own DB write failing
-			// is a secondary concern, so we surface it as a message, not a hard error.
 			paymentRes.Message = fmt.Sprintf("Payment status confirmed, but failed to persist locally: %s", err.Error())
 			log.Errorf("SetPaymentStatus failed for transaction %s: %s", transactionId, err.Error())
+			return paymentRes, nil
 		}
-	default:
-		log.Errorf("Unknown payment_status from gateway: %s", paymentRes.PaymentStatus)
-	}
 
-	return paymentRes, nil
+		if paymentRes.PaymentStatus != model.PaymentStatusSuccess {
+			// Persisted successfully; nothing further to do for non-success statuses.
+			return paymentRes, nil
+		}
+
+		orderItem, err := service.Repository.GetOrderItemByTransactionId(transactionId)
+		if err != nil {
+			log.Errorf("Payment confirmed but order lookup failed. Transaction id: %s. Reason: %s",
+				transactionId, err.Error())
+			paymentRes.Message = "Payment confirmed, but stock could not be synced. It will retry."
+			return paymentRes, nil
+		}
+
+		if orderItem.IsDataStockSync {
+			paymentRes.Message = "Payment completed"
+			return paymentRes, nil
+		}
+
+		if syncErr := service.Repository.SyncDataStock(orderItem.Id); syncErr != nil {
+			log.Errorf("SyncDataStock failed for order %d (transaction %s): %s",
+				orderItem.Id, transactionId, syncErr.Error())
+			paymentRes.Message = "Payment completed, but stock sync failed. Please try again to check transaction."
+			return paymentRes, nil
+		}
+
+		paymentRes.Message = "Payment completed and data synced successfully"
+		return paymentRes, nil
+	default:
+		log.Errorf("Unknown payment_status from gateway: %s. Error from transaction id: %s", paymentRes.PaymentStatus, transactionId)
+		return paymentRes, nil
+	}
 }
 
 // CancelTransaction implements [OrderItemService].

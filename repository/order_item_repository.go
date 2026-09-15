@@ -21,8 +21,22 @@ type OrderItemRepository interface {
 	Get(tenantId int, storeId int, limit int, page int, filters []*query.QueryFilter, dateFilter *query.DateFilter) ([]*model.OrderItem, int, error)
 
 	/*
+		This will only get 1 order item in details, rarely direct use for client.
+		If transaction id is used then only payment gateway could use this function.
+		It is not recommended use this function directly for client
+		Example use:
+			GetOrderItemById("some transaction id")
+	*/
+	GetOrderItemByTransactionId(transactionId string) (model.OrderItem, error)
 
-	 */
+	/*
+		Sync data stock. Usually after changing status from PENDING to SUCCESS
+	*/
+	SyncDataStock(orderItemId int) error
+
+	/*
+		Searching order item with in detail what user purchased item
+	*/
 	FindById(orderItemid int, tenantId int) (*model.OrderItemWithStore, []*model.PurchasedItem, error)
 
 	/*

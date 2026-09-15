@@ -14,6 +14,7 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	log "github.com/sirupsen/logrus"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 const OrderItemTable string = "order_item"
@@ -140,7 +141,7 @@ func (repository *OrderItemRepositoryImpl) Transactions(params *CreateTransactio
 
 	var transactionDataReturn *TransactionDataReturn
 	// Because it's return row, use SELECT *
-	result := repository.Client.Raw("SELECT * FROM test_transactions($1, $2, $3, $4, $5, $6::JSONB, $7, $8, $9, $10, $11, $12, $13)",
+	result := repository.Client.Raw("SELECT * FROM transactions($1, $2, $3, $4, $5, $6::JSONB, $7, $8, $9, $10, $11, $12, $13)",
 		params.PurchasedPrice,
 		params.TotalQuantity,
 		params.TotalAmount,
@@ -322,6 +323,106 @@ func (repository *OrderItemRepositoryImpl) FindById(orderItemId int, tenantId in
 	}
 
 	return orderItem, purchasedItemList, nil
+}
+
+// GetOrderItemByTransactionId implements [OrderItemRepository].
+func (repository *OrderItemRepositoryImpl) GetOrderItemByTransactionId(transactionId string) (model.OrderItem, error) {
+	// SELECT * FROM order_item WHERE transaction_id = 00;
+	var result model.OrderItem
+	response := repository.Client.
+		Where("transaction_id = ?", transactionId).
+		First(&result)
+	if response.Error != nil {
+		return model.OrderItem{}, nil
+	}
+
+	return result, nil
+}
+
+// SyncDataStock decrements store stock for every TRACKED item in the order.
+func (repository *OrderItemRepositoryImpl) SyncDataStock(orderItemId int) error {
+	// Idempotent: calling it repeatedly for the same order decrements exactly once.
+	return repository.Client.Transaction(func(tx *gorm.DB) error {
+		// 1. Lock the order row. Concurrent callers queue here, so the
+		//    is_data_stock_sync check below can't be won by two of them.
+		var order model.OrderItem
+		err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+			Where("id = ?", orderItemId).
+			First(&order).Error
+		if err != nil {
+			return err // includes gorm.ErrRecordNotFound
+		}
+
+		// 2. Already synced — no-op, not an error.
+		if order.IsDataStockSync {
+			log.Infof("SyncDataStock: order %d already synced, skipping", orderItemId)
+			return nil
+		}
+
+		// 3. Never decrement for an unpaid order.
+		if order.PaymentStatus != model.PaymentStatusSuccess {
+			return fmt.Errorf("order %d has payment_status %s, refusing to decrement stock",
+				orderItemId, order.PaymentStatus)
+		}
+
+		// 4. Aggregate the purchased quantities, TRACKED items only.
+		type stockDelta struct {
+			ItemId   int `gorm:"column:item_id"`
+			Quantity int `gorm:"column:quantity"`
+		}
+		var deltas []stockDelta
+
+		err = tx.Table("purchased_item_list pil").
+			/*
+				SUM(pil.quantity) guard as maybe some id / row contains the same id at the 1 order
+				although frontend should never do that. Backend also should combine that kind of condition
+				order_item_id | item_id | quantity
+				501      			|   42    |    3
+				501      			|   42    |    2
+			*/
+			Select("pil.item_id, SUM(pil.quantity) AS quantity").
+			Joins("INNER JOIN warehouse w ON w.item_id = pil.item_id AND w.tenant_id = ?", order.TenantId).
+			Where("pil.order_item_id = ?", orderItemId).
+			Where("w.stock_type = ?", "TRACKED").
+			Group("pil.item_id").
+			Order("pil.item_id"). // canonical lock order, avoids deadlocks
+			Scan(&deltas).Error
+		if err != nil {
+			return fmt.Errorf("SyncDataStock: failed to aggregate purchased items: %w", err)
+		}
+
+		// 5. Decrement. gorm.Expr keeps the arithmetic in the DB, so
+		//    concurrent decrements can't lose updates. Negative is allowed.
+		// 		simply skip the loop if there's nothing to decrement
+		for _, delta := range deltas {
+			res := tx.Model(&model.StoreStock{}).
+				Where("tenant_id = ? AND store_id = ? AND item_id = ?",
+					order.TenantId, order.StoreId, delta.ItemId).
+				UpdateColumn("stocks", gorm.Expr("stocks - ?", delta.Quantity))
+
+			if res.Error != nil {
+				return fmt.Errorf("SyncDataStock: failed to decrement item %d: %w", delta.ItemId, res.Error)
+			}
+			if res.RowsAffected == 0 {
+				return fmt.Errorf("SyncDataStock: no store_stock row for item %d in store %d (tenant %d)",
+					delta.ItemId, order.StoreId, order.TenantId)
+			}
+		}
+
+		// 6. Mark synced. Same transaction as the decrement, so the flag
+		//    and the stock change commit or roll back together.
+		mark := tx.Model(&model.OrderItem{}).
+			Where("id = ?", orderItemId).
+			Update("is_data_stock_sync", true)
+		if mark.Error != nil {
+			return mark.Error
+		}
+		if mark.RowsAffected == 0 {
+			return fmt.Errorf("SyncDataStock: failed to mark order %d as synced", orderItemId)
+		}
+
+		return nil
+	})
 }
 
 // GetProfitReport implements OrderItemRepository.

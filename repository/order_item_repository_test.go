@@ -394,164 +394,267 @@ func TestOrderItemRepository(t *testing.T) {
 	})
 
 	t.Run("SetPaymentStatus", func(t *testing.T) {
-		t.Run("SuccessByTransactionId", func(t *testing.T) {
+		t.Run("Success_FromVariousStartingStatuses", func(t *testing.T) {
 			tx := gormClient.Begin()
 			defer tx.Rollback()
 
-			tenantId, storeId := seedOrderItemTestDependencies(t, tx, "orderitem_test_setpaymentstatus@example.com", "Order Item")
-			repo := NewOrderItemRepositoryImpl(tx)
+			tenantId, storeId := seedOrderItemTestDependencies(t, tx, "orderitem_setpaymentstatus_success@example.com", "Order Item")
+			orderItemRepo := NewOrderItemRepositoryImpl(tx)
 
-			created, err := repo.PlaceOrderItem(&model.OrderItem{
-				PurchasedPrice: 20000,
-				TotalQuantity:  2,
-				TotalAmount:    40000,
-				DiscountAmount: 0,
-				Subtotal:       40000,
-				TenantId:       tenantId,
-				StoreId:        storeId,
-				PaymentType:    model.PaymentTypeQRIS,
-				PaymentStatus:  model.PaymentStatusPending,
-			})
-			require.NoError(t, err)
-			require.NotZero(t, created.Id)
+			transactionId1 := fmt.Sprintf("TEST-%s", uuid.NewString())
+			transactionId2 := fmt.Sprintf("TEST-%s", uuid.NewString())
+			transactionId3 := fmt.Sprintf("TEST-%s", uuid.NewString())
+			transactionId4 := fmt.Sprintf("TEST-%s", uuid.NewString())
+			dummyOrderItems := []*model.OrderItem{
+				{PurchasedPrice: 20000, TotalQuantity: 2, TotalAmount: 40000, DiscountAmount: 0, Subtotal: 40000, TenantId: tenantId, StoreId: storeId, PaymentType: model.PaymentTypeQRIS, PaymentStatus: model.PaymentStatusPending, TransactionId: transactionId1},
+				{PurchasedPrice: 30000, TotalQuantity: 3, TotalAmount: 90000, DiscountAmount: 0, Subtotal: 90000, TenantId: tenantId, StoreId: storeId, PaymentType: model.PaymentTypeQRIS, PaymentStatus: model.PaymentStatusCancelled, TransactionId: transactionId2},
+				{PurchasedPrice: 40000, TotalQuantity: 4, TotalAmount: 100000, DiscountAmount: 60000, Subtotal: 160000, TenantId: tenantId, StoreId: storeId, PaymentType: model.PaymentTypeQRIS, PaymentStatus: model.PaymentStatusExpired, TransactionId: transactionId3},
+				{PurchasedPrice: 50000, TotalQuantity: 5, TotalAmount: 250000, DiscountAmount: 0, Subtotal: 250000, TenantId: tenantId, StoreId: storeId, PaymentType: model.PaymentTypeQRIS, PaymentStatus: model.PaymentStatusRefunded, TransactionId: transactionId4},
+			}
 
-			err = repo.SetPaymentStatus(0, created.TransactionId, model.PaymentStatusSuccess)
-			assert.NoError(t, err)
+			resultsOrderItems := make([]*model.OrderItem, 0)
+			for _, item := range dummyOrderItems {
+				result, err := orderItemRepo.PlaceOrderItem(item)
+				assert.Nil(t, err)
+				assert.NotZero(t, result.Id)
+				assert.Equal(t, item.PaymentStatus, result.PaymentStatus)
+				assert.Equal(t, item.PaymentType, result.PaymentType)
+				resultsOrderItems = append(resultsOrderItems, result)
+			}
 
-			var updated model.OrderItem
-			err = tx.First(&updated, created.Id).Error
-			require.NoError(t, err)
-			assert.Equal(t, model.PaymentStatusSuccess, updated.PaymentStatus)
+			for _, item := range resultsOrderItems {
+				err := orderItemRepo.SetPaymentStatus(item.Id, item.TransactionId, model.PaymentStatusSuccess)
+				assert.NoError(t, err)
+
+				var checkOrderItem model.OrderItem
+				err = tx.First(&checkOrderItem, item.Id).Error
+				require.NoError(t, err)
+				assert.Equal(t, model.PaymentStatusSuccess, checkOrderItem.PaymentStatus)
+			}
 		})
 
-		t.Run("SuccessByOrderItemId", func(t *testing.T) {
+		t.Run("NotFound_ReturnsErrRecordNotFound", func(t *testing.T) {
 			tx := gormClient.Begin()
 			defer tx.Rollback()
 
-			tenantId, storeId := seedOrderItemTestDependencies(t, tx, "orderitem_test_setpaymentstatus@example.com", "Order Item")
-			repo := NewOrderItemRepositoryImpl(tx)
+			orderItemRepo := NewOrderItemRepositoryImpl(tx)
 
-			created, err := repo.PlaceOrderItem(&model.OrderItem{
-				PurchasedPrice: 20000,
-				TotalQuantity:  2,
-				TotalAmount:    40000,
-				DiscountAmount: 0,
-				Subtotal:       40000,
-				TenantId:       tenantId,
-				StoreId:        storeId,
-				PaymentType:    model.PaymentTypeQRIS,
-				PaymentStatus:  model.PaymentStatusPending,
-			})
-			require.NoError(t, err)
-			require.NotZero(t, created.Id)
+			err := orderItemRepo.SetPaymentStatus(999999999, "NONEXISTENT-TX-ID", model.PaymentStatusSuccess)
 
-			// Pass a transaction id that won't match anything, but the correct order item id.
-			err = repo.SetPaymentStatus(created.Id, "", model.PaymentStatusExpired)
-			assert.NoError(t, err)
-
-			var updated model.OrderItem
-			err = tx.First(&updated, created.Id).Error
-			require.NoError(t, err)
-			assert.Equal(t, model.PaymentStatusExpired, updated.PaymentStatus)
-		})
-
-		t.Run("NotFound", func(t *testing.T) {
-			tx := gormClient.Begin()
-			defer tx.Rollback()
-
-			_, _ = seedOrderItemTestDependencies(t, tx, "orderitem_test_setpaymentstatus@example.com", "Order Item")
-			repo := NewOrderItemRepositoryImpl(tx)
-
-			err := repo.SetPaymentStatus(999999, "", model.PaymentStatusSuccess)
-			assert.Error(t, err)
 			assert.ErrorIs(t, err, gorm.ErrRecordNotFound)
 		})
 
-		t.Run("MultipleMatchesRollsBackAndErrors", func(t *testing.T) {
+		t.Run("AmbiguousMatch_RollsBackAndErrors", func(t *testing.T) {
 			tx := gormClient.Begin()
 			defer tx.Rollback()
 
-			tenantId, storeId := seedOrderItemTestDependencies(t, tx, "orderitem_test_setpaymentstatus@example.com", "Order Item")
-			repo := NewOrderItemRepositoryImpl(tx)
+			tenantId, storeId := seedOrderItemTestDependencies(t, tx, "orderitem_setpaymentstatus_ambiguous@example.com", "Order Item")
+			orderItemRepo := NewOrderItemRepositoryImpl(tx)
 
-			rowA, err := repo.PlaceOrderItem(&model.OrderItem{
-				PurchasedPrice: 20000,
-				TotalQuantity:  2,
-				TotalAmount:    40000,
-				DiscountAmount: 0,
-				Subtotal:       40000,
-				TenantId:       tenantId,
-				StoreId:        storeId,
-				PaymentType:    model.PaymentTypeQRIS,
-				PaymentStatus:  model.PaymentStatusPending,
-				TransactionId:  "",
+			transactionIdA := fmt.Sprintf("TEST-%s", uuid.NewString())
+			transactionIdB := fmt.Sprintf("TEST-%s", uuid.NewString())
+
+			itemA, err := orderItemRepo.PlaceOrderItem(&model.OrderItem{
+				PurchasedPrice: 10000, TotalQuantity: 1, TotalAmount: 10000, Subtotal: 10000,
+				TenantId: tenantId, StoreId: storeId, PaymentType: model.PaymentTypeQRIS,
+				PaymentStatus: model.PaymentStatusPending, TransactionId: transactionIdA,
 			})
 			require.NoError(t, err)
 
-			rowB, err := repo.PlaceOrderItem(&model.OrderItem{
-				PurchasedPrice: 10000,
-				TotalQuantity:  1,
-				TotalAmount:    10000,
-				DiscountAmount: 0,
-				Subtotal:       10000,
-				TenantId:       tenantId,
-				StoreId:        storeId,
-				PaymentType:    model.PaymentTypeQRIS,
-				PaymentStatus:  model.PaymentStatusPending,
-				TransactionId:  "", // distinct, non-empty — avoids the unique constraint entirely
+			itemB, err := orderItemRepo.PlaceOrderItem(&model.OrderItem{
+				PurchasedPrice: 15000, TotalQuantity: 1, TotalAmount: 15000, Subtotal: 15000,
+				TenantId: tenantId, StoreId: storeId, PaymentType: model.PaymentTypeQRIS,
+				PaymentStatus: model.PaymentStatusPending, TransactionId: transactionIdB,
 			})
 			require.NoError(t, err)
 
-			// rowA's real transactionId, but rowB's id — the OR clause matches both rows.
-			err = repo.SetPaymentStatus(rowB.Id, rowA.TransactionId, model.PaymentStatusSuccess)
-			assert.Error(t, err)
+			// transaction_id = itemA's txId OR id = itemB's id -> matches BOTH rows.
+			err = orderItemRepo.SetPaymentStatus(itemB.Id, transactionIdA, model.PaymentStatusSuccess)
 
-			var reloadedA, reloadedB model.OrderItem
-			require.NoError(t, tx.First(&reloadedA, rowA.Id).Error)
-			require.NoError(t, tx.First(&reloadedB, rowB.Id).Error)
-			assert.Equal(t, model.PaymentStatusPending, reloadedA.PaymentStatus)
-			assert.Equal(t, model.PaymentStatusPending, reloadedB.PaymentStatus)
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "matched")
+
+			// Rolled back: neither row should have changed.
+			var checkA, checkB model.OrderItem
+			require.NoError(t, tx.First(&checkA, itemA.Id).Error)
+			require.NoError(t, tx.First(&checkB, itemB.Id).Error)
+			assert.Equal(t, model.PaymentStatusPending, checkA.PaymentStatus)
+			assert.Equal(t, model.PaymentStatusPending, checkB.PaymentStatus)
 		})
 	})
 
-	t.Run("CheckTransaction", func(t *testing.T) {
-		tx := gormClient.Begin()
-		defer tx.Rollback()
+	t.Run("SyncDataStock", func(t *testing.T) {
+		t.Run("Success_DecrementsTrackedItemsOnly_AggregatesDuplicateRows", func(t *testing.T) {
+			tx := gormClient.Begin()
+			defer tx.Rollback()
 
-		tenantId, storeId := seedOrderItemTestDependencies(t, tx, "orderitem_test_checktransaction@example.com", "Order Item")
-		orderItemRepo := NewOrderItemRepositoryImpl(tx)
+			tenantId, storeId := seedOrderItemTestDependencies(t, tx, "orderitem_syncstock_success@example.com", "Order Item")
+			orderItemRepo := NewOrderItemRepositoryImpl(tx)
 
-		transactionId1 := fmt.Sprintf("TEST-%s", uuid.NewString())
-		transactionId2 := fmt.Sprintf("TEST-%s", uuid.NewString())
-		transactionId3 := fmt.Sprintf("TEST-%s", uuid.NewString())
-		transactionId4 := fmt.Sprintf("TEST-%s", uuid.NewString())
-		dummyOrderItems := []*model.OrderItem{
-			{PurchasedPrice: 20000, TotalQuantity: 2, TotalAmount: 40000, DiscountAmount: 0, Subtotal: 40000, TenantId: tenantId, StoreId: storeId, PaymentType: model.PaymentTypeQRIS, PaymentStatus: model.PaymentStatusPending, TransactionId: transactionId1},
-			{PurchasedPrice: 30000, TotalQuantity: 3, TotalAmount: 90000, DiscountAmount: 0, Subtotal: 90000, TenantId: tenantId, StoreId: storeId, PaymentType: model.PaymentTypeQRIS, PaymentStatus: model.PaymentStatusCancelled, TransactionId: transactionId2},
-			{PurchasedPrice: 40000, TotalQuantity: 4, TotalAmount: 100000, DiscountAmount: 60000, Subtotal: 160000, TenantId: tenantId, StoreId: storeId, PaymentType: model.PaymentTypeQRIS, PaymentStatus: model.PaymentStatusExpired, TransactionId: transactionId3},
-			{PurchasedPrice: 50000, TotalQuantity: 5, TotalAmount: 250000, DiscountAmount: 0, Subtotal: 250000, TenantId: tenantId, StoreId: storeId, PaymentType: model.PaymentTypeQRIS, PaymentStatus: model.PaymentStatusRefunded, TransactionId: transactionId4},
-		}
+			trackedItemId := seedWarehouseItemAndStock(t, tx, tenantId, storeId, "TRACKED", 10)
+			untrackedItemId := seedWarehouseItemAndStock(t, tx, tenantId, storeId, "UNLIMITED", 10)
 
-		resultsOrderItems := make([]*model.OrderItem, 0)
-		for _, item := range dummyOrderItems {
-			result, err := orderItemRepo.PlaceOrderItem(item)
-			assert.Nil(t, err)
-			assert.NotZero(t, result.Id)
-			assert.Equal(t, item.PaymentStatus, result.PaymentStatus)
-			assert.Equal(t, item.PaymentType, result.PaymentType)
-			resultsOrderItems = append(resultsOrderItems, result)
-		}
-
-		// Actual test
-		for _, item := range resultsOrderItems {
-			err := orderItemRepo.SetPaymentStatus(item.Id, item.TransactionId, model.PaymentStatusSuccess)
-			assert.NoError(t, err)
-
-			var checkOrderItem model.OrderItem
-			err = tx.First(&checkOrderItem, item.Id).Error
+			order, err := orderItemRepo.PlaceOrderItem(&model.OrderItem{
+				PurchasedPrice: 60000, TotalQuantity: 4, TotalAmount: 65000, Subtotal: 65000,
+				TenantId: tenantId, StoreId: storeId, PaymentType: model.PaymentTypeQRIS,
+				PaymentStatus: model.PaymentStatusSuccess, TransactionId: fmt.Sprintf("TEST-%s", uuid.NewString()),
+			})
 			require.NoError(t, err)
-			assert.Equal(t, model.PaymentStatusSuccess, checkOrderItem.PaymentStatus)
-		}
+
+			// Two rows for the same TRACKED -> proves SUM/GROUP BY aggregation.
+			// One row for the UNLIMITED -> proves it's excluded from the decrement.
+			require.NoError(t, tx.Exec(`
+			INSERT INTO purchased_item_list (order_item_id, item_id, quantity, store_price_snapshot, base_price_snapshot, total_amount, item_name_snapshot, discount_amount)
+			VALUES (?, ?, 2, 20000, 10000, 40000, 'TRACKED', 0),
+			       (?, ?, 1, 20000, 10000, 20000, 'TRACKED', 0),
+			       (?, ?, 1,  5000,  2000,  5000, 'UNLIMITED', 0)
+		`, order.Id, trackedItemId, order.Id, trackedItemId, order.Id, untrackedItemId).Error)
+
+			err = orderItemRepo.SyncDataStock(order.Id)
+			require.NoError(t, err)
+
+			assert.Equal(t, 7, getStoreStockQty(t, tx, tenantId, storeId, trackedItemId))    // 10 - (2+1)
+			assert.Equal(t, 10, getStoreStockQty(t, tx, tenantId, storeId, untrackedItemId)) // untouched
+
+			var reloaded model.OrderItem
+			require.NoError(t, tx.First(&reloaded, order.Id).Error)
+			assert.True(t, reloaded.IsDataStockSync)
+		})
+
+		t.Run("Idempotent_SecondCallDoesNotDecrementAgain", func(t *testing.T) {
+			tx := gormClient.Begin()
+			defer tx.Rollback()
+
+			tenantId, storeId := seedOrderItemTestDependencies(t, tx, "orderitem_syncstock_idempotent@example.com", "Order Item")
+			orderItemRepo := NewOrderItemRepositoryImpl(tx)
+
+			itemId := seedWarehouseItemAndStock(t, tx, tenantId, storeId, "TRACKED", 10)
+
+			order, err := orderItemRepo.PlaceOrderItem(&model.OrderItem{
+				PurchasedPrice: 20000, TotalQuantity: 3, TotalAmount: 20000, Subtotal: 20000,
+				TenantId: tenantId, StoreId: storeId, PaymentType: model.PaymentTypeQRIS,
+				PaymentStatus: model.PaymentStatusSuccess, TransactionId: fmt.Sprintf("TEST-%s", uuid.NewString()),
+			})
+			require.NoError(t, err)
+
+			require.NoError(t, tx.Exec(`
+			INSERT INTO purchased_item_list (order_item_id, item_id, quantity, store_price_snapshot, base_price_snapshot, total_amount, item_name_snapshot, discount_amount)
+			VALUES (?, ?, 3, 20000, 10000, 20000, 'TRACKED', 0)
+		`, order.Id, itemId).Error)
+
+			require.NoError(t, orderItemRepo.SyncDataStock(order.Id))
+			assert.Equal(t, 7, getStoreStockQty(t, tx, tenantId, storeId, itemId))
+
+			// Second call must be a no-op.
+			require.NoError(t, orderItemRepo.SyncDataStock(order.Id))
+			assert.Equal(t, 7, getStoreStockQty(t, tx, tenantId, storeId, itemId))
+		})
+
+		t.Run("UntrackedItemsOnly_MarksSyncedWithoutDecrementing", func(t *testing.T) {
+			tx := gormClient.Begin()
+			defer tx.Rollback()
+
+			tenantId, storeId := seedOrderItemTestDependencies(t, tx, "orderitem_syncstock_untracked@example.com", "Order Item")
+			orderItemRepo := NewOrderItemRepositoryImpl(tx)
+
+			itemId := seedWarehouseItemAndStock(t, tx, tenantId, storeId, "UNLIMITED", 10)
+
+			order, err := orderItemRepo.PlaceOrderItem(&model.OrderItem{
+				PurchasedPrice: 5000, TotalQuantity: 1, TotalAmount: 5000, Subtotal: 5000,
+				TenantId: tenantId, StoreId: storeId, PaymentType: model.PaymentTypeQRIS,
+				PaymentStatus: model.PaymentStatusSuccess, TransactionId: fmt.Sprintf("TEST-%s", uuid.NewString()),
+			})
+			require.NoError(t, err)
+
+			require.NoError(t, tx.Exec(`
+			INSERT INTO purchased_item_list (order_item_id, item_id, quantity, store_price_snapshot, base_price_snapshot, total_amount, item_name_snapshot, discount_amount)
+			VALUES (?, ?, 1, 5000, 2000, 5000, 'UNLIMITED', 0)
+		`, order.Id, itemId).Error)
+
+			err = orderItemRepo.SyncDataStock(order.Id)
+			require.NoError(t, err)
+
+			assert.Equal(t, 10, getStoreStockQty(t, tx, tenantId, storeId, itemId))
+
+			var reloaded model.OrderItem
+			require.NoError(t, tx.First(&reloaded, order.Id).Error)
+			assert.True(t, reloaded.IsDataStockSync)
+		})
+
+		t.Run("PaymentNotSuccessful_ReturnsErrorWithoutDecrementing", func(t *testing.T) {
+			tx := gormClient.Begin()
+			defer tx.Rollback()
+
+			tenantId, storeId := seedOrderItemTestDependencies(t, tx, "orderitem_syncstock_unpaid@example.com", "Order Item")
+			orderItemRepo := NewOrderItemRepositoryImpl(tx)
+
+			itemId := seedWarehouseItemAndStock(t, tx, tenantId, storeId, "TRACKED", 10)
+
+			order, err := orderItemRepo.PlaceOrderItem(&model.OrderItem{
+				PurchasedPrice: 20000, TotalQuantity: 2, TotalAmount: 20000, Subtotal: 20000,
+				TenantId: tenantId, StoreId: storeId, PaymentType: model.PaymentTypeQRIS,
+				PaymentStatus: model.PaymentStatusPending, TransactionId: fmt.Sprintf("TEST-%s", uuid.NewString()),
+			})
+			require.NoError(t, err)
+
+			require.NoError(t, tx.Exec(`
+			INSERT INTO purchased_item_list (order_item_id, item_id, quantity, store_price_snapshot, base_price_snapshot, total_amount, item_name_snapshot, discount_amount)
+			VALUES (?, ?, 2, 20000, 10000, 20000, 'TRACKED', 0)
+		`, order.Id, itemId).Error)
+
+			err = orderItemRepo.SyncDataStock(order.Id)
+
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "refusing to decrement stock")
+			assert.Equal(t, 10, getStoreStockQty(t, tx, tenantId, storeId, itemId))
+
+			var reloaded model.OrderItem
+			require.NoError(t, tx.First(&reloaded, order.Id).Error)
+			assert.False(t, reloaded.IsDataStockSync)
+		})
+
+		t.Run("NoMatchingStoreStockRow_ReturnsError", func(t *testing.T) {
+			tx := gormClient.Begin()
+			defer tx.Rollback()
+
+			tenantId, storeId := seedOrderItemTestDependencies(t, tx, "orderitem_syncstock_missingstock@example.com", "Order Item")
+			orderItemRepo := NewOrderItemRepositoryImpl(tx)
+
+			// Warehouse row exists (TRACKED), but no matching store_stock row for this store.
+			itemId := seedWarehouseItemOnly(t, tx, tenantId, "TRACKED")
+
+			order, err := orderItemRepo.PlaceOrderItem(&model.OrderItem{
+				PurchasedPrice: 20000, TotalQuantity: 1, TotalAmount: 20000, Subtotal: 20000,
+				TenantId: tenantId, StoreId: storeId, PaymentType: model.PaymentTypeQRIS,
+				PaymentStatus: model.PaymentStatusSuccess, TransactionId: fmt.Sprintf("TEST-%s", uuid.NewString()),
+			})
+			require.NoError(t, err)
+
+			require.NoError(t, tx.Exec(`
+			INSERT INTO purchased_item_list (order_item_id, item_id, quantity, store_price_snapshot, base_price_snapshot, total_amount, item_name_snapshot, discount_amount)
+			VALUES (?, ?, 1, 20000, 10000, 20000, 'TRACKED', 0)
+		`, order.Id, itemId).Error)
+
+			err = orderItemRepo.SyncDataStock(order.Id)
+
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "no store_stock row")
+
+			var reloaded model.OrderItem
+			require.NoError(t, tx.First(&reloaded, order.Id).Error)
+			assert.False(t, reloaded.IsDataStockSync) // whole transaction rolled back
+		})
+
+		t.Run("NotFound_ReturnsErrRecordNotFound", func(t *testing.T) {
+			tx := gormClient.Begin()
+			defer tx.Rollback()
+
+			orderItemRepo := NewOrderItemRepositoryImpl(tx)
+
+			err := orderItemRepo.SyncDataStock(999999999)
+
+			assert.ErrorIs(t, err, gorm.ErrRecordNotFound)
+		})
 	})
 
 	t.Run("FindById", func(t *testing.T) {
@@ -646,4 +749,58 @@ func TestOrderItemRepository(t *testing.T) {
 			assert.False(t, untouched.DeletedAt.Valid)
 		})
 	})
+}
+
+// seedWarehouseItemAndStock inserts a warehouse row and a matching store_stock
+// row for the given tenant/store, returning the shared item_id.
+//
+// ASSUMPTION: item_id is warehouse's own generated primary key, and
+// store_stock.item_id references it directly with no separate "item" master
+// table — inferred from the PL/pgSQL function's join `w.item_id = ss.item_id`.
+// Adjust if your schema has an intermediate items table.
+func seedWarehouseItemAndStock(t *testing.T, tx *gorm.DB, tenantId, storeId int, stockType model.StockType, startingStock int) int {
+	t.Helper()
+
+	var itemId int
+	require.NoError(t, tx.Raw(`
+		INSERT INTO warehouse (tenant_id, item_name, base_price, stock_type, stocks)
+		VALUES (?, ?, ?, ?, ?)
+		RETURNING item_id
+	`, tenantId, "Test Item", 10000, stockType, startingStock).Scan(&itemId).Error)
+
+	require.NoError(t, tx.Exec(`
+		INSERT INTO store_stock (tenant_id, store_id, item_id, price, stocks)
+		VALUES (?, ?, ?, ?, ?)
+	`, tenantId, storeId, itemId, 20000, startingStock).Error)
+
+	return itemId
+}
+
+// seedWarehouseItemOnly inserts a warehouse row with NO matching store_stock
+// row, for testing the "missing stock row" error path.
+func seedWarehouseItemOnly(t *testing.T, tx *gorm.DB, tenantId int, stockType model.StockType) int {
+	t.Helper()
+
+	var itemId int
+	require.NoError(t, tx.Raw(`
+		INSERT INTO warehouse (tenant_id, item_name, base_price, stock_type, stocks)
+		VALUES (?, ?, ?, ?, ?)
+		RETURNING item_id
+	`, tenantId, "Test Item No Stock", 10000, stockType, 0).Scan(&itemId).Error)
+
+	return itemId
+}
+
+// getStoreStockQty reads the current stocks value directly, bypassing the
+// GORM model so the test doesn't depend on exact struct field mapping.
+func getStoreStockQty(t *testing.T, tx *gorm.DB, tenantId, storeId, itemId int) int {
+	t.Helper()
+
+	var stocks int
+	require.NoError(t, tx.Raw(`
+		SELECT stocks FROM store_stock
+		WHERE tenant_id = ? AND store_id = ? AND item_id = ?
+	`, tenantId, storeId, itemId).Scan(&stocks).Error)
+
+	return stocks
 }

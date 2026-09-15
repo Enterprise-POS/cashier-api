@@ -66,6 +66,21 @@ func (repository *OrderItemRepositoryMock) FindById(itemId int, tenantId int) (*
 	return args.Get(0).(*model.OrderItemWithStore), args.Get(1).([]*model.PurchasedItem), nil
 }
 
+// GetOrderItemByTransactionId implements [OrderItemRepository].
+func (repository *OrderItemRepositoryMock) GetOrderItemByTransactionId(transactionId string) (model.OrderItem, error) {
+	args := repository.Mock.Called(transactionId)
+	if err := args.Error(1); err != nil {
+		return model.OrderItem{}, err
+	}
+	return args.Get(0).(model.OrderItem), nil
+}
+
+// SyncDataStock implements [OrderItemRepository].
+func (repository *OrderItemRepositoryMock) SyncDataStock(orderItemId int) error {
+	args := repository.Mock.Called(orderItemId)
+	return args.Error(0)
+}
+
 // GetSalesReport implements OrderItemRepository.
 func (repository *OrderItemRepositoryMock) GetSalesReport(tenantId int, storeId int, dateFilter *query.DateFilter) (*SalesReport, error) {
 	args := repository.Mock.Called(tenantId, storeId, dateFilter)
