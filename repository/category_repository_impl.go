@@ -137,7 +137,7 @@ func (repository *CategoryRepositoryImpl) Get(tenantId, page, limit int, nameQue
 	query := repository.Client.Model(&model.Category{}).Where("tenant_id = ?", tenantId)
 
 	if nameQuery != "" {
-		query = query.Where("category_name LIKE ?", nameQuery+"%")
+		query = query.Where("LOWER(category_name) LIKE LOWER(?)", "%"+nameQuery+"%")
 	}
 
 	// Get total count before applying pagination
