@@ -56,24 +56,45 @@ func (repository *CategoryRepositoryImpl) GetItemsByCategoryId(tenantId int, cat
 	return results, countResult, nil
 }
 
-func (repository *CategoryRepositoryImpl) GetCategoryWithItems(tenantId, page, limit int) ([]*model.CategoryWithItem, int, error) {
+func (repository *CategoryRepositoryImpl) GetCategoryWithItems(
+	tenantId int,
+	page int,
+	limit int,
+	nameQuery string,
+	categoryId int,
+) ([]*model.CategoryWithItem, int, error) {
 	start := page * limit
 
 	var results = make([]*model.CategoryWithItem, 0)
-	err := repository.Client.
+	db := repository.Client.
 		Model(&model.Item{}).
 		Select(`
 			category.id AS category_id,
 			category.category_name,
+
 			warehouse.item_id,
 			warehouse.item_name,
 			warehouse.stocks,
 			warehouse.base_price,
+			warehouse.created_at AS warehouse_created_at,
+			warehouse.stock_type,
+			warehouse.updated_at AS warehouse_updated_at,
+			warehouse.tenant_id AS tenant_id,
 			COUNT(*) OVER() AS total_count
 		`).
-		Joins("INNER JOIN category_mtm_warehouse ON category_mtm_warehouse.item_id = warehouse.item_id").
-		Joins("INNER JOIN category ON category.id = category_mtm_warehouse.category_id").
-		Where("warehouse.tenant_id = ?", tenantId).
+		Joins("LEFT JOIN category_mtm_warehouse ON category_mtm_warehouse.item_id = warehouse.item_id").
+		Joins("LEFT JOIN category ON category.id = category_mtm_warehouse.category_id").
+		Where("warehouse.tenant_id = ? AND warehouse.is_active = TRUE", tenantId)
+
+	if nameQuery != "" {
+		db = db.Where("LOWER(warehouse.item_name) LIKE LOWER(?)", "%"+nameQuery+"%")
+	}
+
+	if categoryId > 0 {
+		db = db.Where("category_mtm_warehouse.category_id = ?", categoryId)
+	}
+
+	err := db.
 		Limit(limit).
 		Offset(start).
 		Scan(&results).Error

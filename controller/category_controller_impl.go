@@ -263,8 +263,10 @@ func (controller *CategoryControllerImpl) GetItemsByCategoryId(ctx *fiber.Ctx) e
 func (controller *CategoryControllerImpl) GetCategoryWithItems(ctx *fiber.Ctx) error {
 	// It will be POST method so URL param will not use here
 	var body struct {
-		Page  int `json:"page"`
-		Limit int `json:"limit"`
+		Page       int    `json:"page"`
+		Limit      int    `json:"limit"`
+		NameQuery  string `json:"name_query"`
+		CategoryId int    `json:"category_id"`
 	}
 
 	err := ctx.BodyParser(&body)
@@ -275,7 +277,7 @@ func (controller *CategoryControllerImpl) GetCategoryWithItems(ctx *fiber.Ctx) e
 
 	tenantId, _ := strconv.Atoi(ctx.Params("tenantId"))
 
-	categoryWithItems, count, err := controller.Service.GetCategoryWithItems(tenantId, body.Page, body.Limit)
+	categoryWithItems, count, err := controller.Service.GetCategoryWithItems(tenantId, body.Page, body.Limit, body.NameQuery, body.CategoryId)
 	if err != nil {
 		return ctx.Status(fiber.StatusBadRequest).
 			JSON(common.NewWebResponseError(400, common.StatusError, err.Error()))

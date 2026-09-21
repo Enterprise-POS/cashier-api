@@ -1,6 +1,8 @@
 package service
 
-import "cashier-api/model"
+import (
+	"cashier-api/model"
+)
 
 type CategoryService interface {
 	/*
@@ -13,7 +15,7 @@ type CategoryService interface {
 		Return an all items within category,
 		items maybe double return, but different category id is required
 	*/
-	GetCategoryWithItems(tenantId, page, limit int) ([]*model.CategoryWithItem, int, error)
+	GetCategoryWithItems(tenantId, page, limit int, nameQuery string, categoryId int) ([]*model.CategoryWithItem, int, error)
 
 	/*
 		Get the category name only

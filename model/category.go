@@ -31,13 +31,15 @@ type CategoryWithItem struct {
 	// CreatedAt *time.Time `json:"created_at"`
 
 	// Item reference
-	ItemId    int       `json:"item_id"`
-	ItemName  string    `json:"item_name"`
-	Stocks    int       `json:"stocks"`
-	StockType StockType `json:"stock_type"`
-	BasePrice int       `json:"base_price"`
+	ItemId             int       `json:"item_id"`
+	ItemName           string    `json:"item_name"`
+	Stocks             int       `json:"stocks"`
+	StockType          StockType `json:"stock_type"`
+	BasePrice          int       `json:"base_price"`
+	WarehouseCreatedAt time.Time `json:"warehouse_created_at"`
+	TenantId           int       `json:"tenant_id"`
 
-	TotalCount int `json:"total_count"`
+	TotalCount int `json:"-"`
 }
 
 type CategoryMtmWarehouse struct {
