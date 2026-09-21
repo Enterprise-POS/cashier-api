@@ -1,6 +1,7 @@
 package service
 
 import (
+	"cashier-api/helper/query"
 	"cashier-api/model"
 	"cashier-api/repository"
 	"errors"
@@ -12,12 +13,14 @@ import (
 type CategoryServiceImpl struct {
 	Repository        repository.CategoryRepository
 	CategoryNameRegex *regexp.Regexp
+	ItemNameRegexRule *regexp.Regexp
 }
 
 func NewCategoryServiceImpl(repository repository.CategoryRepository) CategoryService {
 	return &CategoryServiceImpl{
 		Repository:        repository,
 		CategoryNameRegex: regexp.MustCompile(`^[a-zA-Z0-9_ ]{1,15}$`),
+		ItemNameRegexRule: regexp.MustCompile(`^[\p{Han}\p{Hiragana}\p{Katakana}a-zA-Z][\p{Han}\p{Hiragana}\p{Katakana}a-zA-Z0-9' ]*$`),
 	}
 }
 
@@ -170,7 +173,7 @@ func (service *CategoryServiceImpl) Update(tenantId int, categoryId int, tobeCha
 }
 
 // GetCategoryWithItems implements CategoryService.
-func (service *CategoryServiceImpl) GetCategoryWithItems(tenantId int, page int, limit int) ([]*model.CategoryWithItem, int, error) {
+func (service *CategoryServiceImpl) GetCategoryWithItems(tenantId int, page int, limit int, nameQuery string, categoryId int, queryFilter []query.QueryFilter) ([]*model.CategoryWithItem, int, error) {
 	if tenantId < 1 {
 		return nil, 0, fmt.Errorf("Fatal Error, Invalid tenant id, tenant id: %d", tenantId)
 	}
@@ -182,7 +185,29 @@ func (service *CategoryServiceImpl) GetCategoryWithItems(tenantId int, page int,
 		return nil, 0, fmt.Errorf("page could not less then 1 (page >= 1). Given page %d", page)
 	}
 
-	categoryWithItems, count, err := service.Repository.GetCategoryWithItems(tenantId, page-1, limit)
+	if nameQuery != "" && !service.ItemNameRegexRule.MatchString(nameQuery) {
+		return nil, 0, fmt.Errorf("Invalid searching by name: %s", nameQuery)
+	}
+
+	if categoryId < 0 {
+		return nil, 0, fmt.Errorf("Invalid category id input: %d", categoryId)
+	}
+
+	// if err := validateDateFilter(dateFilter); err != nil {
+	// 	return nil, 0, err
+	// }
+
+	if len(queryFilter) > 10 {
+		return nil, 0, errors.New("Query only allowed up to 10")
+	} else if len(queryFilter) > 0 {
+		for _, filter := range queryFilter {
+			if !query.IsValidColumn(filter.Column) {
+				return nil, 0, fmt.Errorf("Illegal column is filtered. %s", filter.Column)
+			}
+		}
+	}
+
+	categoryWithItems, count, err := service.Repository.GetCategoryWithItems(tenantId, page-1, limit, nameQuery, categoryId, queryFilter)
 	if err != nil {
 		if strings.Contains(err.Error(), "(PGRST103)") {
 			return nil, 0, errors.New("Requested range not satisfiable")
@@ -192,6 +217,32 @@ func (service *CategoryServiceImpl) GetCategoryWithItems(tenantId int, page int,
 	}
 
 	return categoryWithItems, count, nil
+}
+
+func validateDateFilter(dateFilter *query.DateFilter) error {
+	if dateFilter == nil {
+		return nil
+	}
+
+	if dateFilter.StartDate != nil && dateFilter.EndDate != nil && *dateFilter.StartDate > *dateFilter.EndDate {
+		return fmt.Errorf("Start date (%d) cannot be after end date (%d)", *dateFilter.StartDate, *dateFilter.EndDate)
+	}
+	if dateFilter.StartDate != nil && *dateFilter.StartDate < 0 {
+		return fmt.Errorf("Invalid start date timestamp: %d", *dateFilter.StartDate)
+	}
+	if dateFilter.EndDate != nil && *dateFilter.EndDate < 0 {
+		return fmt.Errorf("Invalid emd date timestamp: %d", *dateFilter.EndDate)
+	}
+
+	maxTimestamp := int64(4102444800) // 2100-01-01 00:00:00 UTC
+	if dateFilter.StartDate != nil && *dateFilter.StartDate > maxTimestamp {
+		return fmt.Errorf("Start date is too far in the future: %d", *dateFilter.StartDate)
+	}
+	if dateFilter.EndDate != nil && *dateFilter.EndDate > maxTimestamp {
+		return fmt.Errorf("End date is too far in the future: %d", *dateFilter.EndDate)
+	}
+
+	return nil
 }
 
 // GetItemsByCategoryId implements CategoryService.

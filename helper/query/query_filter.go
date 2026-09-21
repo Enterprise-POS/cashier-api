@@ -25,6 +25,7 @@ const (
 	CreatedAtColumn   ColumnName = "created_at"
 	TotalAmountColumn ColumnName = "total_amount" // OrderItem, order_item
 	Quantity          ColumnName = "quantity"     // PurchasedItemList
+	ItemName          ColumnName = "item_name"    // Warehouse
 )
 
 // PurchasedItem, purchased_item_list
@@ -32,7 +33,7 @@ const PurchasedItemTable string = "purchased_item_list"
 
 func IsValidColumn(column ColumnName) bool {
 	switch column {
-	case CreatedAtColumn, TotalAmountColumn, Quantity:
+	case CreatedAtColumn, TotalAmountColumn, Quantity, ItemName:
 		return true
 	default:
 		return false

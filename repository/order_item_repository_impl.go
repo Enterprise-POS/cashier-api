@@ -542,9 +542,9 @@ func (repository *OrderItemRepositoryImpl) GetTenantAndStoreName(tenantId int, s
 	return tenantName, storeName, nil
 }
 
-// GetReport implements [OrderItemRepository].
+// GetSalesReport implements [OrderItemRepository].
 func (repository *OrderItemRepositoryImpl) GetSalesReport(tenantId int, storeId int, dateFilter *query.DateFilter) (*SalesReport, error) {
-	// Base condition builder to avoid repeating date filter logic
+	// Base condition builder to avoid repeating date filter logic.
 	applyFilters := func(db *gorm.DB, tablePrefix string) *gorm.DB {
 		db = db.Where(tablePrefix+"tenant_id = ?", tenantId)
 
@@ -566,7 +566,16 @@ func (repository *OrderItemRepositoryImpl) GetSalesReport(tenantId int, storeId 
 		return db
 	}
 
-	// order_summary — Model() applies deleted_at IS NULL automatically
+	report := &SalesReport{
+		PaymentStatusCount:  map[model.PaymentStatus]int{},
+		PaymentStatusAmount: map[model.PaymentStatus]int{},
+		PaymentTypeCount:    map[model.PaymentType]int{},
+		PaymentTypeAmount:   map[model.PaymentType]int{},
+	}
+
+	// ---------------------------------------------------------------
+	// 1. Core order summary — ALL statuses (gross figures)
+	// ---------------------------------------------------------------
 	type orderSummary struct {
 		SumPurchasedPrice int
 		SumSubtotal       int
@@ -574,26 +583,105 @@ func (repository *OrderItemRepositoryImpl) GetSalesReport(tenantId int, storeId 
 		SumDiscountAmount int
 		SumTotalAmount    int
 		SumTransactions   int
+		StockSyncPending  int
 	}
 	var oSummary orderSummary
 
 	orderQuery := applyFilters(repository.Client.Model(&model.OrderItem{}), "")
-	err := orderQuery.Select(`
-        COALESCE(SUM(purchased_price), 0)  AS sum_purchased_price,
-        COALESCE(SUM(subtotal), 0)         AS sum_subtotal,
-        COALESCE(SUM(total_quantity), 0)   AS sum_total_quantity,
-        COALESCE(SUM(discount_amount), 0)  AS sum_discount_amount,
-        COALESCE(SUM(total_amount), 0)     AS sum_total_amount,
-        COALESCE(COUNT(id), 0)             AS sum_transactions
-    `).Scan(&oSummary).Error
-	if err != nil {
+	if err := orderQuery.Select(`
+        COALESCE(SUM(purchased_price), 0)                                AS sum_purchased_price,
+        COALESCE(SUM(subtotal), 0)                                       AS sum_subtotal,
+        COALESCE(SUM(total_quantity), 0)                                 AS sum_total_quantity,
+        COALESCE(SUM(discount_amount), 0)                                AS sum_discount_amount,
+        COALESCE(SUM(total_amount), 0)                                   AS sum_total_amount,
+        COALESCE(COUNT(id), 0)                                           AS sum_transactions,
+        COALESCE(COUNT(id) FILTER (WHERE is_data_stock_sync = false), 0) AS stock_sync_pending
+    `).Scan(&oSummary).Error; err != nil {
 		return nil, fmt.Errorf("GetSalesReport order_summary failed: %w", err)
 	}
 
-	// profit_summary — raw join since purchased_item_list is not a model
-	// Still filters order_item with deleted_at via the JOIN condition
+	report.SumPurchasedPrice = oSummary.SumPurchasedPrice
+	report.SumSubtotal = oSummary.SumSubtotal
+	report.SumTotalQuantity = oSummary.SumTotalQuantity
+	report.SumDiscountAmount = oSummary.SumDiscountAmount
+	report.SumTotalAmount = oSummary.SumTotalAmount
+	report.SumTransactions = oSummary.SumTransactions
+	report.StockSyncPending = oSummary.StockSyncPending
+	if oSummary.SumTransactions > 0 {
+		report.AvgOrderValue = float64(oSummary.SumTotalAmount) / float64(oSummary.SumTransactions)
+	}
+
+	// ---------------------------------------------------------------
+	// 1b. Subtotal — SUCCESS transactions only
+	// ---------------------------------------------------------------
+	type successSubtotal struct {
+		SumSubtotalSuccess int
+	}
+	var sSubtotal successSubtotal
+
+	successQuery := applyFilters(repository.Client.Model(&model.OrderItem{}), "").
+		Where("payment_status = ?", "SUCCESS")
+	if err := successQuery.Select(`
+        COALESCE(SUM(subtotal), 0) AS sum_subtotal_success
+    `).Scan(&sSubtotal).Error; err != nil {
+		return nil, fmt.Errorf("GetSalesReport subtotal_success failed: %w", err)
+	}
+	report.SumSubtotalSuccess = sSubtotal.SumSubtotalSuccess
+
+	// ---------------------------------------------------------------
+	// 2. Payment status breakdown (all statuses, by design — this IS the breakdown)
+	// ---------------------------------------------------------------
+	type statusRow struct {
+		PaymentStatus model.PaymentStatus
+		Count         int
+		TotalAmount   int
+	}
+	var statusRows []statusRow
+
+	statusQuery := applyFilters(repository.Client.Model(&model.OrderItem{}), "")
+	if err := statusQuery.Select(`
+        payment_status,
+        COUNT(id)                      AS count,
+        COALESCE(SUM(total_amount), 0) AS total_amount
+    `).Group("payment_status").Scan(&statusRows).Error; err != nil {
+		return nil, fmt.Errorf("GetSalesReport payment_status_breakdown failed: %w", err)
+	}
+	for _, r := range statusRows {
+		report.PaymentStatusCount[r.PaymentStatus] = r.Count
+		report.PaymentStatusAmount[r.PaymentStatus] = r.TotalAmount
+	}
+
+	// ---------------------------------------------------------------
+	// 3. Payment type breakdown
+	// ---------------------------------------------------------------
+	type typeRow struct {
+		PaymentType model.PaymentType
+		Count       int
+		TotalAmount int
+	}
+	var typeRows []typeRow
+
+	typeQuery := applyFilters(repository.Client.Model(&model.OrderItem{}), "")
+	if err := typeQuery.Select(`
+        payment_type,
+        COUNT(id)                      AS count,
+        COALESCE(SUM(total_amount), 0) AS total_amount
+    `).Group("payment_type").Scan(&typeRows).Error; err != nil {
+		return nil, fmt.Errorf("GetSalesReport payment_type_breakdown failed: %w", err)
+	}
+	for _, r := range typeRows {
+		report.PaymentTypeCount[r.PaymentType] = r.Count
+		report.PaymentTypeAmount[r.PaymentType] = r.TotalAmount
+	}
+
+	// ---------------------------------------------------------------
+	// 4. Profit summary — SUCCESS transactions ONLY
+	// ---------------------------------------------------------------
 	type profitSummary struct {
-		SumProfit int
+		SumRevenue   int
+		SumBasePrice int
+		SumProfit    int
+		SumItemRows  int
 	}
 	var pSummary profitSummary
 
@@ -601,23 +689,152 @@ func (repository *OrderItemRepositoryImpl) GetSalesReport(tenantId int, storeId 
 		repository.Client.Table("purchased_item_list pil").
 			Joins("INNER JOIN order_item oi ON oi.id = pil.order_item_id AND oi.deleted_at IS NULL"),
 		"oi.",
-	)
-	err = profitQuery.Select(`
-        COALESCE(SUM(pil.total_amount) - SUM(pil.base_price_snapshot * pil.quantity), 0) AS sum_profit
-    `).Scan(&pSummary).Error
-	if err != nil {
+	).Where("oi.payment_status = ?", "SUCCESS")
+	if err := profitQuery.Select(`
+    COALESCE(SUM(pil.total_amount), 0)                                                  AS sum_revenue,
+    COALESCE(SUM(pil.base_price_snapshot * pil.quantity), 0)                             AS sum_base_price,
+    COALESCE(SUM(pil.total_amount) - SUM(pil.base_price_snapshot * pil.quantity), 0)     AS sum_profit,
+    COALESCE(COUNT(pil.id), 0)                                                          AS sum_item_rows
+`).Scan(&pSummary).Error; err != nil {
 		return nil, fmt.Errorf("GetSalesReport profit_summary failed: %w", err)
 	}
+	report.SumRevenueSuccess = pSummary.SumRevenue
+	report.SumBasePriceSuccess = pSummary.SumBasePrice
+	report.SumProfit = pSummary.SumProfit
+	if oSummary.SumTransactions > 0 {
+		report.AvgItemsPerOrder = float64(pSummary.SumItemRows) / float64(oSummary.SumTransactions)
+	}
 
-	return &SalesReport{
-		SumPurchasedPrice: oSummary.SumPurchasedPrice,
-		SumSubtotal:       oSummary.SumSubtotal,
-		SumTotalQuantity:  oSummary.SumTotalQuantity,
-		SumDiscountAmount: oSummary.SumDiscountAmount,
-		SumTotalAmount:    oSummary.SumTotalAmount,
-		SumProfit:         pSummary.SumProfit,
-		SumTransactions:   oSummary.SumTransactions,
-	}, nil
+	// ---------------------------------------------------------------
+	// 5. Top items by quantity (all statuses — quantity moved, not revenue)
+	// ---------------------------------------------------------------
+	type qtyRaw struct {
+		ItemNameSnapshot string
+		TotalQuantity    int
+	}
+	var qtyRows []qtyRaw
+
+	qtyQuery := applyFilters(
+		repository.Client.Table("purchased_item_list pil").
+			Joins("INNER JOIN order_item oi ON oi.id = pil.order_item_id AND oi.deleted_at IS NULL"),
+		"oi.",
+	)
+	if err := qtyQuery.Select(`
+        pil.item_name_snapshot         AS item_name_snapshot,
+        COALESCE(SUM(pil.quantity), 0) AS total_quantity
+    `).Group("pil.item_name_snapshot").
+		Order("total_quantity DESC").
+		Limit(10).
+		Scan(&qtyRows).Error; err != nil {
+		return nil, fmt.Errorf("GetSalesReport top_items_by_quantity failed: %w", err)
+	}
+	for _, r := range qtyRows {
+		report.TopItemsByQuantity = append(report.TopItemsByQuantity, ItemQuantityStat{
+			ItemName:      r.ItemNameSnapshot,
+			TotalQuantity: r.TotalQuantity,
+		})
+	}
+
+	// ---------------------------------------------------------------
+	// 6. Top items by revenue (all statuses)
+	// ---------------------------------------------------------------
+	type revenueRaw struct {
+		ItemNameSnapshot string
+		TotalRevenue     int
+	}
+	var revenueRows []revenueRaw
+
+	revenueQuery := applyFilters(
+		repository.Client.Table("purchased_item_list pil").
+			Joins("INNER JOIN order_item oi ON oi.id = pil.order_item_id AND oi.deleted_at IS NULL"),
+		"oi.",
+	)
+	if err := revenueQuery.Select(`
+        pil.item_name_snapshot             AS item_name_snapshot,
+        COALESCE(SUM(pil.total_amount), 0) AS total_revenue
+    `).Group("pil.item_name_snapshot").
+		Order("total_revenue DESC").
+		Limit(10).
+		Scan(&revenueRows).Error; err != nil {
+		return nil, fmt.Errorf("GetSalesReport top_items_by_revenue failed: %w", err)
+	}
+	for _, r := range revenueRows {
+		report.TopItemsByRevenue = append(report.TopItemsByRevenue, ItemRevenueStat{
+			ItemName:     r.ItemNameSnapshot,
+			TotalRevenue: r.TotalRevenue,
+		})
+	}
+
+	// ---------------------------------------------------------------
+	// 7. Top items by profit — SUCCESS transactions ONLY (fixed: was unfiltered before)
+	// ---------------------------------------------------------------
+	type profitRaw struct {
+		ItemNameSnapshot string
+		TotalRevenue     int
+		TotalProfit      int
+		TotalBasePrice   int
+	}
+	var profitRows []profitRaw
+
+	itemProfitQuery := applyFilters(
+		repository.Client.Table("purchased_item_list pil").
+			Joins("INNER JOIN order_item oi ON oi.id = pil.order_item_id AND oi.deleted_at IS NULL"),
+		"oi.",
+	).Where("oi.payment_status = ?", "SUCCESS")
+	if err := itemProfitQuery.Select(`
+        pil.item_name_snapshot AS item_name_snapshot,
+        COALESCE(SUM(pil.total_amount), 0) AS total_revenue,
+        COALESCE(SUM(pil.total_amount) - SUM(pil.base_price_snapshot * pil.quantity), 0) AS total_profit,
+        COALESCE(SUM(pil.base_price_snapshot * pil.quantity), 0) AS total_base_price
+    `).Group("pil.item_name_snapshot").
+		Order("total_profit DESC").
+		Limit(10).
+		Scan(&profitRows).Error; err != nil {
+		return nil, fmt.Errorf("GetSalesReport top_items_by_profit failed: %w", err)
+	}
+	for _, r := range profitRows {
+		margin := 0.0
+		if r.TotalRevenue > 0 {
+			margin = float64(r.TotalProfit) / float64(r.TotalRevenue) * 100
+		}
+		report.TopItemsByProfit = append(report.TopItemsByProfit, ItemProfitStat{
+			ItemName:       r.ItemNameSnapshot,
+			TotalRevenue:   r.TotalRevenue,
+			TotalBasePrice: r.TotalBasePrice,
+			TotalProfit:    r.TotalProfit,
+			MarginPercent:  margin,
+		})
+	}
+
+	// ---------------------------------------------------------------
+	// 8. Daily trend (all statuses)
+	// ---------------------------------------------------------------
+	type trendRaw struct {
+		Date             string
+		TotalAmount      int
+		TransactionCount int
+	}
+	var trendRows []trendRaw
+
+	trendQuery := applyFilters(repository.Client.Model(&model.OrderItem{}), "")
+	if err := trendQuery.Select(`
+        TO_CHAR(created_at, 'YYYY-MM-DD') AS date,
+        COALESCE(SUM(total_amount), 0)    AS total_amount,
+        COUNT(id)                         AS transaction_count
+    `).Group("TO_CHAR(created_at, 'YYYY-MM-DD')").
+		Order("date ASC").
+		Scan(&trendRows).Error; err != nil {
+		return nil, fmt.Errorf("GetSalesReport daily_trend failed: %w", err)
+	}
+	for _, r := range trendRows {
+		report.DailyTrend = append(report.DailyTrend, DailyTrendStat{
+			Date:             r.Date,
+			TotalAmount:      r.TotalAmount,
+			TransactionCount: r.TransactionCount,
+		})
+	}
+
+	return report, nil
 }
 
 // DeleteInvoice implements [OrderItemRepository].

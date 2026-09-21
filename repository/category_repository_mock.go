@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"cashier-api/helper/query"
 	"cashier-api/model"
 
 	"github.com/stretchr/testify/mock"
@@ -50,8 +51,8 @@ func (repository *CategoryRepositoryMock) Get(tenantId int, page int, limit int,
 }
 
 // GetCategoryWithItems implements CategoryRepository.
-func (repository *CategoryRepositoryMock) GetCategoryWithItems(tenantId int, page int, limit int) ([]*model.CategoryWithItem, int, error) {
-	args := repository.Mock.Called(tenantId, page, limit)
+func (repository *CategoryRepositoryMock) GetCategoryWithItems(tenantId int, page int, limit int, nameQuery string, categoryId int, queryFilter []query.QueryFilter) ([]*model.CategoryWithItem, int, error) {
+	args := repository.Mock.Called(tenantId, page, limit, nameQuery, categoryId, queryFilter)
 
 	if args.Get(0) == nil {
 		return nil, 0, args.Error(2)

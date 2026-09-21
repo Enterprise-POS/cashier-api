@@ -36,6 +36,7 @@ func CreateGormClient() *gorm.DB {
 	if MODE == "prod" {
 		logMode = logger.Silent
 	}
+
 	db, err := gorm.Open(postgres.Open(dialect), &gorm.Config{
 		Logger: logger.Default.LogMode(logMode),
 	})

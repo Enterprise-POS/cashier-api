@@ -105,14 +105,63 @@ type CreateTransactionParams struct {
 	PaymentToken string
 }
 
+// SalesReport is the full analytics payload for a tenant/store within a date range.
 type SalesReport struct {
-	SumPurchasedPrice int `json:"sum_purchased_price"`
-	SumTotalQuantity  int `json:"sum_total_quantity"`
-	SumTotalAmount    int `json:"sum_total_amount"`
-	SumDiscountAmount int `json:"sum_discount_amount"`
-	SumSubtotal       int `json:"sum_subtotal"`
-	SumTransactions   int `json:"sum_transactions"`
-	SumProfit         int `json:"sum_profit"`
+	// Core totals (all statuses)
+	SumPurchasedPrice int     `json:"sum_purchased_price"`
+	SumSubtotal       int     `json:"sum_subtotal"`
+	SumTotalQuantity  int     `json:"sum_total_quantity"`
+	SumDiscountAmount int     `json:"sum_discount_amount"`
+	SumTotalAmount    int     `json:"sum_total_amount"`
+	SumTransactions   int     `json:"sum_transactions"`
+	AvgOrderValue     float64 `json:"avg_order_value"`
+	AvgItemsPerOrder  float64 `json:"avg_items_per_order"`
+	StockSyncPending  int     `json:"stock_sync_pending"`
+
+	// Success-only totals
+	SumSubtotalSuccess  int `json:"sum_subtotal_success"`
+	SumRevenueSuccess   int `json:"sum_revenue_success"`    // pil.total_amount, SUCCESS only
+	SumBasePriceSuccess int `json:"sum_base_price_success"` // pil.base_price_snapshot * quantity, SUCCESS only
+	SumProfit           int `json:"sum_profit"`             // revenue - base_price, SUCCESS only
+
+	// Breakdowns
+	PaymentStatusCount  map[model.PaymentStatus]int `json:"payment_status_count"`
+	PaymentStatusAmount map[model.PaymentStatus]int `json:"payment_status_amount"`
+	PaymentTypeCount    map[model.PaymentType]int   `json:"payment_type_count"`
+	PaymentTypeAmount   map[model.PaymentType]int   `json:"payment_type_amount"`
+
+	// Item-level insights
+	TopItemsByQuantity []ItemQuantityStat `json:"top_items_by_quantity"`
+	TopItemsByRevenue  []ItemRevenueStat  `json:"top_items_by_revenue"`
+	TopItemsByProfit   []ItemProfitStat   `json:"top_items_by_profit"` // SUCCESS transactions only
+
+	// Trend
+	DailyTrend []DailyTrendStat `json:"daily_trend"`
+}
+
+type ItemQuantityStat struct {
+	ItemName      string `json:"item_name"`
+	TotalQuantity int    `json:"total_quantity"`
+}
+
+type ItemRevenueStat struct {
+	ItemName     string `json:"item_name"`
+	TotalRevenue int    `json:"total_revenue"`
+}
+
+// ItemProfitStat is the profit breakdown for a single item, SUCCESS transactions only.
+type ItemProfitStat struct {
+	ItemName       string  `json:"item_name"`
+	TotalRevenue   int     `json:"total_revenue"`
+	TotalBasePrice int     `json:"total_base_price"`
+	TotalProfit    int     `json:"total_profit"`
+	MarginPercent  float64 `json:"margin_percent"`
+}
+
+type DailyTrendStat struct {
+	Date             string `json:"date"`
+	TotalAmount      int    `json:"total_amount"`
+	TransactionCount int    `json:"transaction_count"`
 }
 
 type ProfitReportRow struct {

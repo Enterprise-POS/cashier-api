@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"cashier-api/helper/query"
 	"cashier-api/model"
 	"errors"
 	"fmt"
@@ -56,24 +57,62 @@ func (repository *CategoryRepositoryImpl) GetItemsByCategoryId(tenantId int, cat
 	return results, countResult, nil
 }
 
-func (repository *CategoryRepositoryImpl) GetCategoryWithItems(tenantId, page, limit int) ([]*model.CategoryWithItem, int, error) {
+func (repository *CategoryRepositoryImpl) GetCategoryWithItems(
+	tenantId int,
+	page int,
+	limit int,
+	nameQuery string,
+	categoryId int,
+	filters []query.QueryFilter,
+) ([]*model.CategoryWithItem, int, error) {
 	start := page * limit
 
 	var results = make([]*model.CategoryWithItem, 0)
-	err := repository.Client.
+	db := repository.Client.
 		Model(&model.Item{}).
 		Select(`
 			category.id AS category_id,
 			category.category_name,
+
 			warehouse.item_id,
 			warehouse.item_name,
 			warehouse.stocks,
 			warehouse.base_price,
+			warehouse.created_at AS warehouse_created_at,
+			warehouse.stock_type,
+			warehouse.updated_at AS warehouse_updated_at,
+			warehouse.tenant_id AS tenant_id,
 			COUNT(*) OVER() AS total_count
 		`).
-		Joins("INNER JOIN category_mtm_warehouse ON category_mtm_warehouse.item_id = warehouse.item_id").
-		Joins("INNER JOIN category ON category.id = category_mtm_warehouse.category_id").
-		Where("warehouse.tenant_id = ?", tenantId).
+		Joins("LEFT JOIN category_mtm_warehouse ON category_mtm_warehouse.item_id = warehouse.item_id").
+		Joins("LEFT JOIN category ON category.id = category_mtm_warehouse.category_id").
+		Where("warehouse.tenant_id = ? AND warehouse.is_active = TRUE", tenantId)
+
+	if nameQuery != "" {
+		db = db.Where("LOWER(warehouse.item_name) LIKE LOWER(?)", "%"+nameQuery+"%")
+	}
+
+	if categoryId > 0 {
+		db = db.Where("category_mtm_warehouse.category_id = ?", categoryId)
+	}
+
+	// Apply filter
+	for _, filter := range filters {
+		// ORDER BY
+		if filter.Column == "" {
+			log.Warnf("WARN ! handled error, some filter is an empty string. from tenantId: %d", tenantId)
+			return nil, 0, fmt.Errorf("WARN ! handled error, some filter is an empty string. from tenantId: %d", tenantId)
+		}
+
+		// DESC / ASCENDING
+		direction := "DESC"
+		if filter.Ascending {
+			direction = "ASC"
+		}
+		db = db.Order(fmt.Sprintf("warehouse.%s %s", filter.Column, direction))
+	}
+
+	err := db.
 		Limit(limit).
 		Offset(start).
 		Scan(&results).Error
@@ -98,7 +137,7 @@ func (repository *CategoryRepositoryImpl) Get(tenantId, page, limit int, nameQue
 	query := repository.Client.Model(&model.Category{}).Where("tenant_id = ?", tenantId)
 
 	if nameQuery != "" {
-		query = query.Where("category_name LIKE ?", nameQuery+"%")
+		query = query.Where("LOWER(category_name) LIKE LOWER(?)", "%"+nameQuery+"%")
 	}
 
 	// Get total count before applying pagination
