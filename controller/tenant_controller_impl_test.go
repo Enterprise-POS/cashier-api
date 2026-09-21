@@ -399,7 +399,7 @@ func TestTenantControllerImpl(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Equal(t, http.StatusBadRequest, response.StatusCode)
 			assert.Contains(t, responseBody, "error")
-			assert.Contains(t, responseBody, "duplicate key value violates unique constraint")
+			assert.Contains(t, responseBody, "Current user already exist.")
 		})
 
 		t.Run("IllegalActionByUsingAnotherUserId", func(t *testing.T) {

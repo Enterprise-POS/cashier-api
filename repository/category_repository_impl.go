@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"cashier-api/helper/query"
 	"cashier-api/model"
 	"errors"
 	"fmt"
@@ -62,6 +63,7 @@ func (repository *CategoryRepositoryImpl) GetCategoryWithItems(
 	limit int,
 	nameQuery string,
 	categoryId int,
+	filters []query.QueryFilter,
 ) ([]*model.CategoryWithItem, int, error) {
 	start := page * limit
 
@@ -92,6 +94,22 @@ func (repository *CategoryRepositoryImpl) GetCategoryWithItems(
 
 	if categoryId > 0 {
 		db = db.Where("category_mtm_warehouse.category_id = ?", categoryId)
+	}
+
+	// Apply filter
+	for _, filter := range filters {
+		// ORDER BY
+		if filter.Column == "" {
+			log.Warnf("WARN ! handled error, some filter is an empty string. from tenantId: %d", tenantId)
+			return nil, 0, fmt.Errorf("WARN ! handled error, some filter is an empty string. from tenantId: %d", tenantId)
+		}
+
+		// DESC / ASCENDING
+		direction := "DESC"
+		if filter.Ascending {
+			direction = "ASC"
+		}
+		db = db.Order(fmt.Sprintf("warehouse.%s %s", filter.Column, direction))
 	}
 
 	err := db.

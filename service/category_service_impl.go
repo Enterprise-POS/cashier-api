@@ -173,7 +173,7 @@ func (service *CategoryServiceImpl) Update(tenantId int, categoryId int, tobeCha
 }
 
 // GetCategoryWithItems implements CategoryService.
-func (service *CategoryServiceImpl) GetCategoryWithItems(tenantId int, page int, limit int, nameQuery string, categoryId int) ([]*model.CategoryWithItem, int, error) {
+func (service *CategoryServiceImpl) GetCategoryWithItems(tenantId int, page int, limit int, nameQuery string, categoryId int, queryFilter []query.QueryFilter) ([]*model.CategoryWithItem, int, error) {
 	if tenantId < 1 {
 		return nil, 0, fmt.Errorf("Fatal Error, Invalid tenant id, tenant id: %d", tenantId)
 	}
@@ -197,7 +197,17 @@ func (service *CategoryServiceImpl) GetCategoryWithItems(tenantId int, page int,
 	// 	return nil, 0, err
 	// }
 
-	categoryWithItems, count, err := service.Repository.GetCategoryWithItems(tenantId, page-1, limit, nameQuery, categoryId)
+	if len(queryFilter) > 10 {
+		return nil, 0, errors.New("Query only allowed up to 10")
+	} else if len(queryFilter) > 0 {
+		for _, filter := range queryFilter {
+			if !query.IsValidColumn(filter.Column) {
+				return nil, 0, fmt.Errorf("Illegal column is filtered. %s", filter.Column)
+			}
+		}
+	}
+
+	categoryWithItems, count, err := service.Repository.GetCategoryWithItems(tenantId, page-1, limit, nameQuery, categoryId, queryFilter)
 	if err != nil {
 		if strings.Contains(err.Error(), "(PGRST103)") {
 			return nil, 0, errors.New("Requested range not satisfiable")

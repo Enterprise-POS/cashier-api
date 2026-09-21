@@ -33,7 +33,7 @@ const PurchasedItemTable string = "purchased_item_list"
 
 func IsValidColumn(column ColumnName) bool {
 	switch column {
-	case CreatedAtColumn, TotalAmountColumn, Quantity:
+	case CreatedAtColumn, TotalAmountColumn, Quantity, ItemName:
 		return true
 	default:
 		return false

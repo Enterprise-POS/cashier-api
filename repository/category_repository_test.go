@@ -2,6 +2,7 @@ package repository
 
 import (
 	"cashier-api/helper/client"
+	"cashier-api/helper/query"
 	"cashier-api/model"
 	"testing"
 
@@ -78,7 +79,7 @@ func TestCategoryRepository(t *testing.T) {
 		t.Run("NormalGet", func(t *testing.T) {
 			page := 1
 			pagePerContent := 3
-			categoryWithItemFromDB, count, err := categoryRepositoryImpl.GetCategoryWithItems(TenantId, page-1, pagePerContent, "", 0)
+			categoryWithItemFromDB, count, err := categoryRepositoryImpl.GetCategoryWithItems(TenantId, page-1, pagePerContent, "", 0, []query.QueryFilter{})
 			assert.Nil(t, err)
 			assert.NotEqual(t, 0, count)
 			assert.NotNil(t, categoryWithItemFromDB)
@@ -87,7 +88,7 @@ func TestCategoryRepository(t *testing.T) {
 		t.Run("Overflow", func(t *testing.T) {
 			page := 2 // overflow
 			pagePerContent := 100
-			categoryWithItemFromDB, count, err := categoryRepositoryImpl.GetCategoryWithItems(TenantId, page-1, pagePerContent, "", 0)
+			categoryWithItemFromDB, count, err := categoryRepositoryImpl.GetCategoryWithItems(TenantId, page-1, pagePerContent, "", 0, []query.QueryFilter{})
 			// Gorm treat overflow as nothing to return
 			assert.NoError(t, err)
 			assert.Equal(t, 0, count)
