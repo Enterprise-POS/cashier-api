@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"strings"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -87,7 +88,17 @@ func (service *TenantServiceImpl) AddUserToTenant(userId, tenantId, performerId,
 		return nil, errors.New("[TenantService:AddUserToTenant]")
 	}
 
-	return service.Repository.AddUserToTenant(userId, tenantId)
+	result, err := service.Repository.AddUserToTenant(userId, tenantId)
+	if err != nil {
+		// Duplicate id. Maybe user add themselves or user already added to current tenant
+		if strings.Contains(err.Error(), "23505") {
+			return nil, errors.New("Could not add the user. Current user already exist.")
+		}
+
+		return nil, err
+	}
+
+	return result, nil
 }
 
 // GetTenantMembers implements TenantService.
