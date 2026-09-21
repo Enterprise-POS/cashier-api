@@ -32,6 +32,8 @@ func CreateGormClient() *gorm.DB {
 		dialect = fmt.Sprintf("host=%s user=%s password=%s dbname=postgres port=%s sslmode=require TimeZone=%s", DEV_DB_HOST, DEV_DB_USER, DEV_DB_PASSWORD, DEV_DB_PORT, DEV_DB_TIMEZONE)
 	}
 
+	println(dialect)
+
 	logMode := logger.Warn
 	if MODE == "prod" {
 		logMode = logger.Silent

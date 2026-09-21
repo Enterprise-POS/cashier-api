@@ -1,13 +1,13 @@
 name: CI/CD Configuration
 
 env:
-  DB_HOST: ${{ secrets.DB_HOST }}
-  DB_PORT: ${{ secrets.DB_PORT }}
-  DB_USER: ${{ secrets.DB_USER }}
-  DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+  MODE: prod
+  DEV_DB_HOST: ${{ secrets.DEV_DB_HOST }}
+  DEV_DB_PORT: ${{ secrets.DEV_DB_PORT }}
+  DEV_DB_USER: ${{ secrets.DEV_DB_USER }}
+  DEV_DB_PASSWORD: ${{ secrets.DEV_DB_PASSWORD }}
+  DEV_DB_TIMEZONE: ${{ secrets.DEV_DB_TIMEZONE }}
   JWT_S: ${{ secrets.JWT_S }}
-  SUPABASE_API_URL: ${{ secrets.SUPABASE_API_URL }}
-  SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
   PROJECT_ID: logam-enterprise
   DOCKER_IMAGE_URL: asia-southeast2-docker.pkg.dev/logam-enterprise/enterprise-pos-be-jakarta/enterprise-pos
   REGION: asia-southeast2
