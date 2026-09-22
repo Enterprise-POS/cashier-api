@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
@@ -20,18 +21,27 @@ import (
 const OrderItemTable string = "order_item"
 
 type OrderItemRepositoryImpl struct {
-	Client *gorm.DB
+	Client         *gorm.DB
+	reportTimeZone string
 }
 
 func NewOrderItemRepositoryImpl(client *gorm.DB) OrderItemRepository {
+	var timezone string
+	if os.Getenv("MODE") == "prod" {
+		timezone = os.Getenv("DB_TIMEZONE")
+	} else {
+		timezone = os.Getenv("DEV_DB_TIMEZONE")
+	}
+
 	return &OrderItemRepositoryImpl{
-		Client: client,
+		Client:         client,
+		reportTimeZone: timezone,
 	}
 }
 
 func (repository *OrderItemRepositoryImpl) PlaceOrderItem(orderItem *model.OrderItem) (*model.OrderItem, error) {
 	if orderItem.TransactionId == "" {
-		orderItem.TransactionId = fmt.Sprintf("TEST-%s", uuid.NewString())
+		orderItem.TransactionId = fmt.Sprintf("RANDOM-%s", uuid.NewString())
 	}
 	err := repository.Client.Create(orderItem).Error
 
@@ -813,7 +823,7 @@ func (repository *OrderItemRepositoryImpl) GetSalesReport(tenantId int, storeId 
 	// 8. Daily trend (all statuses for amount/count; revenue = SUCCESS only)
 	// ---------------------------------------------------------------
 	type trendRaw struct {
-		Date             string
+		Date             time.Time
 		TotalAmount      int
 		TransactionCount int
 		Revenue          int
@@ -822,11 +832,12 @@ func (repository *OrderItemRepositoryImpl) GetSalesReport(tenantId int, storeId 
 
 	trendQuery := applyFilters(repository.Client.Model(&model.OrderItem{}), "")
 	if err := trendQuery.Select(`
-    TO_CHAR(created_at, 'YYYY-MM-DD') AS date,
-    COALESCE(SUM(total_amount), 0)    AS total_amount,
-    COUNT(id)                         AS transaction_count,
+    (DATE_TRUNC('day', created_at AT TIME ZONE ?) AT TIME ZONE ?) AS date,
+    COALESCE(SUM(total_amount), 0) AS total_amount,
+    COUNT(id) AS transaction_count,
     COALESCE(SUM(total_amount) FILTER (WHERE payment_status = 'SUCCESS'), 0) AS revenue
-`).Group("TO_CHAR(created_at, 'YYYY-MM-DD')").
+	`, repository.reportTimeZone, repository.reportTimeZone).
+		Group("date").
 		Order("date ASC").
 		Scan(&trendRows).Error; err != nil {
 		return nil, fmt.Errorf("GetSalesReport daily_trend failed: %w", err)

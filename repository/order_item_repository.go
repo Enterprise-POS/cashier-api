@@ -160,10 +160,10 @@ type ItemProfitStat struct {
 }
 
 type DailyTrendStat struct {
-	Date             string `json:"date"`
-	TotalAmount      int    `json:"total_amount"`
-	TransactionCount int    `json:"transaction_count"`
-	Revenue          int    `json:"revenue"`
+	Date             time.Time `json:"date"`
+	TotalAmount      int       `json:"total_amount"`
+	TransactionCount int       `json:"transaction_count"`
+	Revenue          int       `json:"revenue"`
 }
 
 type ProfitReportRow struct {
