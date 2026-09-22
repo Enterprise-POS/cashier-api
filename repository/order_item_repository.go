@@ -119,10 +119,11 @@ type SalesReport struct {
 	StockSyncPending  int     `json:"stock_sync_pending"`
 
 	// Success-only totals
-	SumSubtotalSuccess  int `json:"sum_subtotal_success"`
-	SumRevenueSuccess   int `json:"sum_revenue_success"`    // pil.total_amount, SUCCESS only
-	SumBasePriceSuccess int `json:"sum_base_price_success"` // pil.base_price_snapshot * quantity, SUCCESS only
-	SumProfit           int `json:"sum_profit"`             // revenue - base_price, SUCCESS only
+	SumSubtotalSuccess       int `json:"sum_subtotal_success"`
+	SumRevenueSuccess        int `json:"sum_revenue_success"`    // pil.total_amount, SUCCESS only
+	SumBasePriceSuccess      int `json:"sum_base_price_success"` // pil.base_price_snapshot * quantity, SUCCESS only
+	SumProfit                int `json:"sum_profit"`             // revenue - base_price, SUCCESS only
+	SumPurchasedPriceSuccess int `json:"sum_purchased_price_success"`
 
 	// Breakdowns
 	PaymentStatusCount  map[model.PaymentStatus]int `json:"payment_status_count"`
@@ -159,9 +160,10 @@ type ItemProfitStat struct {
 }
 
 type DailyTrendStat struct {
-	Date             string `json:"date"`
-	TotalAmount      int    `json:"total_amount"`
-	TransactionCount int    `json:"transaction_count"`
+	Date             time.Time `json:"date"`
+	TotalAmount      int       `json:"total_amount"`
+	TransactionCount int       `json:"transaction_count"`
+	Revenue          int       `json:"revenue"`
 }
 
 type ProfitReportRow struct {

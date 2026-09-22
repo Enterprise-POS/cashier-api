@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
@@ -20,18 +21,27 @@ import (
 const OrderItemTable string = "order_item"
 
 type OrderItemRepositoryImpl struct {
-	Client *gorm.DB
+	Client         *gorm.DB
+	reportTimeZone string
 }
 
 func NewOrderItemRepositoryImpl(client *gorm.DB) OrderItemRepository {
+	var timezone string
+	if os.Getenv("MODE") == "prod" {
+		timezone = os.Getenv("DB_TIMEZONE")
+	} else {
+		timezone = os.Getenv("DEV_DB_TIMEZONE")
+	}
+
 	return &OrderItemRepositoryImpl{
-		Client: client,
+		Client:         client,
+		reportTimeZone: timezone,
 	}
 }
 
 func (repository *OrderItemRepositoryImpl) PlaceOrderItem(orderItem *model.OrderItem) (*model.OrderItem, error) {
 	if orderItem.TransactionId == "" {
-		orderItem.TransactionId = fmt.Sprintf("TEST-%s", uuid.NewString())
+		orderItem.TransactionId = fmt.Sprintf("RANDOM-%s", uuid.NewString())
 	}
 	err := repository.Client.Create(orderItem).Error
 
@@ -612,21 +622,24 @@ func (repository *OrderItemRepositoryImpl) GetSalesReport(tenantId int, storeId 
 	}
 
 	// ---------------------------------------------------------------
-	// 1b. Subtotal — SUCCESS transactions only
+	// 1b. Subtotal & Purchased Price — SUCCESS transactions only
 	// ---------------------------------------------------------------
 	type successSubtotal struct {
-		SumSubtotalSuccess int
+		SumSubtotalSuccess       int
+		SumPurchasedPriceSuccess int
 	}
 	var sSubtotal successSubtotal
 
 	successQuery := applyFilters(repository.Client.Model(&model.OrderItem{}), "").
 		Where("payment_status = ?", "SUCCESS")
 	if err := successQuery.Select(`
-        COALESCE(SUM(subtotal), 0) AS sum_subtotal_success
-    `).Scan(&sSubtotal).Error; err != nil {
+    COALESCE(SUM(subtotal), 0)        AS sum_subtotal_success,
+    COALESCE(SUM(purchased_price), 0) AS sum_purchased_price_success
+`).Scan(&sSubtotal).Error; err != nil {
 		return nil, fmt.Errorf("GetSalesReport subtotal_success failed: %w", err)
 	}
 	report.SumSubtotalSuccess = sSubtotal.SumSubtotalSuccess
+	report.SumPurchasedPriceSuccess = sSubtotal.SumPurchasedPriceSuccess
 
 	// ---------------------------------------------------------------
 	// 2. Payment status breakdown (all statuses, by design — this IS the breakdown)
@@ -807,21 +820,24 @@ func (repository *OrderItemRepositoryImpl) GetSalesReport(tenantId int, storeId 
 	}
 
 	// ---------------------------------------------------------------
-	// 8. Daily trend (all statuses)
+	// 8. Daily trend (all statuses for amount/count; revenue = SUCCESS only)
 	// ---------------------------------------------------------------
 	type trendRaw struct {
-		Date             string
+		Date             time.Time
 		TotalAmount      int
 		TransactionCount int
+		Revenue          int
 	}
 	var trendRows []trendRaw
 
 	trendQuery := applyFilters(repository.Client.Model(&model.OrderItem{}), "")
 	if err := trendQuery.Select(`
-        TO_CHAR(created_at, 'YYYY-MM-DD') AS date,
-        COALESCE(SUM(total_amount), 0)    AS total_amount,
-        COUNT(id)                         AS transaction_count
-    `).Group("TO_CHAR(created_at, 'YYYY-MM-DD')").
+    (DATE_TRUNC('day', created_at AT TIME ZONE ?) AT TIME ZONE ?) AS date,
+    COALESCE(SUM(total_amount), 0) AS total_amount,
+    COUNT(id) AS transaction_count,
+    COALESCE(SUM(total_amount) FILTER (WHERE payment_status = 'SUCCESS'), 0) AS revenue
+	`, repository.reportTimeZone, repository.reportTimeZone).
+		Group("date").
 		Order("date ASC").
 		Scan(&trendRows).Error; err != nil {
 		return nil, fmt.Errorf("GetSalesReport daily_trend failed: %w", err)
@@ -831,6 +847,7 @@ func (repository *OrderItemRepositoryImpl) GetSalesReport(tenantId int, storeId 
 			Date:             r.Date,
 			TotalAmount:      r.TotalAmount,
 			TransactionCount: r.TransactionCount,
+			Revenue:          r.Revenue,
 		})
 	}
 
