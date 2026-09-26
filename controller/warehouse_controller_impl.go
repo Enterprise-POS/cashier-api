@@ -110,9 +110,10 @@ func (controller *WarehouseControllerImpl) CreateItem(ctx *fiber.Ctx) error {
 
 	// Define item fields
 	type BodyItems struct {
-		ItemName  string `json:"item_name"`
-		Stocks    int    `json:"stocks"`
-		BasePrice int    `json:"base_price"`
+		ItemName  string          `json:"item_name"`
+		Stocks    int             `json:"stocks"`
+		BasePrice int             `json:"base_price"`
+		StockType model.StockType `json:"stock_type"`
 	}
 
 	// Define full request body (embedding BodyItems)
@@ -136,7 +137,7 @@ func (controller *WarehouseControllerImpl) CreateItem(ctx *fiber.Ctx) error {
 			BasePrice: item.BasePrice,
 			TenantId:  tenantId,
 			IsActive:  true, // Always true because this is creating new item
-			StockType: model.StockTypeTracked,
+			StockType: item.StockType,
 		})
 	}
 
