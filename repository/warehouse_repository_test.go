@@ -96,6 +96,18 @@ func TestWarehouseRepository(t *testing.T) {
 			Where("tenant_id", dummyItemFromDB.TenantId).
 			Delete(&dummyItemFromDB).Error
 		require.NoError(t, err, "Unexpected error while testing to delete dummy data _CreateItem")
+
+		var dummyItem2 = &model.Item{
+			ItemName:  "Test Name",
+			Stocks:    20,
+			TenantId:  1,
+			StockType: "Not Stock Type Enum",
+		}
+
+		// Create new data but with wrong enum at database
+		_dummyItemFromDB, err = warehouseRepo.CreateItem([]*model.Item{dummyItem2})
+		assert.Error(t, err)
+		assert.Equal(t, 0, len(_dummyItemFromDB))
 	})
 
 	t.Run("TestWarehouseRepository_Edit", func(t *testing.T) {

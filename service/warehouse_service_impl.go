@@ -92,6 +92,11 @@ func (service *WarehouseServiceImpl) CreateItem(items []*model.Item) ([]*model.I
 			isError = true
 			errorString += fmt.Sprintf("Base price cannot be negative for item: %s (given: %d)\n", item.ItemName, item.BasePrice)
 		}
+
+		if item.StockType != model.StockTypeTracked && item.StockType != model.StockTypeUnlimited {
+			isError = true
+			errorString += fmt.Sprintf("Unknown stock type for item: %s (given: %s)", item.ItemName, item.StockType)
+		}
 	}
 
 	// While scanning, if 1 item get is invalid, then all operation will fail

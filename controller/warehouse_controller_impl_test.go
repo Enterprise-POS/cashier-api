@@ -104,8 +104,9 @@ func TestWarehouseControllerImpl(t *testing.T) {
 			byteBody, err = json.Marshal(fiber.Map{
 				"items": []*fiber.Map{
 					{
-						"item_name": "Test 1 item GetActiveItem NormalGetActiveItem",
-						"stocks":    10,
+						"item_name":  "Test 1 item GetActiveItem NormalGetActiveItem",
+						"stocks":     10,
+						"stock_type": model.StockTypeTracked,
 					},
 				},
 			})
@@ -173,8 +174,9 @@ func TestWarehouseControllerImpl(t *testing.T) {
 			byteBody, err = json.Marshal(fiber.Map{
 				"items": []*fiber.Map{
 					{
-						"item_name": "Test 1 item",
-						"stocks":    10,
+						"item_name":  "Test 1 item",
+						"stocks":     10,
+						"stock_type": model.StockTypeTracked,
 					},
 				},
 			})
@@ -196,16 +198,19 @@ func TestWarehouseControllerImpl(t *testing.T) {
 			byteBody, err = json.Marshal(fiber.Map{
 				"items": []*fiber.Map{
 					{
-						"item_name": "Test NormalCreateMultipleItem 1 item",
-						"stocks":    0,
+						"item_name":  "Test NormalCreateMultipleItem 1 item",
+						"stocks":     0,
+						"stock_type": model.StockTypeTracked,
 					},
 					{
-						"item_name": "Test NormalCreateMultipleItem 2 item",
-						"stocks":    -10,
+						"item_name":  "Test NormalCreateMultipleItem 2 item",
+						"stocks":     -10,
+						"stock_type": model.StockTypeTracked,
 					},
 					{
-						"item_name": "Test NormalCreateMultipleItem 3 item",
-						"stocks":    999,
+						"item_name":  "Test NormalCreateMultipleItem 3 item",
+						"stocks":     999,
+						"stock_type": model.StockTypeTracked,
 					},
 				},
 			})
@@ -234,8 +239,9 @@ func TestWarehouseControllerImpl(t *testing.T) {
 			byteBody, err = json.Marshal(fiber.Map{
 				"items": []*fiber.Map{
 					{
-						"item_name": "Test 1 item",
-						"stocks":    10,
+						"item_name":  "Test 1 item",
+						"stocks":     10,
+						"stock_type": model.StockTypeTracked,
 					},
 				},
 			})
@@ -259,8 +265,9 @@ func TestWarehouseControllerImpl(t *testing.T) {
 		byteBody, err = json.Marshal(fiber.Map{
 			"items": []*fiber.Map{
 				{
-					"item_name": "Test 1 item FindById",
-					"stocks":    10,
+					"item_name":  "Test 1 item FindById",
+					"stocks":     10,
+					"stock_type": model.StockTypeTracked,
 				},
 			},
 		})
@@ -352,12 +359,14 @@ func TestWarehouseControllerImpl(t *testing.T) {
 		byteBody, err = json.Marshal(fiber.Map{
 			"items": []*fiber.Map{
 				{
-					"item_name": "Test 1 item Edit",
-					"stocks":    10,
+					"item_name":  "Test 1 item Edit",
+					"stocks":     10,
+					"stock_type": model.StockTypeTracked,
 				},
 				{
-					"item_name": "Test 2 item Edit",
-					"stocks":    10,
+					"item_name":  "Test 2 item Edit",
+					"stocks":     10,
+					"stock_type": model.StockTypeTracked,
 				},
 			},
 		})
@@ -424,8 +433,9 @@ func TestWarehouseControllerImpl(t *testing.T) {
 			byteBody, err := json.Marshal(fiber.Map{
 				"quantity": -999,
 				"item": fiber.Map{
-					"item_id":   item1.ItemId,
-					"item_name": item1.ItemName,
+					"item_id":    item1.ItemId,
+					"item_name":  item1.ItemName,
+					"stock_type": model.StockTypeTracked,
 				},
 			})
 			require.NoError(t, err)
@@ -442,8 +452,9 @@ func TestWarehouseControllerImpl(t *testing.T) {
 			byteBody, err := json.Marshal(fiber.Map{
 				"quantity": -1000,
 				"item": fiber.Map{
-					"item_id":   item1.ItemId,
-					"item_name": item1.ItemName,
+					"item_id":    item1.ItemId,
+					"item_name":  item1.ItemName,
+					"stock_type": model.StockTypeTracked,
 				},
 			})
 			require.NoError(t, err)
@@ -457,8 +468,9 @@ func TestWarehouseControllerImpl(t *testing.T) {
 			byteBody, err = json.Marshal(fiber.Map{
 				"quantity": 1000,
 				"item": fiber.Map{
-					"item_id":   item1.ItemId,
-					"item_name": item1.ItemName,
+					"item_id":    item1.ItemId,
+					"item_name":  item1.ItemName,
+					"stock_type": model.StockTypeTracked,
 				},
 			})
 			require.NoError(t, err)
@@ -480,8 +492,9 @@ func TestWarehouseControllerImpl(t *testing.T) {
 		byteBody, err = json.Marshal(fiber.Map{
 			"items": []*fiber.Map{
 				{
-					"item_name": "Test 1 item SetActivate",
-					"stocks":    10,
+					"item_name":  "Test 1 item SetActivate",
+					"stock_type": model.StockTypeTracked,
+					"stocks":     10,
 				},
 			},
 		})

@@ -333,6 +333,22 @@ func TestWarehouseServiceImpl(t *testing.T) {
 			assert.Error(t, err)
 			assert.Nil(t, items)
 		})
+
+		t.Run("InvalidStockTypeEnum", func(t *testing.T) {
+			items, err := warehouseService.CreateItem([]*model.Item{
+				{
+					ItemId:    1,
+					ItemName:  "Jasmine",
+					Stocks:    10,
+					TenantId:  1,
+					StockType: "Not Stock Type Enum",
+					IsActive:  true,
+					CreatedAt: now,
+				},
+			})
+			assert.Error(t, err)
+			assert.Nil(t, items)
+		})
 	})
 
 	t.Run("FindById", func(t *testing.T) {

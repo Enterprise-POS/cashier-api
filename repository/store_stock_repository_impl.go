@@ -150,8 +150,6 @@ TransferStockToWarehouse:
 	We want to prevent race condition at the DB.
 
 	(warehouse -> store_stock)
-
-	TODO: resolve security alert from supabase, 'search_path'
 */
 func (repository *StoreStockRepositoryImpl) TransferStockToWarehouse(quantity int, itemId int, storeId int, tenantId int) error {
 	return repository.Client.Transaction(func(tx *gorm.DB) error {
@@ -202,8 +200,6 @@ func (repository *StoreStockRepositoryImpl) TransferStockToWarehouse(quantity in
 /*
 TransferStockToStoreStock:
 
-	This RPC also decrease/increment the stocks at warehouse also store_stock
-
 	By default if current item stored but 'never exist' at the 'store_stock',
 	it will create price with default 'price = 0'
 
@@ -228,41 +224,72 @@ func (repository *StoreStockRepositoryImpl) TransferStockToStoreStock(quantity i
 			return err
 		}
 
-		// Validate stock sufficiency
-		realizedWarehouseStock := warehouseItem.Stocks - quantity
-		if realizedWarehouseStock < 0 {
-			return errors.New("[ERROR] Not enough stock")
-		}
-
-		// Upsert store stock
-		if len(warehouseItem.StoreStocks) > 0 {
-			// Update existing store stock
-			storeStock := warehouseItem.StoreStocks[0]
-			err = tx.
-				Model(&model.StoreStock{}).
-				Where("id = ?", storeStock.Id).
-				Update("stocks", gorm.Expr("stocks + ?", quantity)).Error
-			if err != nil {
-				return err
+		// If the stock type is UNLIMITED then checking stock is not necessary
+		if warehouseItem.StockType == model.StockTypeTracked {
+			// Validate stock sufficiency
+			realizedWarehouseStock := warehouseItem.Stocks - quantity
+			if realizedWarehouseStock < 0 {
+				return errors.New("[ERROR] Not enough stock")
 			}
+
+			// Upsert store stock
+			if len(warehouseItem.StoreStocks) > 0 {
+				// Update existing store stock
+				storeStock := warehouseItem.StoreStocks[0]
+				err = tx.
+					Model(&model.StoreStock{}).
+					Where("id = ?", storeStock.Id).
+					Update("stocks", gorm.Expr("stocks + ?", quantity)).Error
+				if err != nil {
+					return err
+				}
+			} else {
+				// Create new store stock row
+				err = tx.Create(&model.StoreStock{
+					ItemId:   itemId,
+					Stocks:   quantity,
+					StoreId:  storeId,
+					TenantId: tenantId,
+				}).Error
+				if err != nil {
+					return err
+				}
+			}
+
+			// Deduct warehouse stock
+			return tx.
+				Model(&model.Item{}).
+				Where("item_id = ? AND tenant_id = ?", itemId, tenantId).
+				Update("stocks", realizedWarehouseStock).Error
 		} else {
-			// Create new store stock row
-			err = tx.Create(&model.StoreStock{
-				ItemId:   itemId,
-				Stocks:   quantity,
-				StoreId:  storeId,
-				TenantId: tenantId,
-			}).Error
-			if err != nil {
-				return err
+			// Because it's UNLIMITED supply then it will add nothing to store stock
+			// Safe to say that no affect
+			// Upsert store stock
+			if len(warehouseItem.StoreStocks) > 0 {
+				// Update existing store stock
+				storeStock := warehouseItem.StoreStocks[0]
+				err = tx.
+					Model(&model.StoreStock{}).
+					Where("id = ?", storeStock.Id).
+					Update("stocks", gorm.Expr("stocks + ?", 0)).Error
+				if err != nil {
+					return err
+				}
+			} else {
+				// Create new store stock row
+				err = tx.Create(&model.StoreStock{
+					ItemId:   itemId,
+					Stocks:   0,
+					StoreId:  storeId,
+					TenantId: tenantId,
+				}).Error
+				if err != nil {
+					return err
+				}
 			}
-		}
 
-		// Deduct warehouse stock
-		return tx.
-			Model(&model.Item{}).
-			Where("item_id = ? AND tenant_id = ?", itemId, tenantId).
-			Update("stocks", realizedWarehouseStock).Error
+			return nil
+		}
 	})
 }
 
