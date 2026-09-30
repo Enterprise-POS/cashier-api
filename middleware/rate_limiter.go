@@ -14,14 +14,14 @@ func RateLimiter() fiber.Handler {
 		Next: func(ctx *fiber.Ctx) bool {
 			return ctx.IP() == "127.0.0.1"
 		},
-		Max:        20,
-		Expiration: 30 * time.Second,
+		Max:        50,
+		Expiration: time.Second,
 		KeyGenerator: func(ctx *fiber.Ctx) string {
 			return ctx.Get("x-forwarded-for")
 		},
 		LimitReached: func(ctx *fiber.Ctx) error {
-			return ctx.Status(fiber.StatusNotFound).
-				JSON(common.NewWebResponseError(fiber.StatusNotFound, common.StatusError, "Too many request. Please wait for 30 seconds."))
+			return ctx.Status(fiber.StatusTooManyRequests).
+				JSON(common.NewWebResponseError(fiber.StatusTooManyRequests, common.StatusError, "Too many request. Please wait for 30 seconds."))
 		},
 	})
 }

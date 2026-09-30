@@ -88,14 +88,8 @@ func (service *StoreStockServiceImpl) GetV2(
 		return nil, 0, errors.New("Invalid category id input")
 	}
 
-	var allowedSortColumns = map[query.ColumnName]bool{
-		query.CreatedAtColumn: true,
-		// future:
-		// query.PriceColumn: true,
-		// query.NameColumn: true,
-	}
 	for _, queryFilter := range queryFilters {
-		if !allowedSortColumns[queryFilter.Column] {
+		if !query.IsValidColumn(queryFilter.Column) {
 			return nil, 0, fmt.Errorf("Invalid sort column: %s", queryFilter.Column)
 		}
 	}

@@ -74,12 +74,22 @@ func (repository *StoreStockRepositoryImpl) GetV2(
 
 		hasCustomOrder := false
 		for _, f := range queryFilters {
+			println("Hello ", f.Column, f.Ascending)
 			if f.Column == query.CreatedAtColumn {
 				hasCustomOrder = true
 				if f.Ascending {
 					q = q.Order("store_stock.created_at ASC")
 				} else {
 					q = q.Order("store_stock.created_at DESC")
+				}
+				break
+			}
+			if f.Column == query.ItemName {
+				hasCustomOrder = true
+				if f.Ascending {
+					q = q.Order("warehouse.item_name ASC")
+				} else {
+					q = q.Order("warehouse.item_name DESC")
 				}
 				break
 			}

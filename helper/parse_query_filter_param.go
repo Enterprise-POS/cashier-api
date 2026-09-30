@@ -18,7 +18,7 @@ func ParseQueryFilterParam(paramSorts string) []*query.QueryFilter {
 
 			queryFilters = append(queryFilters, &query.QueryFilter{
 				Column:    parts[0],
-				Ascending: parts[1] == "asc",
+				Ascending: parts[1] == "asc" || parts[1] == "ascending",
 			})
 		}
 	}

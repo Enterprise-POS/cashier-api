@@ -33,7 +33,7 @@ func (warehouse *WarehouseRepositoryImpl) GetActiveItem(tenantId int, limit int,
 		Where("is_active = ?", true)
 
 	if nameQuery != "" {
-		query = query.Where("item_name LIKE ?", nameQuery+"%")
+		query = query.Where("LOWER(item_name) LIKE LOWER(?)", "%"+nameQuery+"%")
 	}
 
 	// Get total count first
@@ -62,7 +62,7 @@ func (warehouse *WarehouseRepositoryImpl) Get(tenantId int, limit int, page int,
 		Where("tenant_id = ?", tenantId)
 
 	if nameQuery != "" {
-		query = query.Where("item_name LIKE ?", nameQuery+"%")
+		query = query.Where("LOWER(item_name) LIKE LOWER(?)", "%"+nameQuery+"%")
 	}
 
 	if err := query.Count(&total).Error; err != nil {

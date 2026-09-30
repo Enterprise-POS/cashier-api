@@ -25,7 +25,7 @@ const (
 	CreatedAtColumn   ColumnName = "created_at"
 	TotalAmountColumn ColumnName = "total_amount" // OrderItem, order_item
 	Quantity          ColumnName = "quantity"     // PurchasedItemList
-	ItemName          ColumnName = "item_name"    // Warehouse
+	ItemName          ColumnName = "item_name"    // Warehouse, StoreStock
 )
 
 // PurchasedItem, purchased_item_list
