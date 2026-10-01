@@ -2,6 +2,7 @@ package service
 
 import (
 	"cashier-api/helper/query"
+	"cashier-api/helper/validation"
 	"cashier-api/model"
 	"cashier-api/repository"
 	"errors"
@@ -22,8 +23,7 @@ func NewStoreStockServiceImpl(repository repository.StoreStockRepository) StoreS
 		Repository: repository,
 
 		// The regex rule is the same with warehouse_service
-		ItemNameRegexRule: regexp.MustCompile(
-			`^[\p{Han}\p{Hiragana}\p{Katakana}a-zA-Z][\p{Han}\p{Hiragana}\p{Katakana}a-zA-Z0-9' ]*$`),
+		ItemNameRegexRule: validation.ItemNameRegex,
 	}
 }
 

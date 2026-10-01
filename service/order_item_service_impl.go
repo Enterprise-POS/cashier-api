@@ -4,6 +4,7 @@ import (
 	"cashier-api/helper/client"
 	constant "cashier-api/helper/constant/cookie"
 	"cashier-api/helper/query"
+	"cashier-api/helper/validation"
 	"cashier-api/model"
 	"cashier-api/repository"
 	"errors"
@@ -26,7 +27,7 @@ type OrderItemServiceImpl struct {
 func NewOrderItemServiceImpl(repository repository.OrderItemRepository, paymentProvider PaymentProvider) OrderItemService {
 	return &OrderItemServiceImpl{
 		Repository:        repository,
-		ItemNameRegexRule: regexp.MustCompile(`^[\p{Han}\p{Hiragana}\p{Katakana}a-zA-Z][\p{Han}\p{Hiragana}\p{Katakana}a-zA-Z0-9' ]*$`),
+		ItemNameRegexRule: validation.ItemNameRegex,
 		PaymentProvider:   paymentProvider,
 	}
 }

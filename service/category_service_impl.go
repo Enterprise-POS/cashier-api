@@ -2,6 +2,7 @@ package service
 
 import (
 	"cashier-api/helper/query"
+	"cashier-api/helper/validation"
 	"cashier-api/model"
 	"cashier-api/repository"
 	"errors"
@@ -20,7 +21,7 @@ func NewCategoryServiceImpl(repository repository.CategoryRepository) CategorySe
 	return &CategoryServiceImpl{
 		Repository:        repository,
 		CategoryNameRegex: regexp.MustCompile(`^[a-zA-Z0-9_ ]{1,15}$`),
-		ItemNameRegexRule: regexp.MustCompile(`^[\p{Han}\p{Hiragana}\p{Katakana}a-zA-Z][\p{Han}\p{Hiragana}\p{Katakana}a-zA-Z0-9' ]*$`),
+		ItemNameRegexRule: validation.ItemNameRegex,
 	}
 }
 

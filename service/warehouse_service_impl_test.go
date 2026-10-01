@@ -252,7 +252,7 @@ func TestWarehouseServiceImpl(t *testing.T) {
 		t.Run("NotAllowedItemName", func(t *testing.T) {
 			notAllowedItemName := []*model.Item{
 				{
-					ItemName:  "123Tea",
+					ItemName:  "<Tea>",
 					Stocks:    10,
 					TenantId:  1,
 					StockType: model.StockTypeTracked,
@@ -279,7 +279,7 @@ func TestWarehouseServiceImpl(t *testing.T) {
 
 			notAllowedItemName = []*model.Item{
 				{
-					ItemName:  "Tea!",
+					ItemName:  "Tea = Coffee",
 					Stocks:    10,
 					TenantId:  1,
 					StockType: model.StockTypeTracked,
@@ -454,7 +454,7 @@ func TestWarehouseServiceImpl(t *testing.T) {
 		t.Run("InvalidEditName", func(t *testing.T) {
 			editedItem := &model.Item{
 				ItemId:    1,
-				ItemName:  "Test item 1 (edited)",
+				ItemName:  "<script>alert(1)</script>",
 				Stocks:    7,
 				TenantId:  1,
 				IsActive:  false,
