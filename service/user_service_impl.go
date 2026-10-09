@@ -1,6 +1,7 @@
 package service
 
 import (
+	"cashier-api/helper/validation"
 	"cashier-api/model"
 	"cashier-api/repository"
 	"errors"
@@ -26,14 +27,11 @@ func NewUserServiceImpl(repository repository.UserRepository) UserService {
 func (service *UserServiceImpl) SignUpWithEmailAndPassword(email string, password string, name string) (*model.User, error) {
 	var emailRegex *regexp.Regexp = regexp.MustCompile(`^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$`)
 
-	// Username: starts with letter, followed by letters, numbers or underscores, length 3-256
-	var nameRegex *regexp.Regexp = regexp.MustCompile(`^[a-zA-Z][a-zA-Z0-9_ ]{2,255}$`)
-
 	if !emailRegex.MatchString(email) {
 		return nil, errors.New("Could not create user account. Check input email")
 	} else if len(password) < 8 {
 		return nil, errors.New("Could not create user account. Check input password")
-	} else if !nameRegex.MatchString(name) {
+	} else if !validation.UserNameRegex.MatchString(name) {
 		return nil, errors.New("Could not create user account. Check input name")
 	}
 

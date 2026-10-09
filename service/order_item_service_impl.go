@@ -105,6 +105,12 @@ func (service *OrderItemServiceImpl) Transactions(params *repository.CreateTrans
 	if params.TenantId <= 0 || params.StoreId <= 0 || params.UserId <= 0 {
 		return nil, errors.New("Tenant id, Store id, User id is Required !")
 	}
+	if strings.TrimSpace(params.ResponsibleUserNameSnapshot) == "" {
+		return nil, errors.New("Responsible user name snapshot is required")
+	}
+	if !validation.UserNameRegex.MatchString(params.ResponsibleUserNameSnapshot) {
+		return nil, errors.New("Invalid responsible user name snapshot")
+	}
 
 	// Check whether at database this transaction already saved or not
 	// If already saved then just return the data
