@@ -29,7 +29,7 @@ func TestCategoryRepository(t *testing.T) {
 			tx := gormClient.Begin()
 			defer tx.Rollback()
 
-			tenantId, _ := seedOrderItemTestDependencies(t, tx, "category_getitemsbycategory_normal@example.com", "Category GetItemsByCategory Normal")
+			tenantId, _, _ := seedOrderItemTestDependencies(t, tx, "category_getitemsbycategory_normal@example.com", "Category GetItemsByCategory Normal")
 			categoryRepositoryImpl := NewCategoryRepositoryImpl(tx)
 			warehouseRepositoryImpl := NewWarehouseRepositoryImpl(tx)
 
@@ -70,7 +70,7 @@ func TestCategoryRepository(t *testing.T) {
 			tx := gormClient.Begin()
 			defer tx.Rollback()
 
-			tenantId, _ := seedOrderItemTestDependencies(t, tx, "category_getitemsbycategory_notexistcat@example.com", "Category GetItemsByCategory NotExistCat")
+			tenantId, _, _ := seedOrderItemTestDependencies(t, tx, "category_getitemsbycategory_notexistcat@example.com", "Category GetItemsByCategory NotExistCat")
 			categoryRepositoryImpl := NewCategoryRepositoryImpl(tx)
 
 			page := 1
@@ -85,7 +85,7 @@ func TestCategoryRepository(t *testing.T) {
 			tx := gormClient.Begin()
 			defer tx.Rollback()
 
-			tenantId, _ := seedOrderItemTestDependencies(t, tx, "category_getitemsbycategory_overflow@example.com", "Category GetItemsByCategory Overflow")
+			tenantId, _, _ := seedOrderItemTestDependencies(t, tx, "category_getitemsbycategory_overflow@example.com", "Category GetItemsByCategory Overflow")
 			categoryRepositoryImpl := NewCategoryRepositoryImpl(tx)
 
 			page := 100 // overflow
@@ -100,7 +100,7 @@ func TestCategoryRepository(t *testing.T) {
 			tx := gormClient.Begin()
 			defer tx.Rollback()
 
-			tenantId, _ := seedOrderItemTestDependencies(t, tx, "category_getitemsbycategory_notexisttenant@example.com", "Category GetItemsByCategory NotExistTenant")
+			tenantId, _, _ := seedOrderItemTestDependencies(t, tx, "category_getitemsbycategory_notexisttenant@example.com", "Category GetItemsByCategory NotExistTenant")
 			categoryRepositoryImpl := NewCategoryRepositoryImpl(tx)
 
 			page := 1
@@ -149,7 +149,7 @@ func TestCategoryRepository(t *testing.T) {
 			tx := gormClient.Begin()
 			defer tx.Rollback()
 
-			tenantId, _ := seedOrderItemTestDependencies(t, tx, "category_getcategorywithitems_normal@example.com", "Category GetCategoryWithItems Normal")
+			tenantId, _, _ := seedOrderItemTestDependencies(t, tx, "category_getcategorywithitems_normal@example.com", "Category GetCategoryWithItems Normal")
 			categoryRepositoryImpl := NewCategoryRepositoryImpl(tx)
 			seedCategoryWithItemsFixture(t, tx, tenantId)
 
@@ -165,7 +165,7 @@ func TestCategoryRepository(t *testing.T) {
 			tx := gormClient.Begin()
 			defer tx.Rollback()
 
-			tenantId, _ := seedOrderItemTestDependencies(t, tx, "category_getcategorywithitems_overflow@example.com", "Category GetCategoryWithItems Overflow")
+			tenantId, _, _ := seedOrderItemTestDependencies(t, tx, "category_getcategorywithitems_overflow@example.com", "Category GetCategoryWithItems Overflow")
 			categoryRepositoryImpl := NewCategoryRepositoryImpl(tx)
 			seedCategoryWithItemsFixture(t, tx, tenantId)
 
@@ -182,7 +182,7 @@ func TestCategoryRepository(t *testing.T) {
 			tx := gormClient.Begin()
 			defer tx.Rollback()
 
-			tenantId, _ := seedOrderItemTestDependencies(t, tx, "category_getcategorywithitems_namequery@example.com", "Category GetCategoryWithItems NameQuery")
+			tenantId, _, _ := seedOrderItemTestDependencies(t, tx, "category_getcategorywithitems_namequery@example.com", "Category GetCategoryWithItems NameQuery")
 			categoryRepositoryImpl := NewCategoryRepositoryImpl(tx)
 			dbCategoryA, _, dbItemA1, _, _ := seedCategoryWithItemsFixture(t, tx, tenantId)
 
@@ -200,7 +200,7 @@ func TestCategoryRepository(t *testing.T) {
 			tx := gormClient.Begin()
 			defer tx.Rollback()
 
-			tenantId, _ := seedOrderItemTestDependencies(t, tx, "category_getcategorywithitems_namequerymiss@example.com", "Category GetCategoryWithItems NameQueryMiss")
+			tenantId, _, _ := seedOrderItemTestDependencies(t, tx, "category_getcategorywithitems_namequerymiss@example.com", "Category GetCategoryWithItems NameQueryMiss")
 			categoryRepositoryImpl := NewCategoryRepositoryImpl(tx)
 			seedCategoryWithItemsFixture(t, tx, tenantId)
 
@@ -216,7 +216,7 @@ func TestCategoryRepository(t *testing.T) {
 			tx := gormClient.Begin()
 			defer tx.Rollback()
 
-			tenantId, _ := seedOrderItemTestDependencies(t, tx, "category_getcategorywithitems_categoryid@example.com", "Category GetCategoryWithItems CategoryId")
+			tenantId, _, _ := seedOrderItemTestDependencies(t, tx, "category_getcategorywithitems_categoryid@example.com", "Category GetCategoryWithItems CategoryId")
 			categoryRepositoryImpl := NewCategoryRepositoryImpl(tx)
 			dbCategoryA, _, _, _, _ := seedCategoryWithItemsFixture(t, tx, tenantId)
 
@@ -235,7 +235,7 @@ func TestCategoryRepository(t *testing.T) {
 			tx := gormClient.Begin()
 			defer tx.Rollback()
 
-			tenantId, _ := seedOrderItemTestDependencies(t, tx, "category_getcategorywithitems_orderasc@example.com", "Category GetCategoryWithItems OrderAsc")
+			tenantId, _, _ := seedOrderItemTestDependencies(t, tx, "category_getcategorywithitems_orderasc@example.com", "Category GetCategoryWithItems OrderAsc")
 			categoryRepositoryImpl := NewCategoryRepositoryImpl(tx)
 			seedCategoryWithItemsFixture(t, tx, tenantId)
 
@@ -257,7 +257,7 @@ func TestCategoryRepository(t *testing.T) {
 			tx := gormClient.Begin()
 			defer tx.Rollback()
 
-			tenantId, _ := seedOrderItemTestDependencies(t, tx, "category_getcategorywithitems_orderdesc@example.com", "Category GetCategoryWithItems OrderDesc")
+			tenantId, _, _ := seedOrderItemTestDependencies(t, tx, "category_getcategorywithitems_orderdesc@example.com", "Category GetCategoryWithItems OrderDesc")
 			categoryRepositoryImpl := NewCategoryRepositoryImpl(tx)
 			seedCategoryWithItemsFixture(t, tx, tenantId)
 
@@ -279,7 +279,7 @@ func TestCategoryRepository(t *testing.T) {
 			tx := gormClient.Begin()
 			defer tx.Rollback()
 
-			tenantId, _ := seedOrderItemTestDependencies(t, tx, "category_getcategorywithitems_emptyfilter@example.com", "Category GetCategoryWithItems EmptyFilter")
+			tenantId, _, _ := seedOrderItemTestDependencies(t, tx, "category_getcategorywithitems_emptyfilter@example.com", "Category GetCategoryWithItems EmptyFilter")
 			categoryRepositoryImpl := NewCategoryRepositoryImpl(tx)
 			seedCategoryWithItemsFixture(t, tx, tenantId)
 
@@ -300,7 +300,7 @@ func TestCategoryRepository(t *testing.T) {
 			tx := gormClient.Begin()
 			defer tx.Rollback()
 
-			tenantId, _ := seedOrderItemTestDependencies(t, tx, "category_getcategorywithitems_notexisttenant@example.com", "Category GetCategoryWithItems NotExistTenant")
+			tenantId, _, _ := seedOrderItemTestDependencies(t, tx, "category_getcategorywithitems_notexisttenant@example.com", "Category GetCategoryWithItems NotExistTenant")
 			categoryRepositoryImpl := NewCategoryRepositoryImpl(tx)
 			seedCategoryWithItemsFixture(t, tx, tenantId)
 
@@ -319,7 +319,7 @@ func TestCategoryRepository(t *testing.T) {
 			tx := gormClient.Begin()
 			defer tx.Rollback()
 
-			tenantId, _ := seedOrderItemTestDependencies(t, tx, "category_get_normalgetall@example.com", "Category Get NormalGetAll")
+			tenantId, _, _ := seedOrderItemTestDependencies(t, tx, "category_get_normalgetall@example.com", "Category Get NormalGetAll")
 			categoryRepositoryImpl := NewCategoryRepositoryImpl(tx)
 
 			dummyCategories := []*model.Category{
@@ -342,7 +342,7 @@ func TestCategoryRepository(t *testing.T) {
 			tx := gormClient.Begin()
 			defer tx.Rollback()
 
-			tenantId, _ := seedOrderItemTestDependencies(t, tx, "category_get_bynamequery_substring@example.com", "Category Get ByNameQuery Substring")
+			tenantId, _, _ := seedOrderItemTestDependencies(t, tx, "category_get_bynamequery_substring@example.com", "Category Get ByNameQuery Substring")
 			categoryRepositoryImpl := NewCategoryRepositoryImpl(tx)
 
 			uniqueString := uuid.NewString()
@@ -364,7 +364,7 @@ func TestCategoryRepository(t *testing.T) {
 			tx := gormClient.Begin()
 			defer tx.Rollback()
 
-			tenantId, _ := seedOrderItemTestDependencies(t, tx, "category_get_overflow@example.com", "Category Get Overflow")
+			tenantId, _, _ := seedOrderItemTestDependencies(t, tx, "category_get_overflow@example.com", "Category Get Overflow")
 			categoryRepositoryImpl := NewCategoryRepositoryImpl(tx)
 
 			dummyCategories := []*model.Category{
@@ -394,7 +394,7 @@ func TestCategoryRepository(t *testing.T) {
 			tx := gormClient.Begin()
 			defer tx.Rollback()
 
-			tenantId, _ := seedOrderItemTestDependencies(t, tx, "category_get_bynamequery@example.com", "Category Get ByNameQuery")
+			tenantId, _, _ := seedOrderItemTestDependencies(t, tx, "category_get_bynamequery@example.com", "Category Get ByNameQuery")
 			categoryRepositoryImpl := NewCategoryRepositoryImpl(tx)
 
 			uniqueString := uuid.NewString()
@@ -430,7 +430,7 @@ func TestCategoryRepository(t *testing.T) {
 			tx := gormClient.Begin()
 			defer tx.Rollback()
 
-			tenantId, _ := seedOrderItemTestDependencies(t, tx, "category_create_createone@example.com", "Category Create CreateOne")
+			tenantId, _, _ := seedOrderItemTestDependencies(t, tx, "category_create_createone@example.com", "Category Create CreateOne")
 			categoryRepositoryImpl := NewCategoryRepositoryImpl(tx)
 
 			dummyData := &model.Category{
@@ -455,7 +455,7 @@ func TestCategoryRepository(t *testing.T) {
 			tx := gormClient.Begin()
 			defer tx.Rollback()
 
-			tenantId, _ := seedOrderItemTestDependencies(t, tx, "category_create_createmultiple@example.com", "Category Create CreateMultiple")
+			tenantId, _, _ := seedOrderItemTestDependencies(t, tx, "category_create_createmultiple@example.com", "Category Create CreateMultiple")
 			categoryRepositoryImpl := NewCategoryRepositoryImpl(tx)
 
 			uniqueString := uuid.NewString()
@@ -481,7 +481,7 @@ func TestCategoryRepository(t *testing.T) {
 			tx := gormClient.Begin()
 			defer tx.Rollback()
 
-			tenantId, _ := seedOrderItemTestDependencies(t, tx, "category_create_existingid@example.com", "Category Create ExistingId")
+			tenantId, _, _ := seedOrderItemTestDependencies(t, tx, "category_create_existingid@example.com", "Category Create ExistingId")
 			categoryRepositoryImpl := NewCategoryRepositoryImpl(tx)
 
 			dummyData := &model.Category{
@@ -511,7 +511,7 @@ func TestCategoryRepository(t *testing.T) {
 			tx := gormClient.Begin()
 			defer tx.Rollback()
 
-			tenantId, _ := seedOrderItemTestDependencies(t, tx, "category_create_exactname@example.com", "Category Create ExactName")
+			tenantId, _, _ := seedOrderItemTestDependencies(t, tx, "category_create_exactname@example.com", "Category Create ExactName")
 			categoryRepositoryImpl := NewCategoryRepositoryImpl(tx)
 
 			categoryName := "Test_CategoryRepositoryImpl_Update_CreateWithExactCategoryName 1 " + uuid.NewString()
@@ -537,7 +537,7 @@ func TestCategoryRepository(t *testing.T) {
 			tx := gormClient.Begin()
 			defer tx.Rollback()
 
-			tenantId, _ := seedOrderItemTestDependencies(t, tx, "category_register_normal@example.com", "Category Register Normal")
+			tenantId, _, _ := seedOrderItemTestDependencies(t, tx, "category_register_normal@example.com", "Category Register Normal")
 			categoryRepositoryImpl := NewCategoryRepositoryImpl(tx)
 			warehouseRepositoryImpl := NewWarehouseRepositoryImpl(tx)
 
@@ -575,7 +575,7 @@ func TestCategoryRepository(t *testing.T) {
 			tx := gormClient.Begin()
 			defer tx.Rollback()
 
-			tenantId, _ := seedOrderItemTestDependencies(t, tx, "category_register_duplicate@example.com", "Category Register Duplicate")
+			tenantId, _, _ := seedOrderItemTestDependencies(t, tx, "category_register_duplicate@example.com", "Category Register Duplicate")
 			categoryRepositoryImpl := NewCategoryRepositoryImpl(tx)
 			warehouseRepositoryImpl := NewWarehouseRepositoryImpl(tx)
 
@@ -620,7 +620,7 @@ func TestCategoryRepository(t *testing.T) {
 			tx := gormClient.Begin()
 			defer tx.Rollback()
 
-			tenantId, _ := seedOrderItemTestDependencies(t, tx, "category_unregister_normal@example.com", "Category Unregister Normal")
+			tenantId, _, _ := seedOrderItemTestDependencies(t, tx, "category_unregister_normal@example.com", "Category Unregister Normal")
 			categoryRepositoryImpl := NewCategoryRepositoryImpl(tx)
 			warehouseRepositoryImpl := NewWarehouseRepositoryImpl(tx)
 
@@ -684,7 +684,7 @@ func TestCategoryRepository(t *testing.T) {
 			tx := gormClient.Begin()
 			defer tx.Rollback()
 
-			tenantId, _ := seedOrderItemTestDependencies(t, tx, "category_edititemcategory_normal@example.com", "Category EditItemCategory Normal")
+			tenantId, _, _ := seedOrderItemTestDependencies(t, tx, "category_edititemcategory_normal@example.com", "Category EditItemCategory Normal")
 			categoryRepositoryImpl := NewCategoryRepositoryImpl(tx)
 			warehouseRepositoryImpl := NewWarehouseRepositoryImpl(tx)
 
@@ -730,7 +730,7 @@ func TestCategoryRepository(t *testing.T) {
 			tx := gormClient.Begin()
 			defer tx.Rollback()
 
-			tenantId, _ := seedOrderItemTestDependencies(t, tx, "category_edititemcategory_noitem@example.com", "Category EditItemCategory NoItem")
+			tenantId, _, _ := seedOrderItemTestDependencies(t, tx, "category_edititemcategory_noitem@example.com", "Category EditItemCategory NoItem")
 			categoryRepositoryImpl := NewCategoryRepositoryImpl(tx)
 
 			// Expected to get this error message
@@ -749,7 +749,7 @@ func TestCategoryRepository(t *testing.T) {
 			tx := gormClient.Begin()
 			defer tx.Rollback()
 
-			tenantId, _ := seedOrderItemTestDependencies(t, tx, "category_edititemcategory_invalid@example.com", "Category EditItemCategory Invalid")
+			tenantId, _, _ := seedOrderItemTestDependencies(t, tx, "category_edititemcategory_invalid@example.com", "Category EditItemCategory Invalid")
 			categoryRepositoryImpl := NewCategoryRepositoryImpl(tx)
 
 			// User will act as unregister by sending categoryId: 0
@@ -769,7 +769,7 @@ func TestCategoryRepository(t *testing.T) {
 			tx := gormClient.Begin()
 			defer tx.Rollback()
 
-			tenantId, _ := seedOrderItemTestDependencies(t, tx, "category_update_normal@example.com", "Category Update Normal")
+			tenantId, _, _ := seedOrderItemTestDependencies(t, tx, "category_update_normal@example.com", "Category Update Normal")
 			categoryRepositoryImpl := NewCategoryRepositoryImpl(tx)
 
 			dummyData := &model.Category{
@@ -797,7 +797,7 @@ func TestCategoryRepository(t *testing.T) {
 			tx := gormClient.Begin()
 			defer tx.Rollback()
 
-			tenantId, _ := seedOrderItemTestDependencies(t, tx, "category_update_notexist@example.com", "Category Update NotExist")
+			tenantId, _, _ := seedOrderItemTestDependencies(t, tx, "category_update_notexist@example.com", "Category Update NotExist")
 			categoryRepositoryImpl := NewCategoryRepositoryImpl(tx)
 
 			editedDummyCategoryDB, err := categoryRepositoryImpl.Update(tenantId, 0, "Will not happen")
@@ -814,7 +814,7 @@ func TestCategoryRepository(t *testing.T) {
 			tx := gormClient.Begin()
 			defer tx.Rollback()
 
-			tenantId, _ := seedOrderItemTestDependencies(t, tx, "category_delete_normal@example.com", "Category Delete Normal")
+			tenantId, _, _ := seedOrderItemTestDependencies(t, tx, "category_delete_normal@example.com", "Category Delete Normal")
 			categoryRepositoryImpl := NewCategoryRepositoryImpl(tx)
 
 			dummyData := &model.Category{
@@ -835,7 +835,7 @@ func TestCategoryRepository(t *testing.T) {
 			tx := gormClient.Begin()
 			defer tx.Rollback()
 
-			tenantId, _ := seedOrderItemTestDependencies(t, tx, "category_delete_notexist@example.com", "Category Delete NotExist")
+			tenantId, _, _ := seedOrderItemTestDependencies(t, tx, "category_delete_notexist@example.com", "Category Delete NotExist")
 			categoryRepositoryImpl := NewCategoryRepositoryImpl(tx)
 
 			dummyData := &model.Category{

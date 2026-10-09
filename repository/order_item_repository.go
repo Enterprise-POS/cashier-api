@@ -92,9 +92,10 @@ type CreateTransactionParams struct {
 	Items []*model.PurchasedItem `json:"items"`
 
 	// Validation/Context
-	UserId   int `json:"user_id"`
-	TenantId int `json:"tenant_id"`
-	StoreId  int `json:"store_id"`
+	UserId                      int    `json:"user_id"`
+	ResponsibleUserNameSnapshot string `json:"responsible_user_name_snapshot"`
+	TenantId                    int    `json:"tenant_id"`
+	StoreId                     int    `json:"store_id"`
 
 	// unique transaction id
 	TransactionId string `json:"transaction_id"`
@@ -189,12 +190,14 @@ type OrderDetailRow struct {
 }
 
 type TransactionDataReturn struct {
-	CreatedOrderItemId int                 `json:"created_order_item_id"         gorm:"column:v_id"`
-	CreatedAt          *time.Time          `json:"created_at" gorm:"column:v_created_at"`
-	TotalAmount        int                 `json:"total_amount" gorm:"column:v_total_amount"`
-	CashIn             int                 `json:"purchased_price" gorm:"column:v_purchased_price"`
-	PaymentType        model.PaymentType   `json:"payment_type" gorm:"-"`
-	PaymentStatus      model.PaymentStatus `json:"payment_status" gorm:"column:v_payment_status"`
-	PaymentToken       string              `json:"payment_token" gorm:"-"`
-	PaymentURL         string              `json:"payment_url" gorm:"-"`
+	CreatedOrderItemId          int                 `json:"created_order_item_id" gorm:"column:v_id"`
+	CreatedAt                   *time.Time          `json:"created_at" gorm:"column:v_created_at"`
+	TotalAmount                 int                 `json:"total_amount" gorm:"column:v_total_amount"`
+	CashIn                      int                 `json:"purchased_price" gorm:"column:v_purchased_price"`
+	PaymentType                 model.PaymentType   `json:"payment_type" gorm:"-"`
+	PaymentStatus               model.PaymentStatus `json:"payment_status" gorm:"column:v_payment_status"`
+	PaymentToken                string              `json:"payment_token" gorm:"-"`
+	PaymentURL                  string              `json:"payment_url" gorm:"-"`
+	ResponsibleUserId           int                 `json:"responsible_user_id" gorm:"-"`
+	ResponsibleUserNameSnapshot string              `json:"responsible_user_name_snapshot" gorm:"-"`
 }

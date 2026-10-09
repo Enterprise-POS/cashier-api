@@ -31,7 +31,7 @@ func TestPurchasedItem(t *testing.T) {
 	seedPurchasedItemDependencies := func(t *testing.T, tx *gorm.DB) (appleId int, peachId int, orderItemId int) {
 		t.Helper()
 
-		tenantId, storeId := seedOrderItemTestDependencies(t, tx, testEmail, testUserName)
+		tenantId, storeId, user := seedOrderItemTestDependencies(t, tx, testEmail, testUserName)
 
 		apple := &model.Item{
 			ItemName:  "Apple",
@@ -57,16 +57,18 @@ func TestPurchasedItem(t *testing.T) {
 
 		testTransactionId := fmt.Sprintf("TEST-%s", uuid.NewString())
 		orderItem := &model.OrderItem{
-			PurchasedPrice: 40000,
-			TotalQuantity:  4,
-			DiscountAmount: 0,
-			TotalAmount:    40000,
-			Subtotal:       40000,
-			StoreId:        storeId,
-			TenantId:       tenantId,
-			PaymentType:    model.PaymentTypeCash,
-			TransactionId:  testTransactionId, // Only for test case
-			PaymentStatus:  model.PaymentStatusSuccess,
+			PurchasedPrice:              40000,
+			TotalQuantity:               4,
+			DiscountAmount:              0,
+			TotalAmount:                 40000,
+			Subtotal:                    40000,
+			StoreId:                     storeId,
+			TenantId:                    tenantId,
+			PaymentType:                 model.PaymentTypeCash,
+			TransactionId:               testTransactionId, // Only for test case
+			PaymentStatus:               model.PaymentStatusSuccess,
+			ResponsibleUserId:           user.Id,
+			ResponsibleUserNameSnapshot: user.Name,
 		}
 		require.NoError(t, tx.Create(orderItem).Error)
 		require.NotZero(t, orderItem.Id)
