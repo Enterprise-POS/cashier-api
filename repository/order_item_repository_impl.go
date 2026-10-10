@@ -150,7 +150,7 @@ func (repository *OrderItemRepositoryImpl) Transactions(params *CreateTransactio
 	}
 
 	var transactionDataReturn *TransactionDataReturn
-	result := repository.Client.Raw("SELECT * FROM transactions($1, $2, $3, $4, $5, $6::JSONB, $7, $8, $9, $10, $11, $12, $13, $14)",
+	result := repository.Client.Raw("SELECT * FROM transactions($1, $2, $3, $4, $5, $6::JSONB, $7, $8, $9, $10, $11, $12, $13)",
 		params.PurchasedPrice,
 		params.TotalQuantity,
 		params.TotalAmount,
@@ -166,7 +166,6 @@ func (repository *OrderItemRepositoryImpl) Transactions(params *CreateTransactio
 		string(params.TransactionId),
 		params.PaymentURL,
 		params.PaymentToken,
-		params.ResponsibleUserNameSnapshot,
 	).Scan(&transactionDataReturn)
 
 	if result.Error != nil {
@@ -181,8 +180,7 @@ func (repository *OrderItemRepositoryImpl) Transactions(params *CreateTransactio
 	}
 
 	transactionDataReturn.PaymentType = params.PaymentType
-	transactionDataReturn.ResponsibleUserId = params.UserId
-	transactionDataReturn.ResponsibleUserNameSnapshot = params.ResponsibleUserNameSnapshot
+
 	return transactionDataReturn, nil
 }
 

@@ -215,10 +215,9 @@ func TestOrderItemControllerImpl(t *testing.T) {
 					},
 				},
 
-				UserId:                      createdTestUser.Id,
-				ResponsibleUserNameSnapshot: createdTestUser.Name,
-				TenantId:                    createdTestTenant.Id,
-				StoreId:                     STORE_ID,
+				UserId:   createdTestUser.Id,
+				TenantId: createdTestTenant.Id,
+				StoreId:  STORE_ID,
 			}
 
 			now := time.Now()

@@ -6,7 +6,6 @@ import (
 	"cashier-api/repository"
 	"errors"
 	"fmt"
-	"strings"
 	"testing"
 	"time"
 
@@ -365,10 +364,9 @@ func TestOrderItemServiceImpl(t *testing.T) {
 						ItemNameSnapshot:   "Item Name Snapshot",
 					},
 				},
-				UserId:                      USER_ID,
-				ResponsibleUserNameSnapshot: "Transaction User",
-				TenantId:                    TENANT_ID,
-				StoreId:                     STORE_ID,
+				UserId:   USER_ID,
+				TenantId: TENANT_ID,
+				StoreId:  STORE_ID,
 			}
 		}
 
@@ -392,10 +390,9 @@ func TestOrderItemServiceImpl(t *testing.T) {
 					},
 				},
 
-				UserId:                      USER_ID,
-				ResponsibleUserNameSnapshot: "Transaction User",
-				TenantId:                    TENANT_ID,
-				StoreId:                     STORE_ID,
+				UserId:   USER_ID,
+				TenantId: TENANT_ID,
+				StoreId:  STORE_ID,
 			}
 
 			now := time.Now()
@@ -408,51 +405,6 @@ func TestOrderItemServiceImpl(t *testing.T) {
 			assert.Nil(t, err)
 			assert.Equal(t, expectedTransactionDataReturn.CreatedOrderItemId, transactionDataReturn.CreatedOrderItemId)
 			assert.NotNil(t, transactionDataReturn.CreatedAt)
-		})
-
-		t.Run("ResponsibleUserNameSnapshotRequired", func(t *testing.T) {
-			for _, testCase := range []struct {
-				name  string
-				value string
-			}{
-				{name: "MissingOrEmpty"},
-				{name: "WhitespaceOnly", value: " \t\n "},
-			} {
-				t.Run(testCase.name, func(t *testing.T) {
-					orderItemRepo := repository.NewOrderItemRepositoryMock(&mock.Mock{}).(*repository.OrderItemRepositoryMock)
-					orderItemService := NewOrderItemServiceImpl(orderItemRepo, paymentProvider)
-					params := baseValidParams()
-					params.PaymentType = model.PaymentTypeQRIS
-					// A missing JSON property and an explicit empty string both decode to "".
-					params.ResponsibleUserNameSnapshot = testCase.value
-
-					transactionDataReturn, err := orderItemService.Transactions(params, cashServerKey)
-
-					assert.ErrorContains(t, err, "Responsible user name snapshot is required")
-					assert.Nil(t, transactionDataReturn)
-					orderItemRepo.Mock.AssertNotCalled(t, "Transactions", mock.Anything)
-				})
-			}
-		})
-
-		t.Run("InvalidResponsibleUserNameSnapshot", func(t *testing.T) {
-			for _, invalidName := range []string{
-				"Ab",
-				"1Transaction User",
-				"Transaction User<script>",
-				strings.Repeat("A", 257),
-			} {
-				orderItemRepo := repository.NewOrderItemRepositoryMock(&mock.Mock{}).(*repository.OrderItemRepositoryMock)
-				orderItemService := NewOrderItemServiceImpl(orderItemRepo, paymentProvider)
-				params := baseValidParams()
-				params.ResponsibleUserNameSnapshot = invalidName
-
-				transactionDataReturn, err := orderItemService.Transactions(params, cashServerKey)
-
-				assert.ErrorContains(t, err, "Invalid responsible user name snapshot")
-				assert.Nil(t, transactionDataReturn)
-				orderItemRepo.Mock.AssertNotCalled(t, "Transactions", mock.Anything)
-			}
 		})
 
 		t.Run("InvalidTenantIdStoreIdUserId", func(t *testing.T) {
@@ -476,9 +428,8 @@ func TestOrderItemServiceImpl(t *testing.T) {
 			assert.Nil(t, transactionDataReturn)
 
 			invalidParams = &repository.CreateTransactionParams{
-				UserId:                      USER_ID,
-				ResponsibleUserNameSnapshot: "Transaction User",
-				TenantId:                    TENANT_ID,
+				UserId:   USER_ID,
+				TenantId: TENANT_ID,
 				// StoreId: STORE_ID,
 			}
 			transactionDataReturn, err = orderItemService.Transactions(invalidParams, cashServerKey)
@@ -488,10 +439,9 @@ func TestOrderItemServiceImpl(t *testing.T) {
 
 		t.Run("EmptyTransactions", func(t *testing.T) {
 			invalidParams := &repository.CreateTransactionParams{
-				UserId:                      USER_ID,
-				ResponsibleUserNameSnapshot: "Transaction User",
-				TenantId:                    TENANT_ID,
-				StoreId:                     STORE_ID,
+				UserId:   USER_ID,
+				TenantId: TENANT_ID,
+				StoreId:  STORE_ID,
 
 				Items: nil,
 			}
@@ -501,10 +451,9 @@ func TestOrderItemServiceImpl(t *testing.T) {
 			assert.Equal(t, "At least one item is required", err.Error())
 
 			invalidParams = &repository.CreateTransactionParams{
-				UserId:                      USER_ID,
-				ResponsibleUserNameSnapshot: "Transaction User",
-				TenantId:                    TENANT_ID,
-				StoreId:                     STORE_ID,
+				UserId:   USER_ID,
+				TenantId: TENANT_ID,
+				StoreId:  STORE_ID,
 
 				Items: []*model.PurchasedItem{},
 			}
@@ -544,10 +493,9 @@ func TestOrderItemServiceImpl(t *testing.T) {
 					},
 				},
 
-				UserId:                      USER_ID,
-				ResponsibleUserNameSnapshot: "Transaction User",
-				TenantId:                    TENANT_ID,
-				StoreId:                     STORE_ID,
+				UserId:   USER_ID,
+				TenantId: TENANT_ID,
+				StoreId:  STORE_ID,
 			}
 
 			transactionDataReturn, err := orderItemService.Transactions(expectedParams, cashServerKey)
@@ -575,10 +523,9 @@ func TestOrderItemServiceImpl(t *testing.T) {
 					},
 				},
 
-				UserId:                      USER_ID,
-				ResponsibleUserNameSnapshot: "Transaction User",
-				TenantId:                    TENANT_ID,
-				StoreId:                     STORE_ID,
+				UserId:   USER_ID,
+				TenantId: TENANT_ID,
+				StoreId:  STORE_ID,
 			}
 
 			transactionDataReturn, err := orderItemService.Transactions(expectedParams, cashServerKey)
@@ -606,10 +553,9 @@ func TestOrderItemServiceImpl(t *testing.T) {
 					},
 				},
 
-				UserId:                      USER_ID,
-				ResponsibleUserNameSnapshot: "Transaction User",
-				TenantId:                    TENANT_ID,
-				StoreId:                     STORE_ID,
+				UserId:   USER_ID,
+				TenantId: TENANT_ID,
+				StoreId:  STORE_ID,
 			}
 
 			transactionDataReturn, err := orderItemService.Transactions(expectedParams, cashServerKey)
@@ -637,10 +583,9 @@ func TestOrderItemServiceImpl(t *testing.T) {
 					},
 				},
 
-				UserId:                      USER_ID,
-				ResponsibleUserNameSnapshot: "Transaction User",
-				TenantId:                    TENANT_ID,
-				StoreId:                     STORE_ID,
+				UserId:   USER_ID,
+				TenantId: TENANT_ID,
+				StoreId:  STORE_ID,
 			}
 
 			transactionDataReturn, err := orderItemService.Transactions(expectedParams, cashServerKey)
@@ -668,10 +613,9 @@ func TestOrderItemServiceImpl(t *testing.T) {
 					},
 				},
 
-				UserId:                      USER_ID,
-				ResponsibleUserNameSnapshot: "Transaction User",
-				TenantId:                    TENANT_ID,
-				StoreId:                     STORE_ID,
+				UserId:   USER_ID,
+				TenantId: TENANT_ID,
+				StoreId:  STORE_ID,
 			}
 
 			transactionDataReturn, err := orderItemService.Transactions(expectedParams, cashServerKey)
@@ -699,10 +643,9 @@ func TestOrderItemServiceImpl(t *testing.T) {
 					},
 				},
 
-				UserId:                      USER_ID,
-				ResponsibleUserNameSnapshot: "Transaction User",
-				TenantId:                    TENANT_ID,
-				StoreId:                     STORE_ID,
+				UserId:   USER_ID,
+				TenantId: TENANT_ID,
+				StoreId:  STORE_ID,
 			}
 
 			transactionDataReturn, err := orderItemService.Transactions(expectedParams, cashServerKey)
@@ -728,10 +671,9 @@ func TestOrderItemServiceImpl(t *testing.T) {
 					},
 				},
 
-				UserId:                      USER_ID,
-				ResponsibleUserNameSnapshot: "Transaction User",
-				TenantId:                    TENANT_ID,
-				StoreId:                     STORE_ID,
+				UserId:   USER_ID,
+				TenantId: TENANT_ID,
+				StoreId:  STORE_ID,
 			}
 
 			transactionDataReturn, err = orderItemService.Transactions(expectedParams, cashServerKey)
@@ -760,10 +702,9 @@ func TestOrderItemServiceImpl(t *testing.T) {
 					},
 				},
 
-				UserId:                      USER_ID,
-				ResponsibleUserNameSnapshot: "Transaction User",
-				TenantId:                    TENANT_ID,
-				StoreId:                     STORE_ID,
+				UserId:   USER_ID,
+				TenantId: TENANT_ID,
+				StoreId:  STORE_ID,
 			}
 
 			transactionDataReturn, err := orderItemService.Transactions(expectedParams, cashServerKey)
@@ -792,10 +733,9 @@ func TestOrderItemServiceImpl(t *testing.T) {
 					},
 				},
 
-				UserId:                      USER_ID,
-				ResponsibleUserNameSnapshot: "Transaction User",
-				TenantId:                    TENANT_ID,
-				StoreId:                     STORE_ID,
+				UserId:   USER_ID,
+				TenantId: TENANT_ID,
+				StoreId:  STORE_ID,
 			}
 
 			transactionDataReturn, err := orderItemService.Transactions(invalidParams, cashServerKey)
@@ -819,16 +759,15 @@ func TestOrderItemServiceImpl(t *testing.T) {
 			}
 
 			expectedParams := &repository.CreateTransactionParams{
-				PurchasedPrice:              10_010_000,
-				TotalQuantity:               1001,
-				TotalAmount:                 10_010_000,
-				DiscountAmount:              0,
-				SubTotal:                    10_010_000,
-				Items:                       items,
-				UserId:                      USER_ID,
-				ResponsibleUserNameSnapshot: "Transaction User",
-				TenantId:                    TENANT_ID,
-				StoreId:                     STORE_ID,
+				PurchasedPrice: 10_010_000,
+				TotalQuantity:  1001,
+				TotalAmount:    10_010_000,
+				DiscountAmount: 0,
+				SubTotal:       10_010_000,
+				Items:          items,
+				UserId:         USER_ID,
+				TenantId:       TENANT_ID,
+				StoreId:        STORE_ID,
 			}
 
 			transactionDataReturn, err := orderItemService.Transactions(expectedParams, cashServerKey)
@@ -852,16 +791,15 @@ func TestOrderItemServiceImpl(t *testing.T) {
 			}
 
 			expectedParams := &repository.CreateTransactionParams{
-				PurchasedPrice:              10_000_000,
-				TotalQuantity:               1000,
-				TotalAmount:                 10_000_000,
-				DiscountAmount:              0,
-				SubTotal:                    10_000_000,
-				Items:                       items,
-				UserId:                      USER_ID,
-				ResponsibleUserNameSnapshot: "Transaction User",
-				TenantId:                    TENANT_ID,
-				StoreId:                     STORE_ID,
+				PurchasedPrice: 10_000_000,
+				TotalQuantity:  1000,
+				TotalAmount:    10_000_000,
+				DiscountAmount: 0,
+				SubTotal:       10_000_000,
+				Items:          items,
+				UserId:         USER_ID,
+				TenantId:       TENANT_ID,
+				StoreId:        STORE_ID,
 			}
 
 			now := time.Now()
@@ -905,10 +843,9 @@ func TestOrderItemServiceImpl(t *testing.T) {
 					},
 				},
 
-				UserId:                      USER_ID,
-				ResponsibleUserNameSnapshot: "Transaction User",
-				TenantId:                    TENANT_ID,
-				StoreId:                     STORE_ID,
+				UserId:   USER_ID,
+				TenantId: TENANT_ID,
+				StoreId:  STORE_ID,
 			}
 
 			now := time.Now()
@@ -943,10 +880,9 @@ func TestOrderItemServiceImpl(t *testing.T) {
 					},
 				},
 
-				UserId:                      USER_ID,
-				ResponsibleUserNameSnapshot: "Transaction User",
-				TenantId:                    TENANT_ID,
-				StoreId:                     STORE_ID,
+				UserId:   USER_ID,
+				TenantId: TENANT_ID,
+				StoreId:  STORE_ID,
 			}
 
 			orderItemRepo.Mock = &mock.Mock{}

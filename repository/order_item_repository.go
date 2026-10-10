@@ -92,10 +92,9 @@ type CreateTransactionParams struct {
 	Items []*model.PurchasedItem `json:"items"`
 
 	// Validation/Context
-	UserId                      int    `json:"user_id"`
-	ResponsibleUserNameSnapshot string `json:"responsible_user_name_snapshot"`
-	TenantId                    int    `json:"tenant_id"`
-	StoreId                     int    `json:"store_id"`
+	UserId   int `json:"user_id"`
+	TenantId int `json:"tenant_id"`
+	StoreId  int `json:"store_id"`
 
 	// unique transaction id
 	TransactionId string `json:"transaction_id"`
@@ -196,8 +195,8 @@ type TransactionDataReturn struct {
 	CashIn                      int                 `json:"purchased_price" gorm:"column:v_purchased_price"`
 	PaymentType                 model.PaymentType   `json:"payment_type" gorm:"-"`
 	PaymentStatus               model.PaymentStatus `json:"payment_status" gorm:"column:v_payment_status"`
-	PaymentToken                string              `json:"payment_token" gorm:"-"`
-	PaymentURL                  string              `json:"payment_url" gorm:"-"`
-	ResponsibleUserId           int                 `json:"responsible_user_id" gorm:"-"`
-	ResponsibleUserNameSnapshot string              `json:"responsible_user_name_snapshot" gorm:"-"`
+	PaymentToken                string              `json:"payment_token" gorm:"column:v_payment_token"`
+	PaymentURL                  string              `json:"payment_url" gorm:"column:v_payment_url"`
+	ResponsibleUserId           int                 `json:"responsible_user_id" gorm:"column:v_responsible_user_id"`
+	ResponsibleUserNameSnapshot string              `json:"responsible_user_name_snapshot" gorm:"column:v_responsible_user_name_snapshot"`
 }

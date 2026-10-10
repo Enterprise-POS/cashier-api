@@ -6,6 +6,7 @@ import (
 	"cashier-api/model"
 	"cashier-api/repository"
 	"cashier-api/service"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -15,6 +16,7 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -139,11 +141,14 @@ func TestUserControllerImpl(t *testing.T) {
 		})
 
 		t.Run("InputMalformed", func(t *testing.T) {
-			body := strings.NewReader(`{
-				"email": "testusercontroller_sign_up_input_malformed@gmail.com",
-				"password": "12345678",
-				"name": "Test User",,
-			}`)
+			userEmail := fmt.Sprintf("testusercontroller_sign_up_input_malformed%s@gmail.com", uuid.NewString())
+			body := strings.NewReader(fmt.Sprintf(
+				`{
+					"email": %s,
+					"password": "12345678",
+					"name": "Test User",,
+				}`,
+				userEmail))
 			request := httptest.NewRequest("POST", "/users/sign_up", body)
 			request.Header.Set("Content-Type", "application/json")
 			response, err := app.Test(request, int(time.Second*5))
