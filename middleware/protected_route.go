@@ -40,24 +40,24 @@ func ProtectedRoute(ctx *fiber.Ctx) error {
 
 	if err != nil {
 		log.Warnf("Malformed JWT detected, reason: %s", err.Error())
-		return ctx.Status(fiber.StatusBadRequest).
-			JSON(common.NewWebResponseError(400, common.StatusError, fmt.Sprintf("JWT malformed, Please try sign in again. reason: %s", err.Error())))
+		return ctx.Status(fiber.StatusUnauthorized).
+			JSON(common.NewWebResponseError(401, common.StatusError, fmt.Sprintf("JWT malformed, Please try sign in again. reason: %s", err.Error())))
 	}
 	if !token.Valid {
 		log.Warn("Invalid token detected")
-		return ctx.Status(fiber.StatusBadRequest).
-			JSON(common.NewWebResponseError(400, common.StatusError, "JWT malformed, Please try sign in again."))
+		return ctx.Status(fiber.StatusUnauthorized).
+			JSON(common.NewWebResponseError(401, common.StatusError, "JWT malformed, Please try sign in again."))
 	}
 
 	sub, ok := claims["sub"].(float64)
 	if !ok {
-		return ctx.Status(fiber.StatusBadRequest).
-			JSON(common.NewWebResponseError(400, common.StatusError, "Unexpected behavior ! JWT body contain invalid value"))
+		return ctx.Status(fiber.StatusUnauthorized).
+			JSON(common.NewWebResponseError(401, common.StatusError, "Unexpected behavior ! JWT body contain invalid value"))
 	}
 	exp, ok := claims["exp"].(float64)
 	if !ok {
-		return ctx.Status(fiber.StatusBadRequest).
-			JSON(common.NewWebResponseError(400, common.StatusError, "Unexpected behavior ! JWT body contain invalid value (2)"))
+		return ctx.Status(fiber.StatusUnauthorized).
+			JSON(common.NewWebResponseError(401, common.StatusError, "Unexpected behavior ! JWT body contain invalid value (2)"))
 	}
 
 	// Store valuable data to send to next handler
