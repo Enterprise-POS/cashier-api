@@ -118,7 +118,7 @@ func TestProtectedRoute(t *testing.T) {
 
 		bytes, err = io.ReadAll(response.Body)
 		require.Nil(t, err)
-		assert.Equal(t, http.StatusBadRequest, response.StatusCode)
+		assert.Equal(t, http.StatusUnauthorized, response.StatusCode)
 		assert.Contains(t, string(bytes), "token has invalid claims: token is expired")
 
 		err = gormClient.Delete(&model.User{Id: int(userId)}).Error
