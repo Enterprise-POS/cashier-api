@@ -49,7 +49,7 @@ func (controller *OrderItemControllerImpl) Get(ctx *fiber.Ctx) error {
 	id, ok := sub.(int)
 	if !ok {
 		return ctx.Status(fiber.StatusBadRequest).
-			JSON(common.NewWebResponseError(401, common.StatusError, "Unexpected behavior ! could not get the id"))
+			JSON(common.NewWebResponseError(400, common.StatusError, "Unexpected behavior ! could not get the id"))
 	}
 
 	var body OrderItemControllerGetRequest
