@@ -231,6 +231,37 @@ func TestCategoryRepository(t *testing.T) {
 			}
 		})
 
+		t.Run("FilterByUnsetCategory", func(t *testing.T) {
+			tx := gormClient.Begin()
+			defer tx.Rollback()
+
+			tenantId, _, _ := seedOrderItemTestDependencies(t, tx, "category_getcategorywithitems_unsetcategory@example.com", "Category GetCategoryWithItems UnsetCategory")
+			categoryRepositoryImpl := NewCategoryRepositoryImpl(tx)
+			seedCategoryWithItemsFixture(t, tx, tenantId)
+
+			unassignedItem := &model.Item{
+				ItemName:  "Unassigned_" + uuid.NewString(),
+				Stocks:    10,
+				BasePrice: 4000,
+				TenantId:  tenantId,
+				IsActive:  true,
+				StockType: model.StockTypeTracked,
+			}
+			createdItems, err := NewWarehouseRepositoryImpl(tx).CreateItem([]*model.Item{unassignedItem})
+			require.NoError(t, err)
+			require.Len(t, createdItems, 1)
+
+			categoryWithItemFromDB, count, err := categoryRepositoryImpl.GetCategoryWithItems(
+				tenantId, 0, 10, "", -1, []query.QueryFilter{},
+			)
+			assert.NoError(t, err)
+			assert.Equal(t, 1, count)
+			require.Len(t, categoryWithItemFromDB, 1)
+			assert.Equal(t, createdItems[0].ItemId, categoryWithItemFromDB[0].ItemId)
+			assert.Zero(t, categoryWithItemFromDB[0].CategoryId)
+			assert.Empty(t, categoryWithItemFromDB[0].CategoryName)
+		})
+
 		t.Run("OrderByFilterAscending", func(t *testing.T) {
 			tx := gormClient.Begin()
 			defer tx.Rollback()

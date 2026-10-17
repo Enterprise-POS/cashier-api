@@ -11,6 +11,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 )
 
 func TestCategoryServiceImpl(t *testing.T) {
@@ -434,6 +435,29 @@ func TestCategoryServiceImpl(t *testing.T) {
 				assert.Equal(t, expectedCategoryWithItems[i].ItemName, categoryWithItem.ItemName)
 				assert.Equal(t, expectedCategoryWithItems[i].Stocks, categoryWithItem.Stocks)
 			}
+		})
+
+		t.Run("GetUnsetCategoryItems", func(t *testing.T) {
+			categoryRepository.Mock = &mock.Mock{}
+			expectedCategoryWithItems := []*model.CategoryWithItem{
+				{
+					CategoryId:   0,
+					CategoryName: "",
+					ItemId:       3,
+					ItemName:     "Uncategorized item",
+					Stocks:       10,
+				},
+			}
+
+			categoryRepository.Mock.
+				On("GetCategoryWithItems", tenantId, page-1, limit, "", -1, []query.QueryFilter{}).
+				Return(expectedCategoryWithItems, len(expectedCategoryWithItems), nil)
+
+			categoryWithItems, count, err := categoryService.GetCategoryWithItems(tenantId, page, limit, "", -1, []query.QueryFilter{})
+			assert.NoError(t, err)
+			assert.Equal(t, 1, count)
+			require.Len(t, categoryWithItems, 1)
+			assert.Equal(t, expectedCategoryWithItems[0], categoryWithItems[0])
 		})
 
 		t.Run("ReturnNothing", func(t *testing.T) {

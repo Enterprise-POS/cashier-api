@@ -190,7 +190,9 @@ func (service *CategoryServiceImpl) GetCategoryWithItems(tenantId int, page int,
 		return nil, 0, fmt.Errorf("Invalid searching by name: %s", nameQuery)
 	}
 
-	if categoryId < 0 {
+	// 0 = No specific category filtered
+	// -1 = Unset category item will be returned
+	if categoryId < -1 {
 		return nil, 0, fmt.Errorf("Invalid category id input: %d", categoryId)
 	}
 
