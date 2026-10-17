@@ -94,6 +94,14 @@ func (repository *CategoryRepositoryImpl) GetCategoryWithItems(
 
 	if categoryId > 0 {
 		db = db.Where("category_mtm_warehouse.category_id = ?", categoryId)
+	} else if categoryId == -1 {
+		/*
+			LEFT JOIN category_mtm_warehouse ON ... item_id = warehouse.item_id,
+			every warehouse item is kept. If an item has no row in the mapping table,
+			all category_mtm_warehouse.* columns come back NULL.
+			Checking category_mtm_warehouse.item_id IS NULL (or category_mtm_warehouse.category_id IS NULL) filters to exactly those items.
+		*/
+		db = db.Where("category_mtm_warehouse.category_id IS NULL")
 	}
 
 	// Apply filter

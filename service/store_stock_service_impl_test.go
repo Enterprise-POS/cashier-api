@@ -11,6 +11,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 )
 
 func TestStoreStockServiceImpl(t *testing.T) {
@@ -138,7 +139,7 @@ func TestStoreStockServiceImpl(t *testing.T) {
 			}
 
 			storeStockRepository.Mock.
-				On("GetV2", testTenantId, testStoreId, limit, page-1).
+				On("GetV2", testTenantId, testStoreId, limit, page-1, "", 0, []*query.QueryFilter{}).
 				Return(expectedStoreStocks, len(expectedStoreStocks), nil)
 			storeStocks, count, err := storeStockService.GetV2(testTenantId, testStoreId, limit, page, "", 0, []*query.QueryFilter{})
 			assert.NoError(t, err)
@@ -150,6 +151,30 @@ func TestStoreStockServiceImpl(t *testing.T) {
 					expectedStoreStocks[1].Id},
 					storeStock.Id)
 			}
+		})
+
+		t.Run("GetUnsetCategoryItems", func(t *testing.T) {
+			storeStockRepository.Mock = &mock.Mock{}
+			expectedStoreStocks := []*model.StoreStockV2{
+				{
+					Id:         3,
+					Stocks:     5,
+					Price:      12000,
+					ItemId:     3,
+					ItemName:   "Uncategorized item",
+					CategoryId: 0,
+				},
+			}
+
+			storeStockRepository.Mock.
+				On("GetV2", testTenantId, testStoreId, limit, page-1, "", -1, []*query.QueryFilter{}).
+				Return(expectedStoreStocks, len(expectedStoreStocks), nil)
+
+			storeStocks, count, err := storeStockService.GetV2(testTenantId, testStoreId, limit, page, "", -1, []*query.QueryFilter{})
+			assert.NoError(t, err)
+			assert.Equal(t, 1, count)
+			require.Len(t, storeStocks, 1)
+			assert.Equal(t, expectedStoreStocks[0], storeStocks[0])
 		})
 
 		t.Run("InvalidParam", func(t *testing.T) {

@@ -66,7 +66,7 @@ func (repository *StoreStockRepositoryImpl) GetV2(
 			q = q.Where("LOWER(warehouse.item_name) LIKE LOWER(?)", "%"+nameQuery+"%")
 		}
 
-		if categoryId != 0 {
+		if categoryId > 0 {
 			q = q.Where("category_mtm_warehouse.category_id = ?", categoryId)
 		} else if categoryId == -1 {
 			q = q.Where("category_mtm_warehouse.category_id IS NULL")

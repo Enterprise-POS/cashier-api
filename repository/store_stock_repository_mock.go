@@ -28,7 +28,7 @@ func (repository *StoreStockRepositoryMock) Get(tenantId int, storeId int, limit
 
 // GetV2 implements StoreStockRepository.
 func (repository *StoreStockRepositoryMock) GetV2(tenantId int, storeId int, limit int, page int, nameQuery string, categoryId int, queryFilters []*query.QueryFilter) ([]*model.StoreStockV2, int, error) {
-	args := repository.Mock.Called(tenantId, storeId, limit, page)
+	args := repository.Mock.Called(tenantId, storeId, limit, page, nameQuery, categoryId, queryFilters)
 
 	if args.Get(0) == nil {
 		return nil, 0, args.Error(2)
