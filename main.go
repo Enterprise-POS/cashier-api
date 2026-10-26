@@ -11,8 +11,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/middleware/cors"
+	"github.com/gofiber/fiber/v3"
+	"github.com/gofiber/fiber/v3/middleware/cors"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -35,12 +35,10 @@ func init() {
 func main() {
 	// 01 Set up the fiber and database
 	app := fiber.New(fiber.Config{
-		IdleTimeout:             time.Second * 5,
-		ReadTimeout:             time.Second * 5,
-		WriteTimeout:            time.Second * 5,
-		Prefork:                 false,
-		EnableTrustedProxyCheck: true,
-		ErrorHandler:            exception.ErrorHandler,
+		IdleTimeout:  time.Second * 5,
+		ReadTimeout:  time.Second * 5,
+		WriteTimeout: time.Second * 5, TrustProxy: true,
+		ErrorHandler: exception.ErrorHandler,
 	})
 
 	// DB client
@@ -51,10 +49,10 @@ func main() {
 
 	// 02 Middleware, Security
 	app.Use(cors.New(cors.Config{
-		AllowOrigins:     "http://localhost:3000, https://enterprisepos.vercel.app",
+		AllowOrigins:     []string{"http://localhost:3000", "https://enterprisepos.vercel.app"},
 		AllowCredentials: true,
-		AllowHeaders:     "Origin, Content-Type, Cookie, Authorization",
-		AllowMethods:     "GET, POST, PUT, DELETE",
+		AllowHeaders:     []string{"Origin", "Content-Type", "Cookie", "Authorization"},
+		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE"},
 	}))
 	app.Use(middleware.RequestDebug())
 
@@ -65,7 +63,7 @@ func main() {
 	// 03 Router (grouping by /api/v1)
 	apiV1 := app.Group("/api/v1")
 
-	apiV1.Get("/", func(ctx *fiber.Ctx) error {
+	apiV1.Get("/", func(ctx fiber.Ctx) error {
 		return ctx.Status(fiber.StatusOK).
 			JSON(common.NewWebResponse(200, common.StatusSuccess, fiber.Map{
 				"message": "Welcome to API Gateway",
@@ -174,7 +172,7 @@ func main() {
 	apiV1.Post("/purchased_item_list/logs/:tenantId", tenantRestriction, purchasedItemController.PurchasedItemListLogs)
 
 	// Handle route not found (404)
-	app.All("*", func(ctx *fiber.Ctx) error {
+	app.All("*", func(ctx fiber.Ctx) error {
 		return ctx.Status(fiber.StatusNotFound).
 			JSON(common.NewWebResponseError(fiber.StatusNotFound, common.StatusError, "Route for "+string(ctx.Request().RequestURI())+" not found"))
 	})
@@ -187,7 +185,7 @@ func main() {
 
 	// The application began to listen to HTTP request
 	log.Info("Start listening at " + url)
-	err := app.Listen(url)
+	err := app.Listen(url, fiber.ListenConfig{EnablePrefork: false})
 	if err != nil {
 		panic(err)
 	}
