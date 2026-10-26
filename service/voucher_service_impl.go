@@ -95,7 +95,7 @@ func (service *VoucherServiceImpl) CreateVoucher(voucher *model.Voucher) (*model
 
 	createdVoucher, err := service.Repository.CreateVoucher(voucher)
 	if err != nil {
-		return nil, service.handleVoucherRepositoryError("create", err)
+		return nil, service.handleVoucherRepositoryError("create", voucher.TenantId, err)
 	}
 
 	return createdVoucher, nil
@@ -117,7 +117,7 @@ func (service *VoucherServiceImpl) DeleteVoucher(voucherId, tenantId int) error 
 		}
 	}
 	if err != nil {
-		return service.handleVoucherRepositoryError("delete", err)
+		return service.handleVoucherRepositoryError("delete", tenantId, err)
 	}
 
 	return nil
@@ -164,7 +164,7 @@ func (service *VoucherServiceImpl) UseVoucher(tenantId int, code string, items [
 				Message: "Voucher not found.",
 			}
 		}
-		return 0, 0, 0, service.handleVoucherRepositoryError("find", err)
+		return 0, 0, 0, service.handleVoucherRepositoryError("find", tenantId, err)
 	}
 	if voucher == nil {
 		return 0, 0, 0, errors.New("Voucher not found")
@@ -197,16 +197,17 @@ func (service *VoucherServiceImpl) UseVoucher(tenantId int, code string, items [
 				Message: "Voucher usage limit has been reached or the voucher is no longer available.",
 			}
 		}
-		return 0, 0, 0, service.handleVoucherRepositoryError("increment usage", err)
+		return 0, 0, 0, service.handleVoucherRepositoryError("increment usage", tenantId, err)
 	}
 
 	return totalPrice, discountPrice, totalPrice - discountPrice, nil
 }
 
-func (service *VoucherServiceImpl) handleVoucherRepositoryError(operation string, err error) error {
+func (service *VoucherServiceImpl) handleVoucherRepositoryError(operation string, tenantId int, err error) error {
 	fields := log.Fields{
 		"operation": operation,
 		"component": "voucher_service",
+		"tenant_id": tenantId,
 	}
 
 	var postgresError *pgconn.PgError

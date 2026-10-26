@@ -33,7 +33,7 @@ func (controller *VoucherControllerImpl) Create(ctx fiber.Ctx) error {
 
 	createdVoucher, err := controller.Service.CreateVoucher(&voucher)
 	if err != nil {
-		return voucherServiceErrorResponse(ctx, "create", err)
+		return voucherServiceErrorResponse(ctx, "create", tenantId, err)
 	}
 
 	return ctx.Status(fiber.StatusCreated).
@@ -56,7 +56,7 @@ func (controller *VoucherControllerImpl) Delete(ctx fiber.Ctx) error {
 	}
 
 	if err := controller.Service.DeleteVoucher(voucherId, tenantId); err != nil {
-		return voucherServiceErrorResponse(ctx, "delete", err)
+		return voucherServiceErrorResponse(ctx, "delete", tenantId, err)
 	}
 
 	return ctx.SendStatus(fiber.StatusNoContent)
@@ -78,7 +78,7 @@ func (controller *VoucherControllerImpl) Use(ctx fiber.Ctx) error {
 
 	beforeDiscountPrice, discountPrice, afterDiscountPrice, err := controller.Service.UseVoucher(tenantId, body.Code, body.Items)
 	if err != nil {
-		return voucherServiceErrorResponse(ctx, "use", err)
+		return voucherServiceErrorResponse(ctx, "use", tenantId, err)
 	}
 
 	return ctx.Status(fiber.StatusOK).
@@ -104,13 +104,14 @@ func voucherRequestError(ctx fiber.Ctx, operation string, err error, message str
 	log.WithFields(log.Fields{
 		"component": "voucher_controller",
 		"operation": operation,
+		"tenant_id": ctx.Params("tenantId"),
 	}).WithError(err).Warn("Invalid voucher request")
 
 	return ctx.Status(fiber.StatusBadRequest).
 		JSON(common.NewWebResponseError(fiber.StatusBadRequest, common.StatusError, message))
 }
 
-func voucherServiceErrorResponse(ctx fiber.Ctx, operation string, err error) error {
+func voucherServiceErrorResponse(ctx fiber.Ctx, operation string, tenantId int, err error) error {
 	statusCode := fiber.StatusBadRequest
 	message := err.Error()
 	logLevel := log.WarnLevel
@@ -135,6 +136,7 @@ func voucherServiceErrorResponse(ctx fiber.Ctx, operation string, err error) err
 		"component": "voucher_controller",
 		"operation": operation,
 		"status":    statusCode,
+		"tenant_id": tenantId,
 	})
 	if logLevel == log.ErrorLevel {
 		logger.WithError(err).Error("Voucher request failed")
