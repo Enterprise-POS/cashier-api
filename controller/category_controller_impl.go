@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 type CategoryControllerImpl struct {
@@ -20,7 +20,7 @@ func NewCategoryControllerImpl(service service.CategoryService) CategoryControll
 }
 
 // Create implements CategoryController.
-func (controller *CategoryControllerImpl) Create(ctx *fiber.Ctx) error {
+func (controller *CategoryControllerImpl) Create(ctx fiber.Ctx) error {
 	// It's guaranteed to be not "", because restrict by tenant already did check first
 	tenantId, _ := strconv.Atoi(ctx.Params("tenantId"))
 
@@ -28,7 +28,7 @@ func (controller *CategoryControllerImpl) Create(ctx *fiber.Ctx) error {
 		Categories []string `json:"categories"`
 	}
 	var body RequestBody
-	err := ctx.BodyParser(&body)
+	err := ctx.Bind().Body(&body)
 	if err != nil {
 		return ctx.Status(fiber.StatusBadRequest).
 			JSON(common.NewWebResponseError(400, common.StatusError, "Something gone wrong ! The request body is malformed"))
@@ -47,7 +47,7 @@ func (controller *CategoryControllerImpl) Create(ctx *fiber.Ctx) error {
 }
 
 // Get implements CategoryController.
-func (controller *CategoryControllerImpl) Get(ctx *fiber.Ctx) error {
+func (controller *CategoryControllerImpl) Get(ctx fiber.Ctx) error {
 	paramLimit := ctx.Query("limit", "5")    // default 5
 	paramPage := ctx.Query("page", "1")      // default 1
 	nameQuery := ctx.Query("name_query", "") // default "" (empty string)
@@ -86,7 +86,7 @@ func (controller *CategoryControllerImpl) Get(ctx *fiber.Ctx) error {
 }
 
 // Register implements CategoryController.
-func (controller *CategoryControllerImpl) Register(ctx *fiber.Ctx) error {
+func (controller *CategoryControllerImpl) Register(ctx fiber.Ctx) error {
 	type BodyCategories struct {
 		CategoryId int `json:"category_id"`
 		ItemId     int `json:"item_id"`
@@ -97,7 +97,7 @@ func (controller *CategoryControllerImpl) Register(ctx *fiber.Ctx) error {
 	}
 
 	var body RequestBody
-	err := ctx.BodyParser(&body)
+	err := ctx.Bind().Body(&body)
 	if err != nil {
 		return ctx.Status(fiber.StatusBadRequest).
 			JSON(common.NewWebResponseError(400, common.StatusError, "Something gone wrong ! The request body is malformed"))
@@ -127,12 +127,12 @@ func (controller *CategoryControllerImpl) Register(ctx *fiber.Ctx) error {
 }
 
 // Unregister implements CategoryController.
-func (controller *CategoryControllerImpl) Unregister(ctx *fiber.Ctx) error {
+func (controller *CategoryControllerImpl) Unregister(ctx fiber.Ctx) error {
 	var body struct {
 		CategoryId int `json:"category_id"`
 		ItemId     int `json:"item_id"`
 	}
-	err := ctx.BodyParser(&body)
+	err := ctx.Bind().Body(&body)
 	if err != nil {
 		return ctx.Status(fiber.StatusBadRequest).
 			JSON(common.NewWebResponseError(400, common.StatusError, "Something gone wrong ! The request body is malformed"))
@@ -148,12 +148,12 @@ func (controller *CategoryControllerImpl) Unregister(ctx *fiber.Ctx) error {
 }
 
 // EditItemCategory implements CategoryController.
-func (controller *CategoryControllerImpl) EditItemCategory(ctx *fiber.Ctx) error {
+func (controller *CategoryControllerImpl) EditItemCategory(ctx fiber.Ctx) error {
 	var body struct {
 		CategoryId int `json:"category_id"`
 		ItemId     int `json:"item_id"`
 	}
-	err := ctx.BodyParser(&body)
+	err := ctx.Bind().Body(&body)
 	if err != nil {
 		return ctx.Status(fiber.StatusBadRequest).
 			JSON(common.NewWebResponseError(400, common.StatusError, "Something gone wrong ! The request body is malformed"))
@@ -175,13 +175,13 @@ func (controller *CategoryControllerImpl) EditItemCategory(ctx *fiber.Ctx) error
 }
 
 // Update implements CategoryController.
-func (controller *CategoryControllerImpl) Update(ctx *fiber.Ctx) error {
+func (controller *CategoryControllerImpl) Update(ctx fiber.Ctx) error {
 	var body struct {
 		CategoryId   int    `json:"category_id"`
 		CategoryName string `json:"category_name"`
 	}
 
-	err := ctx.BodyParser(&body)
+	err := ctx.Bind().Body(&body)
 	if err != nil {
 		return ctx.Status(fiber.StatusBadRequest).
 			JSON(common.NewWebResponseError(400, common.StatusError, "Something gone wrong ! The request body is malformed"))
@@ -202,12 +202,12 @@ func (controller *CategoryControllerImpl) Update(ctx *fiber.Ctx) error {
 }
 
 // Delete implements CategoryController.
-func (controller *CategoryControllerImpl) Delete(ctx *fiber.Ctx) error {
+func (controller *CategoryControllerImpl) Delete(ctx fiber.Ctx) error {
 	var body struct {
 		CategoryId int `json:"category_id"`
 	}
 
-	err := ctx.BodyParser(&body)
+	err := ctx.Bind().Body(&body)
 	if err != nil {
 		return ctx.Status(fiber.StatusBadRequest).
 			JSON(common.NewWebResponseError(400, common.StatusError, "Something gone wrong ! The request body is malformed"))
@@ -229,7 +229,7 @@ func (controller *CategoryControllerImpl) Delete(ctx *fiber.Ctx) error {
 }
 
 // GetItemsByCategoryId implements CategoryController.
-func (controller *CategoryControllerImpl) GetItemsByCategoryId(ctx *fiber.Ctx) error {
+func (controller *CategoryControllerImpl) GetItemsByCategoryId(ctx fiber.Ctx) error {
 	// It will be POST method so URL param will not use here
 	var body struct {
 		CategoryId int `json:"category_id"`
@@ -237,7 +237,7 @@ func (controller *CategoryControllerImpl) GetItemsByCategoryId(ctx *fiber.Ctx) e
 		Limit      int `json:"limit"`
 	}
 
-	err := ctx.BodyParser(&body)
+	err := ctx.Bind().Body(&body)
 	if err != nil {
 		return ctx.Status(fiber.StatusBadRequest).
 			JSON(common.NewWebResponseError(400, common.StatusError, "Something gone wrong ! The request body is malformed"))
@@ -261,7 +261,7 @@ func (controller *CategoryControllerImpl) GetItemsByCategoryId(ctx *fiber.Ctx) e
 }
 
 // GetCategoryWithItems implements CategoryController.
-func (controller *CategoryControllerImpl) GetCategoryWithItems(ctx *fiber.Ctx) error {
+func (controller *CategoryControllerImpl) GetCategoryWithItems(ctx fiber.Ctx) error {
 	// It will be POST method so URL param will not use here
 	var body struct {
 		Page       int                 `json:"page"`
@@ -271,7 +271,7 @@ func (controller *CategoryControllerImpl) GetCategoryWithItems(ctx *fiber.Ctx) e
 		Filters    []query.QueryFilter `json:"filters"`
 	}
 
-	err := ctx.BodyParser(&body)
+	err := ctx.Bind().Body(&body)
 	if err != nil {
 		return ctx.Status(fiber.StatusBadRequest).
 			JSON(common.NewWebResponseError(400, common.StatusError, "Something gone wrong ! The request body is malformed"))

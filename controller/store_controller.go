@@ -1,25 +1,25 @@
 package controller
 
-import "github.com/gofiber/fiber/v2"
+import "github.com/gofiber/fiber/v3"
 
 type StoreController interface {
 	/*
 		Get All store, and filter available either active / non active only
 	*/
-	GetAll(ctx *fiber.Ctx) error
+	GetAll(ctx fiber.Ctx) error
 
 	/*
 		Create new store
 	*/
-	Create(ctx *fiber.Ctx) error
+	Create(ctx fiber.Ctx) error
 
 	/*
 		Either set to active / non-active
 	*/
-	SetActivate(ctx *fiber.Ctx) error
+	SetActivate(ctx fiber.Ctx) error
 
 	/*
 		Edit store properties, example name
 	*/
-	Edit(ctx *fiber.Ctx) error
+	Edit(ctx fiber.Ctx) error
 }

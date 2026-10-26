@@ -3,11 +3,11 @@ package exception
 import (
 	common "cashier-api/helper"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	log "github.com/sirupsen/logrus"
 )
 
-func ErrorHandler(ctx *fiber.Ctx, err error) error {
+func ErrorHandler(ctx fiber.Ctx, err error) error {
 	code := 500
 	message := "internal server error"
 
