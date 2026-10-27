@@ -32,7 +32,7 @@ type Voucher struct {
 	// No.1 'FROM_TOTAL_LIMITED_PERCENTAGE'
 	Percentage       int    `json:"percentage" gorm:"column:percentage"`
 	MaximumDecrement int    `json:"maximum_decrement" gorm:"column:maximum_decrement"`
-	RoundingPolicy   string `json:"rounding_policy" gorm:"column:rounding_policy"`
+	RoundingPolicy   string `json:"rounding_policy" gorm:"column:rounding_policy"` // By default will be ROUND
 
 	// No.2 'FROM_TOTAL_LIMITED_STATIC_DECREMENT'
 	Decrement int

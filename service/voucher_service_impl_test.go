@@ -1,6 +1,7 @@
 package service
 
 import (
+	"cashier-api/exception"
 	"cashier-api/model"
 	"errors"
 	"strings"
@@ -79,9 +80,9 @@ func TestVoucherServiceImpl(t *testing.T) {
 
 			created, err := service.CreateVoucher(newPercentageVoucher("SAVE10"))
 			assert.Nil(t, created)
-			var voucherError *VoucherServiceError
+			var voucherError *exception.VoucherServiceError
 			require.ErrorAs(t, err, &voucherError)
-			assert.Equal(t, VoucherServiceErrorConflict, voucherError.Kind)
+			assert.Equal(t, exception.VoucherServiceErrorConflict, voucherError.Kind)
 			assert.Equal(t, "A voucher with conflicting information already exists.", voucherError.Error())
 			assert.NotContains(t, voucherError.Error(), databaseError.Message)
 		})
@@ -331,9 +332,9 @@ func TestVoucherServiceImpl(t *testing.T) {
 			_, _, _, err := service.UseVoucher(7, "SAVE10", []*model.Item{
 				{ItemId: 1, TenantId: 7, BasePrice: 500},
 			})
-			var voucherError *VoucherServiceError
+			var voucherError *exception.VoucherServiceError
 			require.ErrorAs(t, err, &voucherError)
-			assert.Equal(t, VoucherServiceErrorInternal, voucherError.Kind)
+			assert.Equal(t, exception.VoucherServiceErrorInternal, voucherError.Kind)
 			assert.NotContains(t, err.Error(), wantErr.Error())
 			assert.Zero(t, repository.incrementCalls)
 		})

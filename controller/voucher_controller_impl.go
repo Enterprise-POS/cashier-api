@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"cashier-api/exception"
 	common "cashier-api/helper"
 	"cashier-api/model"
 	"cashier-api/service"
@@ -116,17 +117,17 @@ func voucherServiceErrorResponse(ctx fiber.Ctx, operation string, tenantId int, 
 	message := err.Error()
 	logLevel := log.WarnLevel
 
-	var voucherError *service.VoucherServiceError
+	var voucherError *exception.VoucherServiceError
 	if errors.As(err, &voucherError) {
 		switch voucherError.Kind {
-		case service.VoucherServiceErrorNotFound:
+		case exception.VoucherServiceErrorNotFound:
 			statusCode = fiber.StatusNotFound
-		case service.VoucherServiceErrorConflict:
+		case exception.VoucherServiceErrorConflict:
 			statusCode = fiber.StatusConflict
-		case service.VoucherServiceErrorUnavailable:
+		case exception.VoucherServiceErrorUnavailable:
 			statusCode = fiber.StatusServiceUnavailable
 			logLevel = log.ErrorLevel
-		case service.VoucherServiceErrorInternal:
+		case exception.VoucherServiceErrorInternal:
 			statusCode = fiber.StatusInternalServerError
 			logLevel = log.ErrorLevel
 		}

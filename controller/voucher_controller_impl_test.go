@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"cashier-api/exception"
 	"cashier-api/model"
 	"cashier-api/service"
 	"encoding/json"
@@ -47,8 +48,8 @@ func TestVoucherControllerCreate(t *testing.T) {
 	t.Run("ReturnsSafeMessageForDatabaseFailure", func(t *testing.T) {
 		serviceMock := new(mock.Mock)
 		serviceMock.On("CreateVoucher", mock.AnythingOfType("*model.Voucher")).
-			Return(nil, &service.VoucherServiceError{
-				Kind:    service.VoucherServiceErrorInternal,
+			Return(nil, &exception.VoucherServiceError{
+				Kind:    exception.VoucherServiceErrorInternal,
 				Message: "Unable to complete the voucher request. Please try again later.",
 			}).Once()
 		app := fiber.New()

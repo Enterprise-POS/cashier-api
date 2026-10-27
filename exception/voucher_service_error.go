@@ -1,4 +1,4 @@
-package service
+package exception
 
 type VoucherServiceErrorKind string
 

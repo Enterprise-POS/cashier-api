@@ -1,6 +1,7 @@
 package service
 
 import (
+	"cashier-api/exception"
 	"cashier-api/model"
 	"cashier-api/repository"
 	"errors"
@@ -62,6 +63,11 @@ func (service *VoucherServiceImpl) CreateVoucher(voucher *model.Voucher) (*model
 		return nil, errors.New("Voucher end_at must be after start_at")
 	}
 
+	// This is default value even the user not specified anything
+	if voucher.RoundingPolicy == "" {
+		voucher.RoundingPolicy = "ROUND"
+	}
+
 	switch voucher.VoucherType {
 	case model.FROM_TOTAL_LIMITED_PERCENTAGE:
 		if voucher.Percentage < 1 || voucher.Percentage > 100 {
@@ -111,8 +117,8 @@ func (service *VoucherServiceImpl) DeleteVoucher(voucherId, tenantId int) error 
 
 	err := service.Repository.DeleteVoucher(voucherId, tenantId)
 	if errors.Is(err, repository.ErrVoucherNotFound) {
-		return &VoucherServiceError{
-			Kind:    VoucherServiceErrorNotFound,
+		return &exception.VoucherServiceError{
+			Kind:    exception.VoucherServiceErrorNotFound,
 			Message: "Voucher not found.",
 		}
 	}
@@ -159,8 +165,8 @@ func (service *VoucherServiceImpl) UseVoucher(tenantId int, code string, items [
 	voucher, err := service.Repository.FindVoucherByCode(code, tenantId)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return 0, 0, 0, &VoucherServiceError{
-				Kind:    VoucherServiceErrorNotFound,
+			return 0, 0, 0, &exception.VoucherServiceError{
+				Kind:    exception.VoucherServiceErrorNotFound,
 				Message: "Voucher not found.",
 			}
 		}
@@ -192,8 +198,8 @@ func (service *VoucherServiceImpl) UseVoucher(tenantId int, code string, items [
 	}
 	if err := service.Repository.IncrementVoucherUsedCount(voucher.Id, tenantId); err != nil {
 		if errors.Is(err, repository.ErrVoucherUsageUnavailable) {
-			return 0, 0, 0, &VoucherServiceError{
-				Kind:    VoucherServiceErrorConflict,
+			return 0, 0, 0, &exception.VoucherServiceError{
+				Kind:    exception.VoucherServiceErrorConflict,
 				Message: "Voucher usage limit has been reached or the voucher is no longer available.",
 			}
 		}
@@ -218,55 +224,55 @@ func (service *VoucherServiceImpl) handleVoucherRepositoryError(operation string
 
 		switch postgresError.Code {
 		case "23505":
-			return &VoucherServiceError{
-				Kind:    VoucherServiceErrorConflict,
+			return &exception.VoucherServiceError{
+				Kind:    exception.VoucherServiceErrorConflict,
 				Message: "A voucher with conflicting information already exists.",
 			}
 		case "23503":
-			return &VoucherServiceError{
-				Kind:    VoucherServiceErrorValidation,
+			return &exception.VoucherServiceError{
+				Kind:    exception.VoucherServiceErrorValidation,
 				Message: "One or more referenced records do not exist.",
 			}
 		case "23P01":
-			return &VoucherServiceError{
-				Kind:    VoucherServiceErrorConflict,
+			return &exception.VoucherServiceError{
+				Kind:    exception.VoucherServiceErrorConflict,
 				Message: "Voucher data conflicts with an existing record.",
 			}
 		case "23502", "23514", "22001", "22P02":
-			return &VoucherServiceError{
-				Kind:    VoucherServiceErrorValidation,
+			return &exception.VoucherServiceError{
+				Kind:    exception.VoucherServiceErrorValidation,
 				Message: "Voucher data is invalid. Please check the submitted fields.",
 			}
 		case "40001", "40P01":
-			return &VoucherServiceError{
-				Kind:    VoucherServiceErrorConflict,
+			return &exception.VoucherServiceError{
+				Kind:    exception.VoucherServiceErrorConflict,
 				Message: "The voucher could not be updated due to a concurrent request. Please try again.",
 			}
 		case "08000", "08003", "08006", "08001", "08004", "08007", "08P01",
 			"53300", "57P01", "57P02", "57P03", "57014":
-			return &VoucherServiceError{
-				Kind:    VoucherServiceErrorUnavailable,
+			return &exception.VoucherServiceError{
+				Kind:    exception.VoucherServiceErrorUnavailable,
 				Message: "Voucher service is temporarily unavailable. Please try again later.",
 			}
 		default:
 			if strings.HasPrefix(postgresError.Code, "08") ||
 				strings.HasPrefix(postgresError.Code, "53") ||
 				strings.HasPrefix(postgresError.Code, "57") {
-				return &VoucherServiceError{
-					Kind:    VoucherServiceErrorUnavailable,
+				return &exception.VoucherServiceError{
+					Kind:    exception.VoucherServiceErrorUnavailable,
 					Message: "Voucher service is temporarily unavailable. Please try again later.",
 				}
 			}
-			return &VoucherServiceError{
-				Kind:    VoucherServiceErrorInternal,
+			return &exception.VoucherServiceError{
+				Kind:    exception.VoucherServiceErrorInternal,
 				Message: "Unable to complete the voucher request. Please try again later.",
 			}
 		}
 	}
 
 	log.WithFields(fields).WithError(err).Error("Voucher database operation failed")
-	return &VoucherServiceError{
-		Kind:    VoucherServiceErrorInternal,
+	return &exception.VoucherServiceError{
+		Kind:    exception.VoucherServiceErrorInternal,
 		Message: "Unable to complete the voucher request. Please try again later.",
 	}
 }
