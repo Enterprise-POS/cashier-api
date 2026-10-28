@@ -7,6 +7,7 @@ import (
 	"cashier-api/service"
 	"errors"
 	"strconv"
+	"time"
 
 	"github.com/gofiber/fiber/v3"
 	log "github.com/sirupsen/logrus"
@@ -26,9 +27,23 @@ func (controller *VoucherControllerImpl) Create(ctx fiber.Ctx) error {
 		return voucherRequestError(ctx, "create", err, "Invalid tenant ID.")
 	}
 
-	var voucher model.Voucher
-	if err := ctx.Bind().Body(&voucher); err != nil {
+	var body struct {
+		model.Voucher
+		// Voucher dates are Unix timestamps in seconds, like query.DateFilter.
+		StartAt *int64 `json:"start_at"`
+		EndAt   *int64 `json:"end_at"`
+	}
+	if err := ctx.Bind().Body(&body); err != nil {
 		return voucherRequestError(ctx, "create", err, "The request body is malformed.")
+	}
+	voucher := body.Voucher
+	if body.StartAt != nil {
+		startAt := time.Unix(*body.StartAt, 0).UTC()
+		voucher.StartAt = &startAt
+	}
+	if body.EndAt != nil {
+		endAt := time.Unix(*body.EndAt, 0).UTC()
+		voucher.EndAt = &endAt
 	}
 	voucher.TenantId = tenantId
 

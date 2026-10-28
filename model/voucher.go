@@ -17,9 +17,9 @@ const (
 
 type Voucher struct {
 	Id          int            `json:"id,omitempty" gorm:"primaryKey;autoIncrement;column:id"`
-	Code        string         `json:"code" gorm:"column:code;uniqueIndex:unique_voucher_tenant_code"`
+	Code        string         `json:"code" gorm:"column:code;uniqueIndex:unique_voucher_tenant_code,where:deleted_at IS NULL"`
 	Name        string         `json:"name" gorm:"column:name;not null"`
-	TenantId    int            `json:"tenant_id" gorm:"column:tenant_id"`
+	TenantId    int            `json:"tenant_id" gorm:"column:tenant_id;uniqueIndex:unique_voucher_tenant_code,where:deleted_at IS NULL"`
 	CreatedAt   time.Time      `json:"created_at,omitempty" gorm:"column:created_at;autoCreateTime;<-:create"`
 	DeletedAt   gorm.DeletedAt `json:"-" gorm:"column:deleted_at;index"`
 	VoucherType VoucherType    `json:"voucher_type" gorm:"column:voucher_type"`
