@@ -156,6 +156,34 @@ func TestVoucherServiceImpl(t *testing.T) {
 		})
 	})
 
+	t.Run("PreviewVoucher", func(t *testing.T) {
+		repository := &voucherRepositoryStub{voucher: newPercentageVoucher("PREVIEW")}
+		repository.voucher.Id = 12
+		service := NewVoucherServiceImpl(repository)
+
+		before, discount, after, voucherId, eligible, err := service.PreviewVoucher(7, "PREVIEW", []*model.Item{
+			{ItemId: 1, TenantId: 7, BasePrice: 500},
+		})
+
+		require.NoError(t, err)
+		assert.Equal(t, 500, before)
+		assert.Equal(t, 50, discount)
+		assert.Equal(t, 450, after)
+		assert.Equal(t, 12, voucherId)
+		assert.True(t, eligible)
+		assert.Zero(t, repository.incrementCalls)
+	})
+
+	t.Run("CommitVoucherUsage", func(t *testing.T) {
+		repository := &voucherRepositoryStub{}
+		service := NewVoucherServiceImpl(repository)
+
+		err := service.CommitVoucherUsage(12, 7)
+
+		require.NoError(t, err)
+		assert.Equal(t, 1, repository.incrementCalls)
+	})
+
 	t.Run("UseVoucher", func(t *testing.T) {
 		t.Run("DiscountCalculation", func(t *testing.T) {
 			tests := []struct {
@@ -304,6 +332,7 @@ func TestVoucherServiceImpl(t *testing.T) {
 
 			for _, test := range tests {
 				t.Run(test.name, func(t *testing.T) {
+					test.voucher.Id = 1
 					repository := &voucherRepositoryStub{voucher: test.voucher}
 					service := NewVoucherServiceImpl(repository)
 

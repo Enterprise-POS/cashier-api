@@ -35,5 +35,7 @@ type VoucherService interface {
 	// Returns the created voucher with database-generated fields populated.
 	CreateVoucher(voucher *model.Voucher) (*model.Voucher, error)
 	DeleteVoucher(voucherId, tenantId int) error
+	PreviewVoucher(tenantId int, code string, items []*model.Item) (beforeDiscountPrice, discountPrice, afterDiscountPrice, voucherId int, eligible bool, err error)
+	CommitVoucherUsage(voucherId, tenantId int) error
 	UseVoucher(tenantId int, code string, items []*model.Item) (beforeDiscountPrice, discountPrice, afterDiscountPrice int, err error)
 }

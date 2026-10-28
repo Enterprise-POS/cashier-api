@@ -28,6 +28,16 @@ func (service *VoucherServiceMock) DeleteVoucher(voucherId, tenantId int) error 
 	return args.Error(0)
 }
 
+func (service *VoucherServiceMock) PreviewVoucher(tenantId int, code string, items []*model.Item) (int, int, int, int, bool, error) {
+	args := service.Mock.Called(tenantId, code, items)
+	return args.Int(0), args.Int(1), args.Int(2), args.Int(3), args.Bool(4), args.Error(5)
+}
+
+func (service *VoucherServiceMock) CommitVoucherUsage(voucherId, tenantId int) error {
+	args := service.Mock.Called(voucherId, tenantId)
+	return args.Error(0)
+}
+
 func (service *VoucherServiceMock) UseVoucher(tenantId int, code string, items []*model.Item) (int, int, int, error) {
 	args := service.Mock.Called(tenantId, code, items)
 	return args.Int(0), args.Int(1), args.Int(2), args.Error(3)

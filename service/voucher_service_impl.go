@@ -130,34 +130,50 @@ func (service *VoucherServiceImpl) DeleteVoucher(voucherId, tenantId int) error 
 }
 
 func (service *VoucherServiceImpl) UseVoucher(tenantId int, code string, items []*model.Item) (int, int, int, error) {
+	beforeDiscountPrice, discountPrice, afterDiscountPrice, voucherId, eligible, err :=
+		service.PreviewVoucher(tenantId, code, items)
+	if err != nil {
+		return 0, 0, 0, err
+	}
+	if !eligible {
+		return beforeDiscountPrice, discountPrice, afterDiscountPrice, nil
+	}
+	if err := service.CommitVoucherUsage(voucherId, tenantId); err != nil {
+		return 0, 0, 0, err
+	}
+
+	return beforeDiscountPrice, discountPrice, afterDiscountPrice, nil
+}
+
+func (service *VoucherServiceImpl) PreviewVoucher(tenantId int, code string, items []*model.Item) (totalPrice int, discountPrice int, afterDiscountPrice int, voucherId int, eligible bool, err error) {
 	if tenantId < 1 {
-		return 0, 0, 0, errors.New("Tenant ID is required")
+		return 0, 0, 0, 0, false, errors.New("Tenant ID is required")
 	}
 	code = strings.TrimSpace(code)
 	if code == "" {
-		return 0, 0, 0, errors.New("Voucher code is required")
+		return 0, 0, 0, 0, false, errors.New("Voucher code is required")
 	}
 	if len(items) == 0 {
-		return 0, 0, 0, errors.New("At least one purchased item is required")
+		return 0, 0, 0, 0, false, errors.New("At least one purchased item is required")
 	}
 
-	totalPrice := 0
+	totalPrice = 0
 	maxInt := int(^uint(0) >> 1)
 	for _, item := range items {
 		if item == nil {
-			return 0, 0, 0, errors.New("Purchased item cannot be nil")
+			return 0, 0, 0, 0, false, errors.New("Purchased item cannot be nil")
 		}
 		if item.ItemId < 1 {
-			return 0, 0, 0, errors.New("Purchased item ID is required")
+			return 0, 0, 0, 0, false, errors.New("Purchased item ID is required")
 		}
 		if item.TenantId != tenantId {
-			return 0, 0, 0, errors.New("Purchased item does not belong to the requested tenant")
+			return 0, 0, 0, 0, false, errors.New("Purchased item does not belong to the requested tenant")
 		}
 		if item.BasePrice < 0 {
-			return 0, 0, 0, fmt.Errorf("Purchased item price cannot be negative: %d", item.BasePrice)
+			return 0, 0, 0, 0, false, fmt.Errorf("Purchased item price cannot be negative: %d", item.BasePrice)
 		}
 		if totalPrice > maxInt-item.BasePrice {
-			return 0, 0, 0, errors.New("Purchased item total exceeds the maximum supported amount")
+			return 0, 0, 0, 0, false, errors.New("Purchased item total exceeds the maximum supported amount")
 		}
 		totalPrice += item.BasePrice
 	}
@@ -165,48 +181,59 @@ func (service *VoucherServiceImpl) UseVoucher(tenantId int, code string, items [
 	voucher, err := service.Repository.FindVoucherByCode(code, tenantId)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return 0, 0, 0, &exception.VoucherServiceError{
+			return 0, 0, 0, 0, false, &exception.VoucherServiceError{
 				Kind:    exception.VoucherServiceErrorNotFound,
 				Message: "Voucher not found.",
 			}
 		}
-		return 0, 0, 0, service.handleVoucherRepositoryError("find", tenantId, err)
+		return 0, 0, 0, 0, false, service.handleVoucherRepositoryError("find", tenantId, err)
 	}
 	if voucher == nil {
-		return 0, 0, 0, errors.New("Voucher not found")
+		return 0, 0, 0, 0, false, errors.New("Voucher not found")
 	}
 	now := time.Now()
 	if voucher.StartAt != nil && now.Before(*voucher.StartAt) {
-		return 0, 0, 0, errors.New("Voucher is not active yet")
+		return 0, 0, 0, 0, false, errors.New("Voucher is not active yet")
 	}
 	if voucher.EndAt != nil && now.After(*voucher.EndAt) {
-		return 0, 0, 0, errors.New("Voucher has expired")
+		return 0, 0, 0, 0, false, errors.New("Voucher has expired")
 	}
 	if voucher.UsageLimit < 0 || voucher.UsedCount < 0 {
-		return 0, 0, 0, errors.New("Invalid voucher usage configuration")
+		return 0, 0, 0, 0, false, errors.New("Invalid voucher usage configuration")
 	}
 	if voucher.UsageLimit > 0 && voucher.UsedCount >= voucher.UsageLimit {
-		return 0, 0, 0, errors.New("Voucher usage limit reached")
+		return 0, 0, 0, 0, false, errors.New("Voucher usage limit reached")
 	}
 
-	discountPrice, eligible, err := calculateVoucherDiscount(voucher, items, totalPrice)
+	discountPrice, eligible, err = calculateVoucherDiscount(voucher, items, totalPrice)
 	if err != nil {
-		return 0, 0, 0, err
+		return 0, 0, 0, 0, false, err
 	}
 	if !eligible {
-		return totalPrice, 0, totalPrice, nil
+		return totalPrice, 0, totalPrice, 0, false, nil
 	}
-	if err := service.Repository.IncrementVoucherUsedCount(voucher.Id, tenantId); err != nil {
+
+	return totalPrice, discountPrice, totalPrice - discountPrice, voucher.Id, true, nil
+}
+
+func (service *VoucherServiceImpl) CommitVoucherUsage(voucherId, tenantId int) error {
+	if voucherId < 1 {
+		return errors.New("Voucher ID is required")
+	}
+	if tenantId < 1 {
+		return errors.New("Tenant ID is required")
+	}
+	if err := service.Repository.IncrementVoucherUsedCount(voucherId, tenantId); err != nil {
 		if errors.Is(err, repository.ErrVoucherUsageUnavailable) {
-			return 0, 0, 0, &exception.VoucherServiceError{
+			return &exception.VoucherServiceError{
 				Kind:    exception.VoucherServiceErrorConflict,
 				Message: "Voucher usage limit has been reached or the voucher is no longer available.",
 			}
 		}
-		return 0, 0, 0, service.handleVoucherRepositoryError("increment usage", tenantId, err)
+		return service.handleVoucherRepositoryError("increment usage", tenantId, err)
 	}
 
-	return totalPrice, discountPrice, totalPrice - discountPrice, nil
+	return nil
 }
 
 func (service *VoucherServiceImpl) handleVoucherRepositoryError(operation string, tenantId int, err error) error {
