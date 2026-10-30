@@ -1,10 +1,12 @@
 package service
 
 import (
+	"cashier-api/helper/query"
 	"cashier-api/model"
 )
 
 type VoucherService interface {
+	GetVouchers(tenantId, limit, page int, searchQuery string, queryFilters []*query.QueryFilter) ([]*model.Voucher, int, error)
 	// CreateVoucher validates and creates a voucher. Every voucher requires
 	// TenantId,
 	// a non-empty Code,

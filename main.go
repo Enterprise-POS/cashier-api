@@ -133,6 +133,7 @@ func main() {
 	voucherService := service.NewVoucherServiceImpl(voucherRepository)
 	voucherController := controller.NewVoucherControllerImpl(voucherService)
 
+	apiV1.Get("/vouchers/:tenantId", tenantRestriction, voucherController.Get)
 	apiV1.Post("/vouchers/:tenantId", tenantRestriction, voucherController.Create)
 	apiV1.Delete("/vouchers/:tenantId/:voucherId", tenantRestriction, voucherController.Delete)
 

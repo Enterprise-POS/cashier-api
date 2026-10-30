@@ -2,6 +2,7 @@ package service
 
 import (
 	"cashier-api/exception"
+	"cashier-api/helper/query"
 	"cashier-api/model"
 	"cashier-api/repository"
 	"errors"
@@ -105,6 +106,47 @@ func (service *VoucherServiceImpl) CreateVoucher(voucher *model.Voucher) (*model
 	}
 
 	return createdVoucher, nil
+}
+
+func (service *VoucherServiceImpl) GetVouchers(
+	tenantId int,
+	limit int,
+	page int,
+	searchQuery string,
+	queryFilters []*query.QueryFilter,
+) ([]*model.Voucher, int, error) {
+	if tenantId < 1 {
+		return nil, 0, errors.New("Tenant ID is required")
+	}
+	if limit < 1 {
+		return nil, 0, errors.New("Limit must be greater than zero")
+	}
+	if page < 1 {
+		return nil, 0, errors.New("Page must be greater than zero")
+	}
+	for _, filter := range queryFilters {
+		if filter == nil {
+			return nil, 0, errors.New("Invalid sort filter")
+		}
+		switch filter.Column {
+		case query.CreatedAtColumn, query.VoucherNameColumn, query.VoucherCodeColumn:
+		default:
+			return nil, 0, fmt.Errorf("Invalid sort column: %s", filter.Column)
+		}
+	}
+
+	vouchers, count, err := service.Repository.GetVouchers(
+		tenantId,
+		limit,
+		page-1,
+		strings.TrimSpace(searchQuery),
+		queryFilters,
+	)
+	if err != nil {
+		return nil, 0, service.handleVoucherRepositoryError("get", tenantId, err)
+	}
+
+	return vouchers, count, nil
 }
 
 func (service *VoucherServiceImpl) DeleteVoucher(voucherId, tenantId int) error {

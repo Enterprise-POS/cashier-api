@@ -21,6 +21,40 @@ func NewVoucherControllerImpl(voucherService service.VoucherService) VoucherCont
 	return &VoucherControllerImpl{Service: voucherService}
 }
 
+func (controller *VoucherControllerImpl) Get(ctx fiber.Ctx) error {
+	tenantId, err := voucherTenantID(ctx)
+	if err != nil {
+		return voucherRequestError(ctx, "get", err, "Invalid tenant ID.")
+	}
+
+	limit, err := strconv.Atoi(ctx.Query("limit", "5"))
+	if err != nil || limit < 1 {
+		return voucherRequestError(ctx, "get", errors.New("limit must be greater than zero"), "Invalid limit.")
+	}
+	page, err := strconv.Atoi(ctx.Query("page", "1"))
+	if err != nil || page < 1 {
+		return voucherRequestError(ctx, "get", errors.New("page must be greater than zero"), "Invalid page.")
+	}
+
+	queryFilters := common.ParseQueryFilterParam(ctx.Query("sort", "created_at:desc"))
+	vouchers, count, err := controller.Service.GetVouchers(
+		tenantId,
+		limit,
+		page,
+		ctx.Query("name_query", ""),
+		queryFilters,
+	)
+	if err != nil {
+		return voucherServiceErrorResponse(ctx, "get", tenantId, err)
+	}
+
+	return ctx.Status(fiber.StatusOK).
+		JSON(common.NewWebResponse(fiber.StatusOK, common.StatusSuccess, fiber.Map{
+			"count":    count,
+			"vouchers": vouchers,
+		}))
+}
+
 func (controller *VoucherControllerImpl) Create(ctx fiber.Ctx) error {
 	tenantId, err := voucherTenantID(ctx)
 	if err != nil {

@@ -2,6 +2,7 @@ package service
 
 import (
 	"cashier-api/exception"
+	"cashier-api/helper/query"
 	"cashier-api/model"
 	"errors"
 	"strings"
@@ -15,6 +16,14 @@ import (
 
 type voucherRepositoryStub struct {
 	voucher        *model.Voucher
+	vouchers       []*model.Voucher
+	voucherCount   int
+	getVouchersErr error
+	getTenantId    int
+	getLimit       int
+	getPage        int
+	getSearchQuery string
+	getSorts       []*query.QueryFilter
 	createErr      error
 	deleteErr      error
 	findErr        error
@@ -25,6 +34,15 @@ type voucherRepositoryStub struct {
 	lookupTenant   int
 	incrementCalls int
 	incrementErr   error
+}
+
+func (repository *voucherRepositoryStub) GetVouchers(tenantId, limit, page int, searchQuery string, queryFilters []*query.QueryFilter) ([]*model.Voucher, int, error) {
+	repository.getTenantId = tenantId
+	repository.getLimit = limit
+	repository.getPage = page
+	repository.getSearchQuery = searchQuery
+	repository.getSorts = queryFilters
+	return repository.vouchers, repository.voucherCount, repository.getVouchersErr
 }
 
 func (repository *voucherRepositoryStub) CreateVoucher(voucher *model.Voucher) (*model.Voucher, error) {
@@ -55,6 +73,32 @@ func (repository *voucherRepositoryStub) IncrementVoucherUsedCount(voucherId, te
 }
 
 func TestVoucherServiceImpl(t *testing.T) {
+	t.Run("GetVouchers", func(t *testing.T) {
+		vouchers := []*model.Voucher{{Id: 10, Name: "Save", Code: "SAVE10"}}
+		sort := []*query.QueryFilter{{Column: query.VoucherNameColumn, Ascending: true}}
+		repository := &voucherRepositoryStub{vouchers: vouchers, voucherCount: 1}
+		service := NewVoucherServiceImpl(repository)
+
+		result, count, err := service.GetVouchers(7, 5, 2, " save ", sort)
+
+		require.NoError(t, err)
+		assert.Equal(t, vouchers, result)
+		assert.Equal(t, 1, count)
+		assert.Equal(t, 7, repository.getTenantId)
+		assert.Equal(t, 5, repository.getLimit)
+		assert.Equal(t, 1, repository.getPage)
+		assert.Equal(t, "save", repository.getSearchQuery)
+		assert.Same(t, sort[0], repository.getSorts[0])
+
+		codeSort := []*query.QueryFilter{{Column: query.VoucherCodeColumn, Ascending: true}}
+		_, _, err = service.GetVouchers(7, 5, 1, "", codeSort)
+		require.NoError(t, err)
+		assert.Same(t, codeSort[0], repository.getSorts[0])
+
+		_, _, err = service.GetVouchers(7, 5, 1, "", []*query.QueryFilter{{Column: query.ItemName}})
+		assert.EqualError(t, err, "Invalid sort column: item_name")
+	})
+
 	t.Run("CreateVoucher", func(t *testing.T) {
 		t.Run("ReturnsCreatedVoucher", func(t *testing.T) {
 			repository := &voucherRepositoryStub{}

@@ -2,6 +2,7 @@ package controller
 
 import (
 	"cashier-api/exception"
+	"cashier-api/helper/query"
 	"cashier-api/model"
 	"cashier-api/service"
 	"encoding/json"
@@ -16,6 +17,44 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
+
+func TestVoucherControllerGet(t *testing.T) {
+	vouchers := []*model.Voucher{{Id: 12, Code: "SAVE", Name: "Save"}}
+	serviceMock := new(mock.Mock)
+	serviceMock.On(
+		"GetVouchers",
+		7,
+		5,
+		3,
+		"save",
+		mock.MatchedBy(func(filters []*query.QueryFilter) bool {
+			return len(filters) == 1 &&
+				filters[0].Column == query.VoucherCodeColumn &&
+				filters[0].Ascending
+		}),
+	).Return(vouchers, 1, nil).Once()
+
+	app := fiber.New()
+	app.Get("/vouchers/:tenantId", NewVoucherControllerImpl(service.NewVoucherServiceMock(serviceMock)).Get)
+	request := httptest.NewRequest(http.MethodGet, "/vouchers/7?limit=5&page=3&name_query=save&sort=code:asc", nil)
+	response, err := app.Test(request)
+	require.NoError(t, err)
+	defer response.Body.Close()
+
+	assert.Equal(t, fiber.StatusOK, response.StatusCode)
+	serviceMock.AssertExpectations(t)
+
+	var responseBody struct {
+		Data struct {
+			Count    int             `json:"count"`
+			Vouchers []model.Voucher `json:"vouchers"`
+		} `json:"data"`
+	}
+	require.NoError(t, json.NewDecoder(response.Body).Decode(&responseBody))
+	assert.Equal(t, 1, responseBody.Data.Count)
+	require.Len(t, responseBody.Data.Vouchers, 1)
+	assert.Equal(t, "SAVE", responseBody.Data.Vouchers[0].Code)
+}
 
 func TestVoucherControllerCreate(t *testing.T) {
 	t.Run("UsesTenantFromRouteAndReturnsCreatedVoucher", func(t *testing.T) {
