@@ -32,7 +32,9 @@ func (repository *VoucherRepositoryImpl) GetVouchers(
 ) ([]*model.Voucher, int, error) {
 	offset := page * limit
 	baseQuery := func() *gorm.DB {
-		q := repository.Client.Model(&model.Voucher{}).Where("tenant_id = ?", tenantId)
+		q := repository.Client.
+			Model(&model.Voucher{}).
+			Where("tenant_id = ? AND voucher.deleted_at IS NULL", tenantId)
 		if searchQuery != "" {
 			nameSearchPattern := "%" + searchQuery + "%"
 			codeSearchPattern := "%" + searchQuery + "%"
@@ -151,7 +153,7 @@ func (repository *VoucherRepositoryImpl) UpdateVoucher(
 
 func (repository *VoucherRepositoryImpl) DeleteVoucher(voucherId, tenantId int) error {
 	result := repository.Client.
-		Where("id = ? AND tenant_id = ?", voucherId, tenantId).
+		Where("id = ? AND tenant_id = ? AND deleted_at IS NULL", voucherId, tenantId).
 		Delete(&model.Voucher{})
 	if result.Error != nil {
 		return result.Error
