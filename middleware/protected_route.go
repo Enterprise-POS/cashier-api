@@ -6,12 +6,12 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	"github.com/golang-jwt/jwt/v5"
 	log "github.com/sirupsen/logrus"
 )
 
-func ProtectedRoute(ctx *fiber.Ctx) error {
+func ProtectedRoute(ctx fiber.Ctx) error {
 	var tokenString string
 
 	// Check cookie first, then fall back to Authorization header
@@ -58,7 +58,7 @@ func ProtectedRoute(ctx *fiber.Ctx) error {
 	return ctx.Next()
 }
 
-func unauthorized(ctx *fiber.Ctx, message string) error {
+func unauthorized(ctx fiber.Ctx, message string) error {
 	return ctx.Status(fiber.StatusUnauthorized).
 		JSON(common.NewWebResponseError(401, common.StatusError, message))
 }

@@ -3,7 +3,7 @@ package controller
 import (
 	"fmt"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 type WebhookControllerImpl struct {
@@ -14,7 +14,7 @@ func NewWebhookControllerImpl() WebhookController {
 }
 
 // HandlePaymentGateWayWebhook implements [WebhookController].
-func (controller *WebhookControllerImpl) HandlePaymentGateWayWebhook(ctx *fiber.Ctx) error {
+func (controller *WebhookControllerImpl) HandlePaymentGateWayWebhook(ctx fiber.Ctx) error {
 	// MidtransQRISNotification represents the POST body Midtrans sends to your
 	// webhook endpoint for QRIS payment notifications.
 	// Reference: https://docs.midtrans.com/reference/qris (POST Body Definition Table - QRIS)
@@ -40,7 +40,7 @@ func (controller *WebhookControllerImpl) HandlePaymentGateWayWebhook(ctx *fiber.
 
 	var notification MidtransQRISNotification
 
-	if err := ctx.BodyParser(&notification); err != nil {
+	if err := ctx.Bind().Body(&notification); err != nil {
 		return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error": "invalid webhook payload",
 		})

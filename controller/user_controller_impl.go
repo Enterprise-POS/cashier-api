@@ -6,7 +6,7 @@ import (
 	"cashier-api/service"
 	"time"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 type UserControllerImpl struct {
@@ -19,14 +19,14 @@ func NewUserControllerImpl(service service.UserService) UserController {
 	}
 }
 
-func (controller *UserControllerImpl) SignUpWithEmailAndPassword(ctx *fiber.Ctx) error {
+func (controller *UserControllerImpl) SignUpWithEmailAndPassword(ctx fiber.Ctx) error {
 	var body struct {
 		Email    string `json:"email"`
 		Password string `json:"password"`
 		Name     string `json:"name"`
 	}
 
-	err := ctx.BodyParser(&body)
+	err := ctx.Bind().Body(&body)
 	if err != nil {
 		return ctx.Status(fiber.StatusBadRequest).
 			JSON(common.NewWebResponseError(400, common.StatusError, "Something gone wrong ! The request body is malformed"))
@@ -81,13 +81,13 @@ func (controller *UserControllerImpl) SignUpWithEmailAndPassword(ctx *fiber.Ctx)
 /*
 200, 400, 401
 */
-func (controller *UserControllerImpl) SignInWithEmailAndPassword(ctx *fiber.Ctx) error {
+func (controller *UserControllerImpl) SignInWithEmailAndPassword(ctx fiber.Ctx) error {
 	var body struct {
 		Email    string `json:"email"`
 		Password string `json:"password"`
 	}
 
-	err := ctx.BodyParser(&body)
+	err := ctx.Bind().Body(&body)
 	if err != nil {
 		return ctx.Status(fiber.StatusBadRequest).
 			JSON(common.NewWebResponseError(400, common.StatusError, "Something gone wrong ! The request body is malformed"))
@@ -144,7 +144,7 @@ func (controller *UserControllerImpl) SignInWithEmailAndPassword(ctx *fiber.Ctx)
 }
 
 // SignOut implements UserController.
-func (controller *UserControllerImpl) SignOut(ctx *fiber.Ctx) error {
+func (controller *UserControllerImpl) SignOut(ctx fiber.Ctx) error {
 	enterprisePosCookie := ctx.Cookies(constant.EnterprisePOS, "")
 	if enterprisePosCookie == "" {
 		return ctx.Status(fiber.StatusOK).

@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 type NewRequest struct {
@@ -24,7 +24,7 @@ func (nr *NewRequest) RunRequest(app *fiber.App) (*http.Request, *http.Response,
 
 	request := httptest.NewRequest(nr.Method, nr.Url, nr.Body)
 	request.Header.Set("Content-Type", "application/json")
-	response, err := app.Test(request, timeoutMs)
+	response, err := app.Test(request, fiber.TestConfig{Timeout: time.Duration(timeoutMs) * time.Millisecond})
 
 	return request, response, err
 }

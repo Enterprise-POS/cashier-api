@@ -20,7 +20,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -111,7 +111,7 @@ func TestTenantControllerImpl(t *testing.T) {
 			request := httptest.NewRequest("POST", "/tenants/new", bytes.NewReader(bodyBytes))
 			request.AddCookie(enterprisePOSCookie)
 			request.Header.Set("Content-Type", "application/json")
-			response, err = app.Test(request, int(time.Second*5))
+			response, err = app.Test(request, fiber.TestConfig{Timeout: time.Duration(int(time.Second*5)) * time.Millisecond})
 
 			// The test itself
 			responseBody, err := common.ReadBody(response.Body)
@@ -142,7 +142,7 @@ func TestTenantControllerImpl(t *testing.T) {
 			request := httptest.NewRequest("POST", "/tenants/new", bytes.NewReader(bodyBytes))
 			request.AddCookie(enterprisePOSCookie)
 			request.Header.Set("Content-Type", "application/json")
-			response, err = app.Test(request, int(time.Second*5))
+			response, err = app.Test(request, fiber.TestConfig{Timeout: time.Duration(int(time.Second*5)) * time.Millisecond})
 
 			// The test itself
 			responseBody, err := common.ReadBody(response.Body)
@@ -211,7 +211,7 @@ func TestTenantControllerImpl(t *testing.T) {
 			request := httptest.NewRequest("POST", "/tenants/new", bytes.NewReader(bodyBytes))
 			request.AddCookie(enterprisePOSCookie)
 			request.Header.Set("Content-Type", "application/json")
-			response, err = app.Test(request, int(time.Second*5))
+			response, err = app.Test(request, fiber.TestConfig{Timeout: time.Duration(int(time.Second*5)) * time.Millisecond})
 
 			// Create 2
 			dummyTenant2 := &model.Tenant{
@@ -225,13 +225,13 @@ func TestTenantControllerImpl(t *testing.T) {
 			request = httptest.NewRequest("POST", "/tenants/new", bytes.NewReader(bodyBytes))
 			request.AddCookie(enterprisePOSCookie)
 			request.Header.Set("Content-Type", "application/json")
-			response, err = app.Test(request, int(time.Second*5))
+			response, err = app.Test(request, fiber.TestConfig{Timeout: time.Duration(int(time.Second*5)) * time.Millisecond})
 
 			// The test itself
 			request = httptest.NewRequest("GET", fmt.Sprintf("/tenants/%d", dummyUser.Id), nil)
 			request.AddCookie(enterprisePOSCookie)
 			request.Header.Set("Content-Type", "application/json")
-			response, err = app.Test(request, int(time.Second*5))
+			response, err = app.Test(request, fiber.TestConfig{Timeout: time.Duration(int(time.Second*5)) * time.Millisecond})
 
 			responseBody, err := common.ReadBody(response.Body)
 			assert.NoError(t, err)
@@ -310,7 +310,7 @@ func TestTenantControllerImpl(t *testing.T) {
 		request := httptest.NewRequest("POST", "/tenants/new", bytes.NewReader(bodyBytes))
 		request.AddCookie(enterprisePOSCookie)
 		request.Header.Set("Content-Type", "application/json")
-		response, err = app.Test(request, int(time.Second*5))
+		response, err = app.Test(request, fiber.TestConfig{Timeout: time.Duration(int(time.Second*5)) * time.Millisecond})
 		require.NoError(t, err)
 
 		// Manually get created tenant
@@ -369,7 +369,7 @@ func TestTenantControllerImpl(t *testing.T) {
 			request := httptest.NewRequest("POST", "/tenants/add_user", bytes.NewReader(requestBody))
 			request.AddCookie(enterprisePOSCookie)
 			request.Header.Set("Content-Type", "application/json")
-			response, err := app.Test(request, int(time.Second*5))
+			response, err := app.Test(request, fiber.TestConfig{Timeout: time.Duration(int(time.Second*5)) * time.Millisecond})
 
 			bodyBytes, err := io.ReadAll(response.Body)
 			responseBody := string(bodyBytes)
@@ -392,7 +392,7 @@ func TestTenantControllerImpl(t *testing.T) {
 			request := httptest.NewRequest("POST", "/tenants/add_user", bytes.NewReader(requestBody))
 			request.AddCookie(enterprisePOSCookie)
 			request.Header.Set("Content-Type", "application/json")
-			response, err := app.Test(request, int(time.Second*5))
+			response, err := app.Test(request, fiber.TestConfig{Timeout: time.Duration(int(time.Second*5)) * time.Millisecond})
 
 			bodyBytes, err := io.ReadAll(response.Body)
 			responseBody := string(bodyBytes)
@@ -412,7 +412,7 @@ func TestTenantControllerImpl(t *testing.T) {
 			request := httptest.NewRequest("POST", "/tenants/add_user", bytes.NewReader(requestBody))
 			request.AddCookie(enterprisePOSCookie)
 			request.Header.Set("Content-Type", "application/json")
-			response, err := app.Test(request, int(time.Second*5))
+			response, err := app.Test(request, fiber.TestConfig{Timeout: time.Duration(int(time.Second*5)) * time.Millisecond})
 
 			bodyBytes, err := io.ReadAll(response.Body)
 			responseBody := string(bodyBytes)
@@ -492,7 +492,7 @@ func TestTenantControllerImpl(t *testing.T) {
 		request := httptest.NewRequest("POST", "/tenants/new", bytes.NewReader(bodyBytes))
 		request.AddCookie(enterprisePOSCookie)
 		request.Header.Set("Content-Type", "application/json")
-		response, err = app.Test(request, int(time.Second*5))
+		response, err = app.Test(request, fiber.TestConfig{Timeout: time.Duration(int(time.Second*5)) * time.Millisecond})
 		require.NoError(t, err)
 
 		// Manually get created tenant
@@ -551,7 +551,7 @@ func TestTenantControllerImpl(t *testing.T) {
 			request := httptest.NewRequest("DELETE", "/tenants/remove_user", bytes.NewReader(requestBody))
 			request.AddCookie(enterprisePOSCookie)
 			request.Header.Set("Content-Type", "application/json")
-			response, err := app.Test(request, int(time.Second*5))
+			response, err := app.Test(request, fiber.TestConfig{Timeout: time.Duration(int(time.Second*5)) * time.Millisecond})
 
 			require.NoError(t, err)
 			bodyBytes, err := io.ReadAll(response.Body)
@@ -577,7 +577,7 @@ func TestTenantControllerImpl(t *testing.T) {
 			request := httptest.NewRequest("DELETE", "/tenants/remove_user", bytes.NewReader(requestBody))
 			request.AddCookie(enterprisePOSCookie)
 			request.Header.Set("Content-Type", "application/json")
-			response, err := app.Test(request, int(time.Second*5))
+			response, err := app.Test(request, fiber.TestConfig{Timeout: time.Duration(int(time.Second*5)) * time.Millisecond})
 
 			require.NoError(t, err)
 			bodyBytes, err := io.ReadAll(response.Body)
@@ -700,7 +700,7 @@ func TestTenantControllerImpl(t *testing.T) {
 		request := httptest.NewRequest("POST", "/tenants/new", bytes.NewReader(bodyBytes))
 		request.AddCookie(enterprisePOSCookie)
 		request.Header.Set("Content-Type", "application/json")
-		response, err = app.Test(request, int(time.Second*5))
+		response, err = app.Test(request, fiber.TestConfig{Timeout: time.Duration(int(time.Second*5)) * time.Millisecond})
 		require.NoError(t, err)
 
 		// Manually get created tenant
@@ -719,7 +719,7 @@ func TestTenantControllerImpl(t *testing.T) {
 		request = httptest.NewRequest("POST", "/tenants/add_user", bytes.NewReader(bodyBytes))
 		request.AddCookie(enterprisePOSCookie)
 		request.Header.Set("Content-Type", "application/json")
-		response, err = app.Test(request, int(time.Second*5))
+		response, err = app.Test(request, fiber.TestConfig{Timeout: time.Duration(int(time.Second*5)) * time.Millisecond})
 		require.NoError(t, err)
 
 		// here is the test
@@ -727,7 +727,7 @@ func TestTenantControllerImpl(t *testing.T) {
 			request = httptest.NewRequest("GET", fmt.Sprintf("/tenants/members/%d", createdTenant.Id), nil)
 			request.AddCookie(enterprisePOSCookie)
 			request.Header.Set("Content-Type", "application/json")
-			response, err = app.Test(request, int(time.Second*5))
+			response, err = app.Test(request, fiber.TestConfig{Timeout: time.Duration(int(time.Second*5)) * time.Millisecond})
 			require.NoError(t, err)
 
 			// The test itself
@@ -742,7 +742,7 @@ func TestTenantControllerImpl(t *testing.T) {
 			request = httptest.NewRequest("GET", fmt.Sprintf("/tenants/members/%d", createdTenant.Id), nil)
 			request.AddCookie(enterprisePOSCookie2) // The cookie is from user 2
 			request.Header.Set("Content-Type", "application/json")
-			response, err = app.Test(request, int(time.Second*5))
+			response, err = app.Test(request, fiber.TestConfig{Timeout: time.Duration(int(time.Second*5)) * time.Millisecond})
 			require.NoError(t, err)
 
 			responseBody, err := common.ReadBody(response.Body)
@@ -756,7 +756,7 @@ func TestTenantControllerImpl(t *testing.T) {
 			request = httptest.NewRequest("GET", fmt.Sprintf("/tenants/members/%d", 1), nil)
 			request.AddCookie(enterprisePOSCookie)
 			request.Header.Set("Content-Type", "application/json")
-			response, err = app.Test(request, int(time.Second*5))
+			response, err = app.Test(request, fiber.TestConfig{Timeout: time.Duration(int(time.Second*5)) * time.Millisecond})
 			require.NoError(t, err)
 
 			responseBody, err := common.ReadBody(response.Body)
@@ -769,7 +769,7 @@ func TestTenantControllerImpl(t *testing.T) {
 			request = httptest.NewRequest("GET", fmt.Sprintf("/tenants/members/%s", "something"), nil)
 			request.AddCookie(enterprisePOSCookie)
 			request.Header.Set("Content-Type", "application/json")
-			response, err = app.Test(request, int(time.Second*5))
+			response, err = app.Test(request, fiber.TestConfig{Timeout: time.Duration(int(time.Second*5)) * time.Millisecond})
 			require.NoError(t, err)
 
 			responseBody, err := common.ReadBody(response.Body)

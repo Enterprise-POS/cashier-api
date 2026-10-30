@@ -187,7 +187,7 @@ func (repository *OrderItemRepositoryImpl) Transactions(params *CreateTransactio
 // SetPaymentStatus implements [OrderItemRepository].
 func (repository *OrderItemRepositoryImpl) SetPaymentStatus(orderItemId int, transactionId string, setTo model.PaymentStatus) error {
 	return repository.Client.Transaction(func(tx *gorm.DB) error {
-		db := tx.Model(&model.OrderItem{})
+		db := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Model(&model.OrderItem{})
 
 		if transactionId != "" {
 			db = db.Where("transaction_id = ? OR id = ?", transactionId, orderItemId)
@@ -195,20 +195,53 @@ func (repository *OrderItemRepositoryImpl) SetPaymentStatus(orderItemId int, tra
 			db = db.Where("id = ?", orderItemId)
 		}
 
-		result := db.Update("payment_status", setTo)
-		if result.Error != nil {
-			return result.Error
+		var orderItems []model.OrderItem
+		if err := db.Find(&orderItems).Error; err != nil {
+			return err
 		}
-
-		if result.RowsAffected == 0 {
+		if len(orderItems) == 0 {
 			return gorm.ErrRecordNotFound
 		}
-
-		if result.RowsAffected > 1 {
+		if len(orderItems) > 1 {
 			// Safety net: this should only ever touch a single order item.
 			// If more than one row matched, something is wrong with the
 			// filter (e.g. an empty/duplicate transaction_id) — abort and
 			// roll back instead of silently mutating unrelated rows.
+			return fmt.Errorf("Expected to update exactly 1 order item, but matched %d — rolled back", len(orderItems))
+		}
+
+		orderItem := orderItems[0]
+		if setTo == model.PaymentStatusCancelled && orderItem.PaymentStatus != model.PaymentStatusCancelled {
+			var voucherUsages []model.VoucherUsage
+			if err := tx.Where("order_item_id = ?", orderItem.Id).Find(&voucherUsages).Error; err != nil {
+				return err
+			}
+
+			voucherUsageCounts := make(map[int]int)
+			for _, usage := range voucherUsages {
+				voucherUsageCounts[usage.VoucherId]++
+			}
+			for voucherId, usageCount := range voucherUsageCounts {
+				result := tx.Unscoped().Model(&model.Voucher{}).
+					Where("id = ? AND tenant_id = ? AND used_count >= ?", voucherId, orderItem.TenantId, usageCount).
+					UpdateColumn("used_count", gorm.Expr("used_count - ?", usageCount))
+				if result.Error != nil {
+					return result.Error
+				}
+				if result.RowsAffected == 0 {
+					return fmt.Errorf("cannot release %d usage(s) for voucher %d: usage count is insufficient or voucher is missing",
+						usageCount, voucherId)
+				}
+			}
+		}
+
+		result := tx.Model(&model.OrderItem{}).
+			Where("id = ?", orderItem.Id).
+			Update("payment_status", setTo)
+		if result.Error != nil {
+			return result.Error
+		}
+		if result.RowsAffected != 1 {
 			return fmt.Errorf("Expected to update exactly 1 order item, but matched %d — rolled back", result.RowsAffected)
 		}
 

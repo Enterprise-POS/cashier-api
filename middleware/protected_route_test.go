@@ -16,7 +16,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -36,7 +36,7 @@ func TestProtectedRoute(t *testing.T) {
 
 	app := fiber.New()
 	app.Post("/users/sign_up", userController.SignUpWithEmailAndPassword)
-	app.Get("/test", ProtectedRoute, func(ctx *fiber.Ctx) error {
+	app.Get("/test", ProtectedRoute, func(ctx fiber.Ctx) error {
 		return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"status": "ok"})
 	})
 
@@ -49,7 +49,7 @@ func TestProtectedRoute(t *testing.T) {
 		// }
 		request := httptest.NewRequest("GET", "/test", nil)
 		request.Header.Set("Content-Type", "application/json")
-		response, err := app.Test(request, int(time.Second*3))
+		response, err := app.Test(request, fiber.TestConfig{Timeout: time.Duration(int(time.Second*3)) * time.Millisecond})
 		assert.NoError(t, err)
 		assert.Equal(t, http.StatusUnauthorized, response.StatusCode)
 	})
@@ -63,7 +63,7 @@ func TestProtectedRoute(t *testing.T) {
 		}`)
 		request := httptest.NewRequest("POST", "/users/sign_up", body)
 		request.Header.Set("Content-Type", "application/json")
-		response, err := app.Test(request, int(time.Second*5))
+		response, err := app.Test(request, fiber.TestConfig{Timeout: time.Duration(int(time.Second*5)) * time.Millisecond})
 		require.NoError(t, err)
 		require.NotNil(t, response)
 
@@ -112,7 +112,7 @@ func TestProtectedRoute(t *testing.T) {
 		request = httptest.NewRequest("GET", "/test", nil)
 		request.Header.Set("Content-Type", "application/json")
 		request.AddCookie(enterprisePOSCookie)
-		response, err = app.Test(request, int(time.Second*5))
+		response, err = app.Test(request, fiber.TestConfig{Timeout: time.Duration(int(time.Second*5)) * time.Millisecond})
 		require.NoError(t, err)
 		require.NotNil(t, response)
 

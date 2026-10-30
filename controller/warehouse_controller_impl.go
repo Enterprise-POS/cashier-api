@@ -6,7 +6,7 @@ import (
 	"cashier-api/service"
 	"strconv"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 type WarehouseControllerImpl struct {
@@ -17,7 +17,7 @@ func NewWarehouseControllerImpl(service service.WarehouseService) WarehouseContr
 	return &WarehouseControllerImpl{Service: service}
 }
 
-func (controller *WarehouseControllerImpl) Get(ctx *fiber.Ctx) error {
+func (controller *WarehouseControllerImpl) Get(ctx fiber.Ctx) error {
 	paramTenantId := ctx.Params("tenantId")
 	paramLimit := ctx.Query("limit", "5")         // default 5
 	paramPage := ctx.Query("page", "1")           // default 1
@@ -66,7 +66,7 @@ func (controller *WarehouseControllerImpl) Get(ctx *fiber.Ctx) error {
 }
 
 // GetActiveItem implements WarehouseController.
-func (controller *WarehouseControllerImpl) GetActiveItem(ctx *fiber.Ctx) error {
+func (controller *WarehouseControllerImpl) GetActiveItem(ctx fiber.Ctx) error {
 	paramTenantId := ctx.Params("tenantId")
 	paramLimit := ctx.Query("limit", "5")         // default 5
 	paramPage := ctx.Query("page", "1")           // default 1
@@ -104,7 +104,7 @@ func (controller *WarehouseControllerImpl) GetActiveItem(ctx *fiber.Ctx) error {
 }
 
 // CreateItem implements WarehouseController.
-func (controller *WarehouseControllerImpl) CreateItem(ctx *fiber.Ctx) error {
+func (controller *WarehouseControllerImpl) CreateItem(ctx fiber.Ctx) error {
 	// It's guaranteed to be not "", because restrict by tenant already did check first
 	tenantId, _ := strconv.Atoi(ctx.Params("tenantId"))
 
@@ -122,7 +122,7 @@ func (controller *WarehouseControllerImpl) CreateItem(ctx *fiber.Ctx) error {
 	}
 
 	var body CreateItemRequest
-	err := ctx.BodyParser(&body)
+	err := ctx.Bind().Body(&body)
 	if err != nil {
 		return ctx.Status(fiber.StatusBadRequest).
 			JSON(common.NewWebResponseError(400, common.StatusError, "Something gone wrong ! The request body is malformed"))
@@ -161,11 +161,11 @@ func (controller *WarehouseControllerImpl) CreateItem(ctx *fiber.Ctx) error {
 }
 
 // FindById implements WarehouseController.
-func (controller *WarehouseControllerImpl) FindById(ctx *fiber.Ctx) error {
+func (controller *WarehouseControllerImpl) FindById(ctx fiber.Ctx) error {
 	var body struct {
 		ItemId int `json:"item_id"`
 	}
-	err := ctx.BodyParser(&body)
+	err := ctx.Bind().Body(&body)
 	if err != nil {
 		return ctx.Status(fiber.StatusBadRequest).
 			JSON(common.NewWebResponseError(400, common.StatusError, "Something gone wrong ! The request body is malformed"))
@@ -186,7 +186,7 @@ func (controller *WarehouseControllerImpl) FindById(ctx *fiber.Ctx) error {
 }
 
 // Edit implements WarehouseController.
-func (controller *WarehouseControllerImpl) Edit(ctx *fiber.Ctx) error {
+func (controller *WarehouseControllerImpl) Edit(ctx fiber.Ctx) error {
 	// TenantId & ItemId = Indicate which item will be edit
 	// Currently allowed to update properties
 	// - ItemName
@@ -203,7 +203,7 @@ func (controller *WarehouseControllerImpl) Edit(ctx *fiber.Ctx) error {
 		Item     ReqItem `json:"item"`
 	}
 
-	err := ctx.BodyParser(&body)
+	err := ctx.Bind().Body(&body)
 	if err != nil {
 		return ctx.Status(fiber.StatusBadRequest).
 			JSON(common.NewWebResponseError(400, common.StatusError, "Something gone wrong ! The request body is malformed"))
@@ -229,12 +229,12 @@ func (controller *WarehouseControllerImpl) Edit(ctx *fiber.Ctx) error {
 }
 
 // SetActivate implements WarehouseController.
-func (controller *WarehouseControllerImpl) SetActivate(ctx *fiber.Ctx) error {
+func (controller *WarehouseControllerImpl) SetActivate(ctx fiber.Ctx) error {
 	var body struct {
 		ItemId  int  `json:"item_id"`
 		SetInto bool `json:"set_into"`
 	}
-	err := ctx.BodyParser(&body)
+	err := ctx.Bind().Body(&body)
 	if err != nil {
 		return ctx.Status(fiber.StatusBadRequest).
 			JSON(common.NewWebResponseError(400, common.StatusError, "Something gone wrong ! The request body is malformed"))
@@ -252,11 +252,11 @@ func (controller *WarehouseControllerImpl) SetActivate(ctx *fiber.Ctx) error {
 }
 
 // FindCompleteById implements WarehouseController.
-func (controller *WarehouseControllerImpl) FindCompleteById(ctx *fiber.Ctx) error {
+func (controller *WarehouseControllerImpl) FindCompleteById(ctx fiber.Ctx) error {
 	var body struct {
 		ItemId int `json:"item_id"`
 	}
-	err := ctx.BodyParser(&body)
+	err := ctx.Bind().Body(&body)
 	if err != nil {
 		return ctx.Status(fiber.StatusBadRequest).
 			JSON(common.NewWebResponseError(400, common.StatusError, "Something gone wrong ! The request body is malformed"))
