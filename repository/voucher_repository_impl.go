@@ -106,6 +106,49 @@ func (repository *VoucherRepositoryImpl) CreateVoucher(voucher *model.Voucher) (
 	return voucher, nil
 }
 
+func (repository *VoucherRepositoryImpl) FindVoucherById(voucherId, tenantId int) (*model.Voucher, error) {
+	var voucher model.Voucher
+	if err := repository.Client.
+		Where("id = ? AND tenant_id = ?", voucherId, tenantId).
+		First(&voucher).Error; err != nil {
+		return nil, err
+	}
+
+	return &voucher, nil
+}
+
+func (repository *VoucherRepositoryImpl) UpdateVoucher(
+	voucherId int,
+	tenantId int,
+	updates *model.VoucherUpdate,
+) (*model.Voucher, error) {
+	updateValues := make(map[string]interface{})
+	if updates.Name != nil {
+		updateValues["name"] = *updates.Name
+	}
+	if updates.Code != nil {
+		updateValues["code"] = *updates.Code
+	}
+	if updates.StartAtSet {
+		updateValues["start_at"] = updates.StartAt
+	}
+	if updates.EndAtSet {
+		updateValues["end_at"] = updates.EndAt
+	}
+
+	result := repository.Client.Model(&model.Voucher{}).
+		Where("id = ? AND tenant_id = ?", voucherId, tenantId).
+		Updates(updateValues)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	if result.RowsAffected == 0 {
+		return nil, ErrVoucherNotFound
+	}
+
+	return repository.FindVoucherById(voucherId, tenantId)
+}
+
 func (repository *VoucherRepositoryImpl) DeleteVoucher(voucherId, tenantId int) error {
 	result := repository.Client.
 		Where("id = ? AND tenant_id = ?", voucherId, tenantId).

@@ -3,20 +3,18 @@ package service
 import (
 	"cashier-api/exception"
 	"cashier-api/helper/query"
+	"cashier-api/helper/validation"
 	"cashier-api/model"
 	"cashier-api/repository"
 	"errors"
 	"fmt"
 	"strings"
 	"time"
-	"unicode/utf8"
 
 	"github.com/jackc/pgx/v5/pgconn"
 	log "github.com/sirupsen/logrus"
 	"gorm.io/gorm"
 )
-
-const maxVoucherNameLength = 255
 
 type VoucherServiceImpl struct {
 	Repository repository.VoucherRepository
@@ -38,12 +36,15 @@ func (service *VoucherServiceImpl) CreateVoucher(voucher *model.Voucher) (*model
 	if voucher.TenantId < 1 {
 		return nil, errors.New("Tenant ID is required")
 	}
-	if utf8.RuneCountInString(voucher.Name) > maxVoucherNameLength {
-		return nil, fmt.Errorf("Voucher name cannot exceed %d characters", maxVoucherNameLength)
+	if voucher.Name != "" && !validation.ItemNameRegex.MatchString(voucher.Name) {
+		return nil, errors.New("Invalid voucher name")
 	}
 	voucher.Code = strings.TrimSpace(voucher.Code)
 	if voucher.Code == "" {
 		return nil, errors.New("Voucher code is required")
+	}
+	if !validation.ItemNameRegex.MatchString(voucher.Code) {
+		return nil, errors.New("Invalid voucher code")
 	}
 	if !model.IsValidVoucherType(voucher.VoucherType) {
 		return nil, fmt.Errorf("Invalid voucher type: %s", voucher.VoucherType)
@@ -147,6 +148,74 @@ func (service *VoucherServiceImpl) GetVouchers(
 	}
 
 	return vouchers, count, nil
+}
+
+func (service *VoucherServiceImpl) EditVoucher(
+	voucherId int,
+	tenantId int,
+	updates *model.VoucherUpdate,
+) (*model.Voucher, error) {
+	if voucherId < 1 {
+		return nil, errors.New("Voucher ID is required")
+	}
+	if tenantId < 1 {
+		return nil, errors.New("Tenant ID is required")
+	}
+	if updates == nil {
+		return nil, errors.New("Voucher updates are required")
+	}
+	if updates.Name == nil && updates.Code == nil && !updates.StartAtSet && !updates.EndAtSet {
+		return nil, errors.New("At least one editable voucher field is required")
+	}
+	if updates.Name != nil && *updates.Name != "" && !validation.ItemNameRegex.MatchString(*updates.Name) {
+		return nil, errors.New("Invalid voucher name")
+	}
+	if updates.Code != nil {
+		trimmedCode := strings.TrimSpace(*updates.Code)
+		if trimmedCode == "" {
+			return nil, errors.New("Voucher code is required")
+		}
+		if !validation.ItemNameRegex.MatchString(trimmedCode) {
+			return nil, errors.New("Invalid voucher code")
+		}
+		updates.Code = &trimmedCode
+	}
+
+	currentVoucher, err := service.Repository.FindVoucherById(voucherId, tenantId)
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, &exception.VoucherServiceError{
+			Kind:    exception.VoucherServiceErrorNotFound,
+			Message: "Voucher not found.",
+		}
+	}
+	if err != nil {
+		return nil, service.handleVoucherRepositoryError("find for edit", tenantId, err)
+	}
+
+	startAt := currentVoucher.StartAt
+	if updates.StartAtSet {
+		startAt = updates.StartAt
+	}
+	endAt := currentVoucher.EndAt
+	if updates.EndAtSet {
+		endAt = updates.EndAt
+	}
+	if startAt != nil && endAt != nil && !endAt.After(*startAt) {
+		return nil, errors.New("Voucher end_at must be after start_at")
+	}
+
+	updatedVoucher, err := service.Repository.UpdateVoucher(voucherId, tenantId, updates)
+	if errors.Is(err, repository.ErrVoucherNotFound) {
+		return nil, &exception.VoucherServiceError{
+			Kind:    exception.VoucherServiceErrorNotFound,
+			Message: "Voucher not found.",
+		}
+	}
+	if err != nil {
+		return nil, service.handleVoucherRepositoryError("edit", tenantId, err)
+	}
+
+	return updatedVoucher, nil
 }
 
 func (service *VoucherServiceImpl) DeleteVoucher(voucherId, tenantId int) error {

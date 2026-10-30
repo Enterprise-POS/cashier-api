@@ -56,6 +56,39 @@ func TestVoucherControllerGet(t *testing.T) {
 	assert.Equal(t, "SAVE", responseBody.Data.Vouchers[0].Code)
 }
 
+func TestVoucherControllerEdit(t *testing.T) {
+	updatedVoucher := &model.Voucher{Id: 12, TenantId: 7, Name: "Updated", Code: "NEW"}
+	serviceMock := new(mock.Mock)
+	serviceMock.On(
+		"EditVoucher",
+		12,
+		7,
+		mock.MatchedBy(func(updates *model.VoucherUpdate) bool {
+			return updates.Name != nil &&
+				*updates.Name == "Updated" &&
+				updates.Code == nil &&
+				updates.StartAtSet &&
+				updates.StartAt == nil &&
+				!updates.EndAtSet
+		}),
+	).Return(updatedVoucher, nil).Once()
+
+	app := fiber.New()
+	app.Put("/vouchers/:tenantId/:voucherId", NewVoucherControllerImpl(service.NewVoucherServiceMock(serviceMock)).Edit)
+	request := httptest.NewRequest(
+		http.MethodPut,
+		"/vouchers/7/12",
+		strings.NewReader(`{"name":"Updated","start_at":null,"percentage":99,"decrement":100}`),
+	)
+	request.Header.Set("Content-Type", "application/json")
+	response, err := app.Test(request)
+	require.NoError(t, err)
+	defer response.Body.Close()
+
+	assert.Equal(t, fiber.StatusOK, response.StatusCode)
+	serviceMock.AssertExpectations(t)
+}
+
 func TestVoucherControllerCreate(t *testing.T) {
 	t.Run("UsesTenantFromRouteAndReturnsCreatedVoucher", func(t *testing.T) {
 		createdVoucher := &model.Voucher{Id: 12, Code: "SAVE", TenantId: 7}

@@ -44,6 +44,15 @@ type Voucher struct {
 	ItemQuantities int `json:"item_quantities" gorm:"column:item_quantities"`
 }
 
+type VoucherUpdate struct {
+	Name       *string
+	Code       *string
+	StartAt    *time.Time
+	StartAtSet bool
+	EndAt      *time.Time
+	EndAtSet   bool
+}
+
 func (voucher *Voucher) TableName() string {
 	return "voucher"
 }

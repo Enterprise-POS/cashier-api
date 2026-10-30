@@ -11,7 +11,7 @@ type VoucherService interface {
 	// TenantId,
 	// a non-empty Code,
 	// and a valid VoucherType.
-	// Name may be empty, but cannot exceed 255 characters.
+	// Code is required; any non-empty Name and the Code must match validation.ItemNameRegex.
 	//
 	// UsedCount and CreatedAt must be zero;
 	//
@@ -36,6 +36,7 @@ type VoucherService interface {
 	// 			2. ItemQuantities (greater than zero), and exactly one positive ID in ItemIdCombinations.
 	// Returns the created voucher with database-generated fields populated.
 	CreateVoucher(voucher *model.Voucher) (*model.Voucher, error)
+	EditVoucher(voucherId, tenantId int, updates *model.VoucherUpdate) (*model.Voucher, error)
 	DeleteVoucher(voucherId, tenantId int) error
 	PreviewVoucher(tenantId int, code string, items []*model.Item) (beforeDiscountPrice, discountPrice, afterDiscountPrice, voucherId int, eligible bool, err error)
 	CommitVoucherUsage(voucherId, tenantId int) error

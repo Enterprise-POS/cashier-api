@@ -1,10 +1,12 @@
 package controller
 
 import (
+	"bytes"
 	"cashier-api/exception"
 	common "cashier-api/helper"
 	"cashier-api/model"
 	"cashier-api/service"
+	"encoding/json"
 	"errors"
 	"strconv"
 	"time"
@@ -89,6 +91,76 @@ func (controller *VoucherControllerImpl) Create(ctx fiber.Ctx) error {
 	return ctx.Status(fiber.StatusCreated).
 		JSON(common.NewWebResponse(fiber.StatusCreated, common.StatusSuccess, fiber.Map{
 			"voucher": createdVoucher,
+		}))
+}
+
+func (controller *VoucherControllerImpl) Edit(ctx fiber.Ctx) error {
+	tenantId, err := voucherTenantID(ctx)
+	if err != nil {
+		return voucherRequestError(ctx, "edit", err, "Invalid tenant ID.")
+	}
+	voucherId, err := strconv.Atoi(ctx.Params("voucherId"))
+	if err != nil || voucherId < 1 {
+		if err == nil {
+			err = errors.New("voucher ID must be greater than zero")
+		}
+		return voucherRequestError(ctx, "edit", err, "Invalid voucher ID.")
+	}
+
+	var body map[string]json.RawMessage
+	if err := ctx.Bind().Body(&body); err != nil || body == nil {
+		if err == nil {
+			err = errors.New("request body must be a JSON object")
+		}
+		return voucherRequestError(ctx, "edit", err, "The request body is malformed.")
+	}
+
+	updates := &model.VoucherUpdate{}
+	if rawValue, exists := body["name"]; exists {
+		var name string
+		if err := json.Unmarshal(rawValue, &name); err != nil || bytes.Equal(bytes.TrimSpace(rawValue), []byte("null")) {
+			return voucherRequestError(ctx, "edit", errors.New("name must be a string"), "Invalid voucher name.")
+		}
+		updates.Name = &name
+	}
+	if rawValue, exists := body["code"]; exists {
+		var code string
+		if err := json.Unmarshal(rawValue, &code); err != nil || bytes.Equal(bytes.TrimSpace(rawValue), []byte("null")) {
+			return voucherRequestError(ctx, "edit", errors.New("code must be a string"), "Invalid voucher code.")
+		}
+		updates.Code = &code
+	}
+	if rawValue, exists := body["start_at"]; exists {
+		updates.StartAtSet = true
+		if !bytes.Equal(bytes.TrimSpace(rawValue), []byte("null")) {
+			var timestamp int64
+			if err := json.Unmarshal(rawValue, &timestamp); err != nil {
+				return voucherRequestError(ctx, "edit", err, "Invalid start_at; expected a Unix timestamp in seconds or null.")
+			}
+			startAt := time.Unix(timestamp, 0).UTC()
+			updates.StartAt = &startAt
+		}
+	}
+	if rawValue, exists := body["end_at"]; exists {
+		updates.EndAtSet = true
+		if !bytes.Equal(bytes.TrimSpace(rawValue), []byte("null")) {
+			var timestamp int64
+			if err := json.Unmarshal(rawValue, &timestamp); err != nil {
+				return voucherRequestError(ctx, "edit", err, "Invalid end_at; expected a Unix timestamp in seconds or null.")
+			}
+			endAt := time.Unix(timestamp, 0).UTC()
+			updates.EndAt = &endAt
+		}
+	}
+
+	updatedVoucher, err := controller.Service.EditVoucher(voucherId, tenantId, updates)
+	if err != nil {
+		return voucherServiceErrorResponse(ctx, "edit", tenantId, err)
+	}
+
+	return ctx.Status(fiber.StatusOK).
+		JSON(common.NewWebResponse(fiber.StatusOK, common.StatusSuccess, fiber.Map{
+			"voucher": updatedVoucher,
 		}))
 }
 

@@ -15,25 +15,29 @@ import (
 )
 
 type voucherRepositoryStub struct {
-	voucher        *model.Voucher
-	vouchers       []*model.Voucher
-	voucherCount   int
-	getVouchersErr error
-	getTenantId    int
-	getLimit       int
-	getPage        int
-	getSearchQuery string
-	getSorts       []*query.QueryFilter
-	createErr      error
-	deleteErr      error
-	findErr        error
-	createdVoucher *model.Voucher
-	deletedVoucher int
-	deletedTenant  int
-	lookupCode     string
-	lookupTenant   int
-	incrementCalls int
-	incrementErr   error
+	voucher          *model.Voucher
+	vouchers         []*model.Voucher
+	voucherCount     int
+	getVouchersErr   error
+	getTenantId      int
+	getLimit         int
+	getPage          int
+	getSearchQuery   string
+	getSorts         []*query.QueryFilter
+	findVoucherErr   error
+	updatedVoucher   *model.Voucher
+	voucherUpdates   *model.VoucherUpdate
+	updateVoucherErr error
+	createErr        error
+	deleteErr        error
+	findErr          error
+	createdVoucher   *model.Voucher
+	deletedVoucher   int
+	deletedTenant    int
+	lookupCode       string
+	lookupTenant     int
+	incrementCalls   int
+	incrementErr     error
 }
 
 func (repository *voucherRepositoryStub) GetVouchers(tenantId, limit, page int, searchQuery string, queryFilters []*query.QueryFilter) ([]*model.Voucher, int, error) {
@@ -43,6 +47,15 @@ func (repository *voucherRepositoryStub) GetVouchers(tenantId, limit, page int, 
 	repository.getSearchQuery = searchQuery
 	repository.getSorts = queryFilters
 	return repository.vouchers, repository.voucherCount, repository.getVouchersErr
+}
+
+func (repository *voucherRepositoryStub) FindVoucherById(voucherId, tenantId int) (*model.Voucher, error) {
+	return repository.voucher, repository.findVoucherErr
+}
+
+func (repository *voucherRepositoryStub) UpdateVoucher(voucherId, tenantId int, updates *model.VoucherUpdate) (*model.Voucher, error) {
+	repository.voucherUpdates = updates
+	return repository.updatedVoucher, repository.updateVoucherErr
 }
 
 func (repository *voucherRepositoryStub) CreateVoucher(voucher *model.Voucher) (*model.Voucher, error) {
@@ -73,6 +86,43 @@ func (repository *voucherRepositoryStub) IncrementVoucherUsedCount(voucherId, te
 }
 
 func TestVoucherServiceImpl(t *testing.T) {
+	t.Run("EditVoucher", func(t *testing.T) {
+		repositoryStub := &voucherRepositoryStub{
+			voucher:        &model.Voucher{Id: 12, TenantId: 7, Code: "OLD", Name: "Old"},
+			updatedVoucher: &model.Voucher{Id: 12, TenantId: 7, Code: "NEW", Name: "New"},
+		}
+		service := NewVoucherServiceImpl(repositoryStub)
+		name := "New"
+		code := " NEW "
+		updates := &model.VoucherUpdate{Name: &name, Code: &code}
+
+		updated, err := service.EditVoucher(12, 7, updates)
+
+		require.NoError(t, err)
+		assert.Same(t, repositoryStub.updatedVoucher, updated)
+		assert.Equal(t, "NEW", *updates.Code)
+		assert.Same(t, updates, repositoryStub.voucherUpdates)
+
+		repositoryStub.updateVoucherErr = &pgconn.PgError{Code: "23505"}
+		_, err = service.EditVoucher(12, 7, updates)
+		var voucherError *exception.VoucherServiceError
+		require.ErrorAs(t, err, &voucherError)
+		assert.Equal(t, exception.VoucherServiceErrorConflict, voucherError.Kind)
+
+		repositoryStub.updateVoucherErr = nil
+		repositoryStub.voucher.StartAt = nil
+		repositoryStub.voucher.EndAt = nil
+		repositoryStub.voucherUpdates = nil
+		startAt := time.Date(2026, 5, 1, 0, 0, 0, 0, time.UTC)
+		endAt := startAt
+		_, err = service.EditVoucher(12, 7, &model.VoucherUpdate{StartAt: &startAt, StartAtSet: true, EndAt: &endAt, EndAtSet: true})
+		assert.EqualError(t, err, "Voucher end_at must be after start_at")
+		assert.Nil(t, repositoryStub.voucherUpdates)
+
+		_, err = service.EditVoucher(12, 7, &model.VoucherUpdate{})
+		assert.EqualError(t, err, "At least one editable voucher field is required")
+	})
+
 	t.Run("GetVouchers", func(t *testing.T) {
 		vouchers := []*model.Voucher{{Id: 10, Name: "Save", Code: "SAVE10"}}
 		sort := []*query.QueryFilter{{Column: query.VoucherNameColumn, Ascending: true}}
@@ -135,11 +185,30 @@ func TestVoucherServiceImpl(t *testing.T) {
 			repository := &voucherRepositoryStub{}
 			service := NewVoucherServiceImpl(repository)
 			voucher := newPercentageVoucher("EMPTY")
+			voucher.Name = ""
 
 			created, err := service.CreateVoucher(voucher)
 			require.NoError(t, err)
 			require.NotNil(t, created)
 			assert.Empty(t, created.Name)
+		})
+
+		t.Run("RejectsNamesAndCodesWithUnsupportedCharacters", func(t *testing.T) {
+			repository := &voucherRepositoryStub{}
+			service := NewVoucherServiceImpl(repository)
+			voucher := newPercentageVoucher("SAVE<10")
+			voucher.Name = "Summer<Deal"
+
+			created, err := service.CreateVoucher(voucher)
+			assert.EqualError(t, err, "Invalid voucher name")
+			assert.Nil(t, created)
+			assert.Nil(t, repository.createdVoucher)
+
+			voucher.Name = "Summer Deal"
+			created, err = service.CreateVoucher(voucher)
+			assert.EqualError(t, err, "Invalid voucher code")
+			assert.Nil(t, created)
+			assert.Nil(t, repository.createdVoucher)
 		})
 
 		t.Run("RejectsNameOver255Characters", func(t *testing.T) {
@@ -493,6 +562,7 @@ func TestVoucherServiceImpl(t *testing.T) {
 func newPercentageVoucher(code string) *model.Voucher {
 	return &model.Voucher{
 		Code:           code,
+		Name:           "Test Voucher",
 		TenantId:       7,
 		VoucherType:    model.FROM_TOTAL_LIMITED_PERCENTAGE,
 		Percentage:     10,

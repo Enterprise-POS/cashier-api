@@ -135,6 +135,7 @@ func main() {
 
 	apiV1.Get("/vouchers/:tenantId", tenantRestriction, voucherController.Get)
 	apiV1.Post("/vouchers/:tenantId", tenantRestriction, voucherController.Create)
+	apiV1.Put("/vouchers/:tenantId/:voucherId", tenantRestriction, voucherController.Edit)
 	apiV1.Delete("/vouchers/:tenantId/:voucherId", tenantRestriction, voucherController.Delete)
 
 	storeRepository := repository.NewStoreRepositoryImpl(gormClient)

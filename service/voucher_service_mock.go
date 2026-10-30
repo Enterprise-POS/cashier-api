@@ -33,6 +33,15 @@ func (service *VoucherServiceMock) CreateVoucher(voucher *model.Voucher) (*model
 	return args.Get(0).(*model.Voucher), args.Error(1)
 }
 
+func (service *VoucherServiceMock) EditVoucher(voucherId, tenantId int, updates *model.VoucherUpdate) (*model.Voucher, error) {
+	args := service.Mock.Called(voucherId, tenantId, updates)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+
+	return args.Get(0).(*model.Voucher), args.Error(1)
+}
+
 func (service *VoucherServiceMock) DeleteVoucher(voucherId, tenantId int) error {
 	args := service.Mock.Called(voucherId, tenantId)
 	return args.Error(0)

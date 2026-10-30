@@ -311,7 +311,7 @@ func TestUserControllerImpl(t *testing.T) {
 				if c.Name == constant.EnterprisePOS {
 					cleared = true
 					assert.Equal(t, "", c.Value)
-					assert.Equal(t, 0, c.MaxAge)
+					assert.Equal(t, -1, c.MaxAge)
 				}
 			}
 			assert.True(t, cleared)
