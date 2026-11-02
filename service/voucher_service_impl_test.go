@@ -247,7 +247,7 @@ func TestVoucherServiceImpl(t *testing.T) {
 				VoucherType:        model.ITEM_QUANTITIES,
 				Decrement:          100,
 				ItemQuantities:     2,
-				ItemIdCombinations: []int{1, 2},
+				ItemIdCombinations: model.VoucherItemIDs{1, 2},
 			}
 
 			created, err := service.CreateVoucher(voucher)
@@ -340,7 +340,7 @@ func TestVoucherServiceImpl(t *testing.T) {
 					voucher: &model.Voucher{
 						VoucherType:        model.ITEM_COMBINATIONS,
 						Decrement:          100,
-						ItemIdCombinations: []int{1, 2},
+						ItemIdCombinations: model.VoucherItemIDs{1, 2},
 					},
 					items: []*model.Item{
 						{ItemId: 1, TenantId: 7, BasePrice: 300},
@@ -356,7 +356,7 @@ func TestVoucherServiceImpl(t *testing.T) {
 					voucher: &model.Voucher{
 						VoucherType:        model.ITEM_COMBINATIONS,
 						Decrement:          100,
-						ItemIdCombinations: []int{1, 1, 1},
+						ItemIdCombinations: model.VoucherItemIDs{1, 1, 1},
 					},
 					items: []*model.Item{
 						{ItemId: 1, TenantId: 7, BasePrice: 300},
@@ -373,7 +373,7 @@ func TestVoucherServiceImpl(t *testing.T) {
 					voucher: &model.Voucher{
 						VoucherType:        model.ITEM_COMBINATIONS,
 						Decrement:          100,
-						ItemIdCombinations: []int{1, 2},
+						ItemIdCombinations: model.VoucherItemIDs{1, 2},
 					},
 					items: []*model.Item{
 						{ItemId: 1, TenantId: 7, BasePrice: 300},
@@ -389,7 +389,7 @@ func TestVoucherServiceImpl(t *testing.T) {
 					voucher: &model.Voucher{
 						VoucherType:        model.ITEM_COMBINATIONS,
 						Decrement:          100,
-						ItemIdCombinations: []int{1, 1, 1},
+						ItemIdCombinations: model.VoucherItemIDs{1, 1, 1},
 					},
 					items: []*model.Item{
 						{ItemId: 1, TenantId: 7, BasePrice: 300},
@@ -406,7 +406,7 @@ func TestVoucherServiceImpl(t *testing.T) {
 					voucher: &model.Voucher{
 						VoucherType:        model.ITEM_QUANTITIES,
 						Decrement:          100,
-						ItemIdCombinations: []int{1},
+						ItemIdCombinations: model.VoucherItemIDs{1},
 						ItemQuantities:     2,
 					},
 					items: []*model.Item{
@@ -424,7 +424,7 @@ func TestVoucherServiceImpl(t *testing.T) {
 					voucher: &model.Voucher{
 						VoucherType:        model.ITEM_QUANTITIES,
 						Decrement:          100,
-						ItemIdCombinations: []int{1},
+						ItemIdCombinations: model.VoucherItemIDs{1},
 						ItemQuantities:     2,
 					},
 					items:        []*model.Item{{ItemId: 1, TenantId: 7, BasePrice: 500}},

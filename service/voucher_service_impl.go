@@ -89,7 +89,7 @@ func (service *VoucherServiceImpl) CreateVoucher(voucher *model.Voucher) (*model
 
 	switch voucher.VoucherType {
 	case model.ITEM_COMBINATIONS:
-		if err := validateItemIds(voucher.ItemIdCombinations); err != nil {
+		if err := validateItemIds([]int(voucher.ItemIdCombinations)); err != nil {
 			return nil, err
 		}
 	case model.ITEM_QUANTITIES:
@@ -443,10 +443,10 @@ func calculateVoucherDiscount(voucher *model.Voucher, items []*model.Item, total
 		if voucher.Decrement < 1 {
 			return 0, false, errors.New("Voucher decrement must be greater than zero")
 		}
-		if err := validateItemIds(voucher.ItemIdCombinations); err != nil {
+		if err := validateItemIds([]int(voucher.ItemIdCombinations)); err != nil {
 			return 0, false, err
 		}
-		if !matchesExactItemCombination(voucher.ItemIdCombinations, items) {
+		if !matchesExactItemCombination([]int(voucher.ItemIdCombinations), items) {
 			return 0, false, nil
 		}
 		discountPrice, err := validateDecrement(voucher.Decrement, totalPrice)

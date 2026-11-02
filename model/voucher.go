@@ -1,6 +1,10 @@
 package model
 
 import (
+	"database/sql/driver"
+	"fmt"
+	"strconv"
+	"strings"
 	"time"
 
 	"gorm.io/gorm"
@@ -38,10 +42,62 @@ type Voucher struct {
 	Decrement int
 
 	// No.3 'ITEM_COMBINATIONS'
-	ItemIdCombinations []int `json:"item_id_combinations" gorm:"column:item_id_combinations;type:jsonb;serializer:json"`
+	ItemIdCombinations VoucherItemIDs `json:"item_id_combinations" gorm:"column:item_id_combinations;type:integer[]"`
 
 	// No.4 'ITEM_QUANTITIES'
 	ItemQuantities int `json:"item_quantities" gorm:"column:item_quantities"`
+}
+
+type VoucherItemIDs []int
+
+func (itemIds VoucherItemIDs) Value() (driver.Value, error) {
+	if itemIds == nil {
+		return nil, nil
+	}
+
+	values := make([]string, len(itemIds))
+	for index, itemId := range itemIds {
+		values[index] = strconv.Itoa(itemId)
+	}
+	return "{" + strings.Join(values, ",") + "}", nil
+}
+
+func (itemIds *VoucherItemIDs) Scan(value interface{}) error {
+	if value == nil {
+		*itemIds = nil
+		return nil
+	}
+
+	var array string
+	switch typedValue := value.(type) {
+	case string:
+		array = typedValue
+	case []byte:
+		array = string(typedValue)
+	default:
+		return fmt.Errorf("cannot scan PostgreSQL integer array from %T", value)
+	}
+
+	if len(array) < 2 || array[0] != '{' || array[len(array)-1] != '}' {
+		return fmt.Errorf("invalid PostgreSQL integer array: %q", array)
+	}
+
+	contents := array[1 : len(array)-1]
+	if contents == "" {
+		*itemIds = VoucherItemIDs{}
+		return nil
+	}
+
+	result := make(VoucherItemIDs, 0)
+	for _, item := range strings.Split(contents, ",") {
+		itemId, err := strconv.Atoi(strings.TrimSpace(item))
+		if err != nil {
+			return fmt.Errorf("invalid PostgreSQL integer array item %q: %w", item, err)
+		}
+		result = append(result, itemId)
+	}
+	*itemIds = result
+	return nil
 }
 
 type VoucherUpdate struct {
