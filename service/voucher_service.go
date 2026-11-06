@@ -6,7 +6,7 @@ import (
 )
 
 type VoucherService interface {
-	GetVouchers(tenantId, limit, page int, searchQuery string, queryFilters []*query.QueryFilter) ([]*model.Voucher, int, error)
+	GetVouchers(tenantId, limit, page int, searchQuery string, voucherType model.VoucherType, queryFilters []*query.QueryFilter) ([]*model.Voucher, int, error)
 	// CreateVoucher validates and creates a voucher. Every voucher requires
 	// TenantId,
 	// a non-empty Code,

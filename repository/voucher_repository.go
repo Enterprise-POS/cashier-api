@@ -6,7 +6,7 @@ import (
 )
 
 type VoucherRepository interface {
-	GetVouchers(tenantId, limit, page int, searchQuery string, queryFilters []*query.QueryFilter) ([]*model.Voucher, int, error)
+	GetVouchers(tenantId, limit, page int, searchQuery string, voucherType model.VoucherType, queryFilters []*query.QueryFilter) ([]*model.Voucher, int, error)
 	CreateVoucher(voucher *model.Voucher) (*model.Voucher, error)
 	FindVoucherById(voucherId, tenantId int) (*model.Voucher, error)
 	UpdateVoucher(voucherId, tenantId int, updates *model.VoucherUpdate) (*model.Voucher, error)

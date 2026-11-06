@@ -114,6 +114,7 @@ func (service *VoucherServiceImpl) GetVouchers(
 	limit int,
 	page int,
 	searchQuery string,
+	voucherType model.VoucherType,
 	queryFilters []*query.QueryFilter,
 ) ([]*model.Voucher, int, error) {
 	if tenantId < 1 {
@@ -124,6 +125,9 @@ func (service *VoucherServiceImpl) GetVouchers(
 	}
 	if page < 1 {
 		return nil, 0, errors.New("Page must be greater than zero")
+	}
+	if voucherType != "" && !model.IsValidVoucherType(voucherType) {
+		return nil, 0, fmt.Errorf("Invalid voucher type: %s", voucherType)
 	}
 	for _, filter := range queryFilters {
 		if filter == nil {
@@ -141,6 +145,7 @@ func (service *VoucherServiceImpl) GetVouchers(
 		limit,
 		page-1,
 		strings.TrimSpace(searchQuery),
+		voucherType,
 		queryFilters,
 	)
 	if err != nil {

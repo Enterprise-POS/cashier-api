@@ -39,7 +39,7 @@ type Voucher struct {
 	RoundingPolicy   string `json:"rounding_policy" gorm:"column:rounding_policy"` // By default will be ROUND
 
 	// No.2 'FROM_TOTAL_LIMITED_STATIC_DECREMENT'
-	Decrement int
+	Decrement int `json:"decrement" gorm:"column:decrement"`
 
 	// No.3 'ITEM_COMBINATIONS'
 	ItemIdCombinations VoucherItemIDs `json:"item_id_combinations" gorm:"column:item_id_combinations;type:integer[]"`

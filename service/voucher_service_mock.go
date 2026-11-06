@@ -15,8 +15,8 @@ func NewVoucherServiceMock(mockObject *mock.Mock) VoucherService {
 	return &VoucherServiceMock{Mock: mockObject}
 }
 
-func (service *VoucherServiceMock) GetVouchers(tenantId, limit, page int, searchQuery string, queryFilters []*query.QueryFilter) ([]*model.Voucher, int, error) {
-	args := service.Mock.Called(tenantId, limit, page, searchQuery, queryFilters)
+func (service *VoucherServiceMock) GetVouchers(tenantId, limit, page int, searchQuery string, voucherType model.VoucherType, queryFilters []*query.QueryFilter) ([]*model.Voucher, int, error) {
+	args := service.Mock.Called(tenantId, limit, page, searchQuery, voucherType, queryFilters)
 	if args.Get(0) == nil {
 		return nil, args.Int(1), args.Error(2)
 	}

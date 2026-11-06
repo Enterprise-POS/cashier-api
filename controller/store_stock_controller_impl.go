@@ -220,6 +220,7 @@ func (controller *StoreStockControllerImpl) LoadCashierData(ctx fiber.Ctx) error
 	return ctx.Status(fiber.StatusOK).
 		JSON(common.NewWebResponse(200, common.StatusSuccess, fiber.Map{
 			"cashier_data": cashierData,
+			"vouchers":     nil,
 		}))
 }
 

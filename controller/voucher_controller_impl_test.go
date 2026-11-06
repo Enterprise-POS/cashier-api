@@ -27,6 +27,7 @@ func TestVoucherControllerGet(t *testing.T) {
 		5,
 		3,
 		"save",
+		model.ITEM_COMBINATIONS,
 		mock.MatchedBy(func(filters []*query.QueryFilter) bool {
 			return len(filters) == 1 &&
 				filters[0].Column == query.VoucherCodeColumn &&
@@ -36,7 +37,7 @@ func TestVoucherControllerGet(t *testing.T) {
 
 	app := fiber.New()
 	app.Get("/vouchers/:tenantId", NewVoucherControllerImpl(service.NewVoucherServiceMock(serviceMock)).Get)
-	request := httptest.NewRequest(http.MethodGet, "/vouchers/7?limit=5&page=3&name_query=save&sort=code:asc", nil)
+	request := httptest.NewRequest(http.MethodGet, "/vouchers/7?limit=5&page=3&name_query=save&voucher_type=ITEM_COMBINATIONS&sort=code:asc", nil)
 	response, err := app.Test(request)
 	require.NoError(t, err)
 	defer response.Body.Close()

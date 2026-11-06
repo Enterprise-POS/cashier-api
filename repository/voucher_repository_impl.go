@@ -28,6 +28,7 @@ func (repository *VoucherRepositoryImpl) GetVouchers(
 	limit int,
 	page int,
 	searchQuery string,
+	voucherType model.VoucherType,
 	queryFilters []*query.QueryFilter,
 ) ([]*model.Voucher, int, error) {
 	offset := page * limit
@@ -35,6 +36,9 @@ func (repository *VoucherRepositoryImpl) GetVouchers(
 		q := repository.Client.
 			Model(&model.Voucher{}).
 			Where("tenant_id = ? AND voucher.deleted_at IS NULL", tenantId)
+		if voucherType != "" {
+			q = q.Where("voucher.voucher_type = ?", voucherType)
+		}
 		if searchQuery != "" {
 			nameSearchPattern := "%" + searchQuery + "%"
 			codeSearchPattern := "%" + searchQuery + "%"

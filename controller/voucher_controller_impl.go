@@ -44,6 +44,7 @@ func (controller *VoucherControllerImpl) Get(ctx fiber.Ctx) error {
 		limit,
 		page,
 		ctx.Query("name_query", ""),
+		model.VoucherType(ctx.Query("voucher_type", "")),
 		queryFilters,
 	)
 	if err != nil {

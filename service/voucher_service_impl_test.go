@@ -23,6 +23,7 @@ type voucherRepositoryStub struct {
 	getLimit         int
 	getPage          int
 	getSearchQuery   string
+	getVoucherType   model.VoucherType
 	getSorts         []*query.QueryFilter
 	findVoucherErr   error
 	updatedVoucher   *model.Voucher
@@ -40,11 +41,12 @@ type voucherRepositoryStub struct {
 	incrementErr     error
 }
 
-func (repository *voucherRepositoryStub) GetVouchers(tenantId, limit, page int, searchQuery string, queryFilters []*query.QueryFilter) ([]*model.Voucher, int, error) {
+func (repository *voucherRepositoryStub) GetVouchers(tenantId, limit, page int, searchQuery string, voucherType model.VoucherType, queryFilters []*query.QueryFilter) ([]*model.Voucher, int, error) {
 	repository.getTenantId = tenantId
 	repository.getLimit = limit
 	repository.getPage = page
 	repository.getSearchQuery = searchQuery
+	repository.getVoucherType = voucherType
 	repository.getSorts = queryFilters
 	return repository.vouchers, repository.voucherCount, repository.getVouchersErr
 }
@@ -129,7 +131,7 @@ func TestVoucherServiceImpl(t *testing.T) {
 		repository := &voucherRepositoryStub{vouchers: vouchers, voucherCount: 1}
 		service := NewVoucherServiceImpl(repository)
 
-		result, count, err := service.GetVouchers(7, 5, 2, " save ", sort)
+		result, count, err := service.GetVouchers(7, 5, 2, " save ", model.ITEM_COMBINATIONS, sort)
 
 		require.NoError(t, err)
 		assert.Equal(t, vouchers, result)
@@ -138,15 +140,20 @@ func TestVoucherServiceImpl(t *testing.T) {
 		assert.Equal(t, 5, repository.getLimit)
 		assert.Equal(t, 1, repository.getPage)
 		assert.Equal(t, "save", repository.getSearchQuery)
+		assert.Equal(t, model.ITEM_COMBINATIONS, repository.getVoucherType)
 		assert.Same(t, sort[0], repository.getSorts[0])
 
 		codeSort := []*query.QueryFilter{{Column: query.VoucherCodeColumn, Ascending: true}}
-		_, _, err = service.GetVouchers(7, 5, 1, "", codeSort)
+		_, _, err = service.GetVouchers(7, 5, 1, "", "", codeSort)
 		require.NoError(t, err)
+		assert.Empty(t, repository.getVoucherType)
 		assert.Same(t, codeSort[0], repository.getSorts[0])
 
-		_, _, err = service.GetVouchers(7, 5, 1, "", []*query.QueryFilter{{Column: query.ItemName}})
+		_, _, err = service.GetVouchers(7, 5, 1, "", "", []*query.QueryFilter{{Column: query.ItemName}})
 		assert.EqualError(t, err, "Invalid sort column: item_name")
+
+		_, _, err = service.GetVouchers(7, 5, 1, "", "INVALID", nil)
+		assert.EqualError(t, err, "Invalid voucher type: INVALID")
 	})
 
 	t.Run("CreateVoucher", func(t *testing.T) {
