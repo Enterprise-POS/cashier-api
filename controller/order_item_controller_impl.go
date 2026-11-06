@@ -11,7 +11,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -41,7 +41,7 @@ type OrderItemControllerGetResponse struct {
 }
 
 // Get implements OrderItemController.
-func (controller *OrderItemControllerImpl) Get(ctx *fiber.Ctx) error {
+func (controller *OrderItemControllerImpl) Get(ctx fiber.Ctx) error {
 	// It's guaranteed to be not "", because restrict by tenant already did check first
 	tenantId, _ := strconv.Atoi(ctx.Params("tenantId"))
 
@@ -53,7 +53,7 @@ func (controller *OrderItemControllerImpl) Get(ctx *fiber.Ctx) error {
 	}
 
 	var body OrderItemControllerGetRequest
-	err := ctx.BodyParser(&body)
+	err := ctx.Bind().Body(&body)
 	if err != nil {
 		return ctx.Status(fiber.StatusBadRequest).
 			JSON(common.NewWebResponseError(400, common.StatusError, "Something gone wrong ! The request body is malformed"))
@@ -76,12 +76,12 @@ func (controller *OrderItemControllerImpl) Get(ctx *fiber.Ctx) error {
 }
 
 // PlaceOrderItem implements OrderItemController.
-func (controller *OrderItemControllerImpl) PlaceOrderItem(ctx *fiber.Ctx) error {
+func (controller *OrderItemControllerImpl) PlaceOrderItem(ctx fiber.Ctx) error {
 	panic("unimplemented")
 }
 
 // FindById implements OrderItemController.
-func (controller *OrderItemControllerImpl) FindById(ctx *fiber.Ctx) error {
+func (controller *OrderItemControllerImpl) FindById(ctx fiber.Ctx) error {
 	// It's guaranteed to be not "", because restrict by tenant already did check first
 	tenantId, _ := strconv.Atoi(ctx.Params("tenantId"))
 
@@ -108,7 +108,7 @@ func (controller *OrderItemControllerImpl) FindById(ctx *fiber.Ctx) error {
 }
 
 // Transactions implements OrderItemController.
-func (controller *OrderItemControllerImpl) Transactions(ctx *fiber.Ctx) error {
+func (controller *OrderItemControllerImpl) Transactions(ctx fiber.Ctx) error {
 	// Even PurchasedItem need ID, but Go will create default id as 0 if we don't specify it
 	// Expected body
 	/*
@@ -136,7 +136,7 @@ func (controller *OrderItemControllerImpl) Transactions(ctx *fiber.Ctx) error {
 			}
 	*/
 	var body repository.CreateTransactionParams
-	err := ctx.BodyParser(&body)
+	err := ctx.Bind().Body(&body)
 	if err != nil {
 		return ctx.Status(fiber.StatusBadRequest).
 			JSON(common.NewWebResponseError(400, common.StatusError, "Something gone wrong ! The request body is malformed"))
@@ -177,7 +177,7 @@ func (controller *OrderItemControllerImpl) Transactions(ctx *fiber.Ctx) error {
 }
 
 // CheckTransaction implements [OrderItemController].
-func (controller *OrderItemControllerImpl) CheckTransaction(ctx *fiber.Ctx) error {
+func (controller *OrderItemControllerImpl) CheckTransaction(ctx fiber.Ctx) error {
 	paramTransactionId := ctx.Query("transaction_id", "") // default 5
 	midtransServerKey, ok := ctx.Locals("midtransServerKey").(string)
 	if !ok {
@@ -196,7 +196,7 @@ func (controller *OrderItemControllerImpl) CheckTransaction(ctx *fiber.Ctx) erro
 }
 
 // CancelTransaction implements [OrderItemController].
-func (controller *OrderItemControllerImpl) CancelTransaction(ctx *fiber.Ctx) error {
+func (controller *OrderItemControllerImpl) CancelTransaction(ctx fiber.Ctx) error {
 	tenantId, err := strconv.Atoi(ctx.Params("tenantId"))
 	if err != nil {
 		return ctx.Status(fiber.StatusBadRequest).
@@ -208,7 +208,7 @@ func (controller *OrderItemControllerImpl) CancelTransaction(ctx *fiber.Ctx) err
 		TransactionId string `json:"transaction_id"`
 	}
 
-	if err := ctx.BodyParser(&body); err != nil {
+	if err := ctx.Bind().Body(&body); err != nil {
 		return ctx.Status(fiber.StatusBadRequest).
 			JSON(common.NewWebResponseError(400, common.StatusError, "Something gone wrong ! The request body is malformed"))
 	}
@@ -229,7 +229,7 @@ func (controller *OrderItemControllerImpl) CancelTransaction(ctx *fiber.Ctx) err
 }
 
 // ExportProfitExcel implements OrderItemController.
-func (controller *OrderItemControllerImpl) ExportProfitExcel(ctx *fiber.Ctx) error {
+func (controller *OrderItemControllerImpl) ExportProfitExcel(ctx fiber.Ctx) error {
 	tenantId, err := strconv.Atoi(ctx.Params("tenantId"))
 	if err != nil {
 		return ctx.Status(fiber.StatusBadRequest).
@@ -240,7 +240,7 @@ func (controller *OrderItemControllerImpl) ExportProfitExcel(ctx *fiber.Ctx) err
 		StoreId    int               `json:"store_id"`
 		DateFilter *query.DateFilter `json:"date_filter"`
 	}
-	if err := ctx.BodyParser(&body); err != nil {
+	if err := ctx.Bind().Body(&body); err != nil {
 		return ctx.Status(fiber.StatusBadRequest).
 			JSON(common.NewWebResponseError(400, common.StatusError, "Something gone wrong ! The request body is malformed"))
 	}
@@ -259,7 +259,7 @@ func (controller *OrderItemControllerImpl) ExportProfitExcel(ctx *fiber.Ctx) err
 }
 
 // GetSalesReport implements OrderItemController.
-func (controller *OrderItemControllerImpl) GetSalesReport(ctx *fiber.Ctx) error {
+func (controller *OrderItemControllerImpl) GetSalesReport(ctx fiber.Ctx) error {
 	// It's guaranteed to be not "", because restrict by tenant already did check first
 	tenantId, _ := strconv.Atoi(ctx.Params("tenantId"))
 
@@ -267,7 +267,7 @@ func (controller *OrderItemControllerImpl) GetSalesReport(ctx *fiber.Ctx) error 
 		StoreId    int               `json:"store_id"`
 		DateFilter *query.DateFilter `json:"date_filter"`
 	}
-	err := ctx.BodyParser(&body)
+	err := ctx.Bind().Body(&body)
 	if err != nil {
 		return ctx.Status(fiber.StatusBadRequest).
 			JSON(common.NewWebResponseError(400, common.StatusError, "Something gone wrong ! The request body is malformed"))
@@ -284,13 +284,13 @@ func (controller *OrderItemControllerImpl) GetSalesReport(ctx *fiber.Ctx) error 
 }
 
 // DeleteInvoice implements [OrderItemController].
-func (controller *OrderItemControllerImpl) DeleteInvoice(ctx *fiber.Ctx) error {
+func (controller *OrderItemControllerImpl) DeleteInvoice(ctx fiber.Ctx) error {
 	tenantId, _ := strconv.Atoi(ctx.Params("tenantId"))
 
 	var body struct {
 		OrderItemId int `json:"order_item_id"`
 	}
-	err := ctx.BodyParser(&body)
+	err := ctx.Bind().Body(&body)
 	if err != nil {
 		return ctx.Status(fiber.StatusBadRequest).
 			JSON(common.NewWebResponseError(400, common.StatusError, "Something gone wrong ! The request body is malformed"))

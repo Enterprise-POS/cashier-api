@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 type TenantControllerImpl struct {
@@ -21,7 +21,7 @@ func NewTenantControllerImpl(service service.TenantService) TenantController {
 }
 
 // GetTenantWithUser implements TenantController.
-func (controller *TenantControllerImpl) GetTenantWithUser(ctx *fiber.Ctx) error {
+func (controller *TenantControllerImpl) GetTenantWithUser(ctx fiber.Ctx) error {
 	p_userId := ctx.Params("userId")
 	userId, err := strconv.Atoi(p_userId)
 	if err != nil {
@@ -55,14 +55,14 @@ func (controller *TenantControllerImpl) GetTenantWithUser(ctx *fiber.Ctx) error 
 }
 
 // NewTenant implements TenantController.
-func (controller *TenantControllerImpl) NewTenant(ctx *fiber.Ctx) error {
+func (controller *TenantControllerImpl) NewTenant(ctx fiber.Ctx) error {
 	var body struct {
 		Name        string `json:"name"`
 		OwnerUserId int    `json:"owner_user_id"`
 		// IsActive    bool       `json:"is_active"`
 	}
 
-	err := ctx.BodyParser(&body)
+	err := ctx.Bind().Body(&body)
 	if err != nil {
 		return ctx.Status(fiber.StatusBadRequest).
 			JSON(common.NewWebResponseError(400, common.StatusError, "Something gone wrong ! The request body is malformed"))
@@ -96,14 +96,14 @@ func (controller *TenantControllerImpl) NewTenant(ctx *fiber.Ctx) error {
 }
 
 // RemoveUserFromTenant implements TenantController.
-func (controller *TenantControllerImpl) RemoveUserFromTenant(ctx *fiber.Ctx) error {
+func (controller *TenantControllerImpl) RemoveUserFromTenant(ctx fiber.Ctx) error {
 	var body struct {
 		UserId      int `json:"user_id"` // To be remove user
 		TenantId    int `json:"tenant_id"`
 		PerformerId int `json:"performer_id"` // Tell the identity who's perform this request/action
 	}
 
-	err := ctx.BodyParser(&body)
+	err := ctx.Bind().Body(&body)
 	if err != nil {
 		return ctx.Status(fiber.StatusBadRequest).
 			JSON(common.NewWebResponseError(400, common.StatusError, "Something gone wrong ! The request body is malformed"))
@@ -140,14 +140,14 @@ func (controller *TenantControllerImpl) RemoveUserFromTenant(ctx *fiber.Ctx) err
 }
 
 // AddUserToTenant implements TenantController.
-func (controller *TenantControllerImpl) AddUserToTenant(ctx *fiber.Ctx) error {
+func (controller *TenantControllerImpl) AddUserToTenant(ctx fiber.Ctx) error {
 	var body struct {
 		UserId      int `json:"user_id"` // To be add user
 		TenantId    int `json:"tenant_id"`
 		PerformerId int `json:"performer_id"`
 	}
 
-	err := ctx.BodyParser(&body)
+	err := ctx.Bind().Body(&body)
 	if err != nil {
 		return ctx.Status(fiber.StatusBadRequest).
 			JSON(common.NewWebResponseError(400, common.StatusError, "Something gone wrong ! The request body is malformed"))
@@ -180,7 +180,7 @@ func (controller *TenantControllerImpl) AddUserToTenant(ctx *fiber.Ctx) error {
 }
 
 // GetTenantMembers implements TenantController.
-func (controller *TenantControllerImpl) GetTenantMembers(ctx *fiber.Ctx) error {
+func (controller *TenantControllerImpl) GetTenantMembers(ctx fiber.Ctx) error {
 	p_tenantId := ctx.Params("tenantId")
 	tenantId, err := strconv.Atoi(p_tenantId)
 	if err != nil {

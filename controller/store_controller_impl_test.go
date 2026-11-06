@@ -19,7 +19,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -79,7 +79,7 @@ func TestStoreControllerImpl(t *testing.T) {
 	request.Header.Set("Content-Type", "application/json")
 
 	// Cookie
-	response, err := app.Test(request, testTimeout)
+	response, err := app.Test(request, fiber.TestConfig{Timeout: time.Duration(testTimeout) * time.Millisecond})
 	require.NoError(t, err)
 	require.NotNil(t, response)
 	require.Equal(t, http.StatusOK, response.StatusCode)
@@ -102,7 +102,7 @@ func TestStoreControllerImpl(t *testing.T) {
 			request := httptest.NewRequest("POST", fmt.Sprint("/stores/", createdTestTenant.Id), strings.NewReader(string(byteBody)))
 			request.Header.Set("Content-Type", "application/json")
 			request.AddCookie(enterprisePOSCookie)
-			response, err := app.Test(request, testTimeout)
+			response, err := app.Test(request, fiber.TestConfig{Timeout: time.Duration(testTimeout) * time.Millisecond})
 			assert.Nil(t, err)
 			assert.NotNil(t, response)
 			assert.Equal(t, http.StatusOK, response.StatusCode)
@@ -141,7 +141,7 @@ func TestStoreControllerImpl(t *testing.T) {
 			request := httptest.NewRequest("POST", fmt.Sprint("/stores/", createdTestTenant.Id), strings.NewReader(string(byteBody)))
 			request.Header.Set("Content-Type", "application/json")
 			request.AddCookie(enterprisePOSCookie)
-			response, err := app.Test(request, testTimeout)
+			response, err := app.Test(request, fiber.TestConfig{Timeout: time.Duration(testTimeout) * time.Millisecond})
 			assert.Nil(t, err)
 			assert.NotNil(t, response)
 			assert.Equal(t, http.StatusBadRequest, response.StatusCode)
@@ -163,7 +163,7 @@ func TestStoreControllerImpl(t *testing.T) {
 			request := httptest.NewRequest("POST", fmt.Sprint("/stores/", createdTestTenant.Id), strings.NewReader(string(byteBody)))
 			request.Header.Set("Content-Type", "application/json")
 			request.AddCookie(enterprisePOSCookie)
-			response, err := app.Test(request, testTimeout)
+			response, err := app.Test(request, fiber.TestConfig{Timeout: time.Duration(testTimeout) * time.Millisecond})
 			assert.Nil(t, err)
 			assert.Equal(t, http.StatusOK, response.StatusCode)
 
@@ -194,7 +194,7 @@ func TestStoreControllerImpl(t *testing.T) {
 			request := httptest.NewRequest("GET", parsedURL.String(), nil)
 			request.Header.Set("Content-Type", "application/json")
 			request.AddCookie(enterprisePOSCookie)
-			response, err := app.Test(request, testTimeout)
+			response, err := app.Test(request, fiber.TestConfig{Timeout: time.Duration(testTimeout) * time.Millisecond})
 			assert.Nil(t, err)
 			assert.NotNil(t, response)
 			assert.Equal(t, http.StatusOK, response.StatusCode)
@@ -234,7 +234,7 @@ func TestStoreControllerImpl(t *testing.T) {
 			request := httptest.NewRequest("GET", parsedURL.String(), nil)
 			request.Header.Set("Content-Type", "application/json")
 			request.AddCookie(enterprisePOSCookie)
-			response, err := app.Test(request, testTimeout)
+			response, err := app.Test(request, fiber.TestConfig{Timeout: time.Duration(testTimeout) * time.Millisecond})
 			assert.Nil(t, err)
 			assert.NotNil(t, response)
 			assert.Equal(t, http.StatusBadRequest, response.StatusCode)
@@ -254,7 +254,7 @@ func TestStoreControllerImpl(t *testing.T) {
 			request := httptest.NewRequest("GET", parsedURL.String(), nil)
 			request.Header.Set("Content-Type", "application/json")
 			request.AddCookie(enterprisePOSCookie)
-			response, err := app.Test(request, testTimeout)
+			response, err := app.Test(request, fiber.TestConfig{Timeout: time.Duration(testTimeout) * time.Millisecond})
 			assert.Nil(t, err)
 			assert.NotNil(t, response)
 			assert.Equal(t, http.StatusBadRequest, response.StatusCode)
@@ -281,7 +281,7 @@ func TestStoreControllerImpl(t *testing.T) {
 		request := httptest.NewRequest("POST", fmt.Sprint("/stores/", createdTestTenant.Id), strings.NewReader(string(byteBody)))
 		request.Header.Set("Content-Type", "application/json")
 		request.AddCookie(enterprisePOSCookie)
-		response, err := app.Test(request, testTimeout)
+		response, err := app.Test(request, fiber.TestConfig{Timeout: time.Duration(testTimeout) * time.Millisecond})
 		require.Nil(t, err)
 		require.Equal(t, http.StatusOK, response.StatusCode)
 
@@ -306,7 +306,7 @@ func TestStoreControllerImpl(t *testing.T) {
 			request := httptest.NewRequest("PUT", fmt.Sprint("/stores/set_activate/", createdTestTenant.Id), strings.NewReader(string(byteBody)))
 			request.Header.Set("Content-Type", "application/json")
 			request.AddCookie(enterprisePOSCookie)
-			response, err := app.Test(request, testTimeout)
+			response, err := app.Test(request, fiber.TestConfig{Timeout: time.Duration(testTimeout) * time.Millisecond})
 			assert.Nil(t, err)
 			assert.NotNil(t, response)
 			assert.Equal(t, http.StatusAccepted, response.StatusCode)
@@ -332,7 +332,7 @@ func TestStoreControllerImpl(t *testing.T) {
 		request := httptest.NewRequest("POST", fmt.Sprint("/stores/", createdTestTenant.Id), strings.NewReader(string(byteBody)))
 		request.Header.Set("Content-Type", "application/json")
 		request.AddCookie(enterprisePOSCookie)
-		response, err := app.Test(request, testTimeout)
+		response, err := app.Test(request, fiber.TestConfig{Timeout: time.Duration(testTimeout) * time.Millisecond})
 		require.Nil(t, err)
 		require.Equal(t, http.StatusOK, response.StatusCode)
 
@@ -363,7 +363,7 @@ func TestStoreControllerImpl(t *testing.T) {
 			request := httptest.NewRequest("PUT", fmt.Sprint("/stores/", createdTestTenant.Id), strings.NewReader(string(byteBody)))
 			request.Header.Set("Content-Type", "application/json")
 			request.AddCookie(enterprisePOSCookie)
-			response, err := app.Test(request, testTimeout)
+			response, err := app.Test(request, fiber.TestConfig{Timeout: time.Duration(testTimeout) * time.Millisecond})
 			assert.Nil(t, err)
 			assert.NotNil(t, response)
 			assert.Equal(t, http.StatusOK, response.StatusCode)
@@ -388,7 +388,7 @@ func TestStoreControllerImpl(t *testing.T) {
 			request := httptest.NewRequest("PUT", fmt.Sprint("/stores/", createdTestTenant.Id), strings.NewReader(string(byteBody)))
 			request.Header.Set("Content-Type", "application/json")
 			request.AddCookie(enterprisePOSCookie)
-			response, err := app.Test(request, testTimeout)
+			response, err := app.Test(request, fiber.TestConfig{Timeout: time.Duration(testTimeout) * time.Millisecond})
 			assert.Nil(t, err)
 			assert.Equal(t, http.StatusBadRequest, response.StatusCode)
 
@@ -407,7 +407,7 @@ func TestStoreControllerImpl(t *testing.T) {
 			request = httptest.NewRequest("PUT", fmt.Sprint("/stores/", createdTestTenant.Id), strings.NewReader(string(byteBody)))
 			request.Header.Set("Content-Type", "application/json")
 			request.AddCookie(enterprisePOSCookie)
-			response, err = app.Test(request, testTimeout)
+			response, err = app.Test(request, fiber.TestConfig{Timeout: time.Duration(testTimeout) * time.Millisecond})
 			assert.Nil(t, err)
 			assert.Equal(t, http.StatusBadRequest, response.StatusCode)
 
@@ -428,7 +428,7 @@ func TestStoreControllerImpl(t *testing.T) {
 			request := httptest.NewRequest("PUT", fmt.Sprint("/stores/", createdTestTenant.Id), strings.NewReader(string(byteBody)))
 			request.Header.Set("Content-Type", "application/json")
 			request.AddCookie(enterprisePOSCookie)
-			response, err := app.Test(request, testTimeout)
+			response, err := app.Test(request, fiber.TestConfig{Timeout: time.Duration(testTimeout) * time.Millisecond})
 			assert.Nil(t, err)
 			assert.Equal(t, http.StatusBadRequest, response.StatusCode)
 
@@ -447,7 +447,7 @@ func TestStoreControllerImpl(t *testing.T) {
 			request = httptest.NewRequest("PUT", fmt.Sprint("/stores/", createdTestTenant.Id), strings.NewReader(string(byteBody)))
 			request.Header.Set("Content-Type", "application/json")
 			request.AddCookie(enterprisePOSCookie)
-			response, err = app.Test(request, testTimeout)
+			response, err = app.Test(request, fiber.TestConfig{Timeout: time.Duration(testTimeout) * time.Millisecond})
 			assert.Nil(t, err)
 			assert.Equal(t, http.StatusBadRequest, response.StatusCode)
 
@@ -466,7 +466,7 @@ func TestStoreControllerImpl(t *testing.T) {
 			request = httptest.NewRequest("PUT", fmt.Sprint("/stores/", createdTestTenant.Id), strings.NewReader(string(byteBody)))
 			request.Header.Set("Content-Type", "application/json")
 			request.AddCookie(enterprisePOSCookie)
-			response, err = app.Test(request, testTimeout)
+			response, err = app.Test(request, fiber.TestConfig{Timeout: time.Duration(testTimeout) * time.Millisecond})
 			assert.Nil(t, err)
 			assert.Equal(t, http.StatusBadRequest, response.StatusCode)
 
@@ -485,7 +485,7 @@ func TestStoreControllerImpl(t *testing.T) {
 			request = httptest.NewRequest("PUT", fmt.Sprint("/stores/", createdTestTenant.Id), strings.NewReader(string(byteBody)))
 			request.Header.Set("Content-Type", "application/json")
 			request.AddCookie(enterprisePOSCookie)
-			response, err = app.Test(request, testTimeout)
+			response, err = app.Test(request, fiber.TestConfig{Timeout: time.Duration(testTimeout) * time.Millisecond})
 			assert.Nil(t, err)
 			assert.Equal(t, http.StatusBadRequest, response.StatusCode)
 
@@ -504,7 +504,7 @@ func TestStoreControllerImpl(t *testing.T) {
 			request := httptest.NewRequest("PUT", fmt.Sprint("/stores/", createdTestTenant.Id), strings.NewReader(string(byteBody)))
 			request.Header.Set("Content-Type", "application/json")
 			request.AddCookie(enterprisePOSCookie)
-			response, err := app.Test(request, testTimeout)
+			response, err := app.Test(request, fiber.TestConfig{Timeout: time.Duration(testTimeout) * time.Millisecond})
 			assert.Nil(t, err)
 			assert.Equal(t, http.StatusBadRequest, response.StatusCode)
 		})

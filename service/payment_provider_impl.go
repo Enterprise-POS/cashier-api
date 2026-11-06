@@ -4,7 +4,9 @@ import (
 	"cashier-api/helper/client"
 	"cashier-api/model"
 	"cashier-api/repository"
+	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/midtrans/midtrans-go"
 	"github.com/midtrans/midtrans-go/snap"
@@ -37,6 +39,17 @@ func (p *PaymentProviderImpl) CreateTransaction(midClient *client.MidtransProvid
 			Name:  item.ItemNameSnapshot,
 		})
 	}
+
+	// Apply voucher discount amount
+	if params.DiscountAmount > 0 {
+		items = append(items, midtrans.ItemDetails{
+			ID:    "VOUCHER-DISCOUNT",
+			Price: -int64(params.DiscountAmount),
+			Qty:   1,
+			Name:  fmt.Sprintf("Voucher code: %s", strings.Join(params.ApplyVouchers, ", ")),
+		})
+	}
+
 	req := &snap.Request{
 		TransactionDetails: midtrans.TransactionDetails{
 			OrderID:  params.TransactionId,

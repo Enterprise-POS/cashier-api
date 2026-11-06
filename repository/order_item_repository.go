@@ -87,6 +87,7 @@ type CreateTransactionParams struct {
 	DiscountAmount int               `json:"discount_amount"`
 	SubTotal       int               `json:"sub_total"`
 	PaymentType    model.PaymentType `json:"payment_type"`
+	ApplyVouchers  []string          `json:"apply_vouchers"`
 
 	// Items
 	Items []*model.PurchasedItem `json:"items"`

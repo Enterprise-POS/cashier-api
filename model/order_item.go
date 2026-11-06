@@ -47,6 +47,7 @@ type OrderItem struct {
 	PaymentToken                *string        `json:"payment_token" gorm:"column:payment_token"`
 	IsDataStockSync             bool           `json:"is_data_stock_sync" gorm:"column:is_data_stock_sync"`
 	DeletedAt                   gorm.DeletedAt `json:"-"` // Soft delete
+	VoucherUsages               []VoucherUsage `json:"voucher_usages,omitempty" gorm:"foreignKey:OrderItemId;references:Id;->"`
 }
 
 func (orderItem *OrderItem) TableName() string {

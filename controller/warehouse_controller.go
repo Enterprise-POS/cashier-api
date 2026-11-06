@@ -1,7 +1,7 @@
 package controller
 
 import (
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 /*
@@ -21,36 +21,36 @@ type WarehouseController interface {
 	/*
 		Return all warehouse items by using current at given tenant id
 	*/
-	Get(ctx *fiber.Ctx) error
+	Get(ctx fiber.Ctx) error
 
 	/*
 		Get activate only warehouse item
 	*/
-	GetActiveItem(ctx *fiber.Ctx) error
+	GetActiveItem(ctx fiber.Ctx) error
 
 	/*
 		Create new item for current tenantId.
 		Once the item created, will never be erased from DB, only soft delete is allowed
 	*/
-	CreateItem(*fiber.Ctx) error
+	CreateItem(fiber.Ctx) error
 
 	/*
 		Return detailed item information
 	*/
-	FindById(*fiber.Ctx) error
+	FindById(fiber.Ctx) error
 
 	/*
 		Edit/update some specific item quantities
 	*/
-	Edit(*fiber.Ctx) error
+	Edit(fiber.Ctx) error
 
 	/*
 		Deactivate/Activate item, not delete it from DB
 	*/
-	SetActivate(*fiber.Ctx) error
+	SetActivate(fiber.Ctx) error
 
 	/*
 		Get Complete detail of 1 items
 	*/
-	FindCompleteById(*fiber.Ctx) error
+	FindCompleteById(fiber.Ctx) error
 }

@@ -473,6 +473,50 @@ func TestOrderItemRepository(t *testing.T) {
 			assert.ErrorIs(t, err, gorm.ErrRecordNotFound)
 		})
 
+		t.Run("Cancelled_DecrementsUsageOnceAndKeepsUsageRows", func(t *testing.T) {
+			tx := gormClient.Begin()
+			defer tx.Rollback()
+
+			tenantId, storeId, user := seedOrderItemTestDependencies(t, tx, "orderitem_cancel_voucher@example.com", "Order Item")
+			orderItemRepo := NewOrderItemRepositoryImpl(tx)
+			voucher := &model.Voucher{
+				Code:           fmt.Sprintf("CANCEL-%s", uuid.NewString()),
+				Name:           "Cancellation test voucher",
+				TenantId:       tenantId,
+				VoucherType:    model.FROM_TOTAL_LIMITED_PERCENTAGE,
+				UsedCount:      2,
+				UsageLimit:     10,
+				Percentage:     10,
+				RoundingPolicy: "ROUND",
+			}
+			require.NoError(t, tx.Create(voucher).Error)
+
+			orderItem, err := orderItemRepo.PlaceOrderItem(&model.OrderItem{
+				PurchasedPrice: 10000, TotalQuantity: 1, TotalAmount: 10000, Subtotal: 10000,
+				TenantId: tenantId, StoreId: storeId, PaymentType: model.PaymentTypeQRIS,
+				PaymentStatus: model.PaymentStatusPending, TransactionId: fmt.Sprintf("TEST-%s", uuid.NewString()),
+				ResponsibleUserId: user.Id, ResponsibleUserNameSnapshot: user.Name,
+			})
+			require.NoError(t, err)
+
+			usages := []model.VoucherUsage{
+				{VoucherId: voucher.Id, OrderItemId: orderItem.Id},
+				{VoucherId: voucher.Id, OrderItemId: orderItem.Id},
+			}
+			require.NoError(t, tx.Create(&usages).Error)
+
+			require.NoError(t, orderItemRepo.SetPaymentStatus(orderItem.Id, "", model.PaymentStatusCancelled))
+			require.NoError(t, orderItemRepo.SetPaymentStatus(orderItem.Id, "", model.PaymentStatusCancelled))
+
+			var updatedVoucher model.Voucher
+			require.NoError(t, tx.First(&updatedVoucher, voucher.Id).Error)
+			assert.Zero(t, updatedVoucher.UsedCount)
+
+			var usageCount int64
+			require.NoError(t, tx.Model(&model.VoucherUsage{}).Where("order_item_id = ?", orderItem.Id).Count(&usageCount).Error)
+			assert.EqualValues(t, 2, usageCount)
+		})
+
 		t.Run("AmbiguousMatch_RollsBackAndErrors", func(t *testing.T) {
 			tx := gormClient.Begin()
 			defer tx.Rollback()

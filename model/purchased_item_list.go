@@ -35,3 +35,17 @@ type PurchasedItem struct {
 func (p *PurchasedItem) TableName() string {
 	return "purchased_item_list"
 }
+
+/*
+Not all property could be defined here.
+this method use case is for converting item to voucher
+*/
+func (p *PurchasedItem) ToItem() *Item {
+	return &Item{
+		ItemId:    p.ItemId,
+		ItemName:  p.ItemNameSnapshot,
+		TenantId:  p.TenantId,
+		BasePrice: p.BasePriceSnapshot,
+		CreatedAt: *p.CreatedAt,
+	}
+}

@@ -19,17 +19,29 @@ import (
 )
 
 type OrderItemServiceImpl struct {
-	Repository        repository.OrderItemRepository
-	ItemNameRegexRule *regexp.Regexp
-	PaymentProvider   PaymentProvider
+	Repository             repository.OrderItemRepository
+	VoucherUsageRepository repository.VoucherUsageRepository
+	ItemNameRegexRule      *regexp.Regexp
+	PaymentProvider        PaymentProvider
+	VoucherService         VoucherService
 }
 
-func NewOrderItemServiceImpl(repository repository.OrderItemRepository, paymentProvider PaymentProvider) OrderItemService {
-	return &OrderItemServiceImpl{
+func NewOrderItemServiceImpl(
+	repository repository.OrderItemRepository,
+	paymentProvider PaymentProvider,
+	voucherService VoucherService,
+	voucherUsageRepositories ...repository.VoucherUsageRepository,
+) OrderItemService {
+	service := &OrderItemServiceImpl{
 		Repository:        repository,
 		ItemNameRegexRule: validation.ItemNameRegex,
 		PaymentProvider:   paymentProvider,
+		VoucherService:    voucherService,
 	}
+	if len(voucherUsageRepositories) > 0 {
+		service.VoucherUsageRepository = voucherUsageRepositories[0]
+	}
+	return service
 }
 
 // Get implements OrderItemService.
@@ -120,7 +132,7 @@ func (service *OrderItemServiceImpl) Transactions(params *repository.CreateTrans
 
 	var (
 		calculatedSubTotal    = 0                 // Sum before discount
-		calculatedDiscount    = 0                 // Total discount
+		calculatedDiscount    = 0                 // Total per-item discount
 		calculatedTotal       = 0                 // Sum after discount
 		calculatedQuantity    = 0                 // Total quantity
 		priceConsistencyCheck = make(map[int]int) // item_id -> price
@@ -180,16 +192,6 @@ func (service *OrderItemServiceImpl) Transactions(params *repository.CreateTrans
 			calculatedSubTotal, params.SubTotal)
 	}
 
-	if calculatedTotal != params.TotalAmount {
-		return nil, fmt.Errorf("Total amount mismatch: calculated %d, provided %d",
-			calculatedTotal, params.TotalAmount)
-	}
-
-	if calculatedDiscount != params.DiscountAmount {
-		return nil, fmt.Errorf("Discount amount mismatch: calculated %d, provided %d",
-			calculatedDiscount, params.DiscountAmount)
-	}
-
 	if params.PaymentType == "" {
 		params.PaymentType = model.PaymentTypeCash
 	}
@@ -199,11 +201,80 @@ func (service *OrderItemServiceImpl) Transactions(params *repository.CreateTrans
 		return nil, fmt.Errorf("invalid payment_type: %q. Must be one of CASH, QRIS, CARD, EWALLET, OTHER", params.PaymentType)
 	}
 
+	voucherDiscount := 0
+	voucherUsages := make([]*model.VoucherUsage, 0, len(params.ApplyVouchers))
+	if len(params.ApplyVouchers) > 0 {
+		if service.VoucherService == nil {
+			return nil, errors.New("Voucher service is required when applying vouchers")
+		}
+
+		items := make([]*model.Item, 0, len(params.Items))
+		for _, purchasedItem := range params.Items {
+			items = append(items, &model.Item{
+				ItemId:    purchasedItem.ItemId,
+				TenantId:  params.TenantId,
+				BasePrice: purchasedItem.BasePriceSnapshot,
+			})
+		}
+		for _, voucherCode := range params.ApplyVouchers {
+			if strings.TrimSpace(voucherCode) == "" {
+				return nil, errors.New("Voucher code is required")
+			}
+
+			_, currentVoucherDiscount, _, voucherId, eligible, err :=
+				service.VoucherService.PreviewVoucher(params.TenantId, voucherCode, items)
+			if err != nil {
+				return nil, fmt.Errorf("Failed to use voucher %q: %w", voucherCode, err)
+			}
+			remainingAmount := calculatedTotal - voucherDiscount
+			if currentVoucherDiscount < 0 || currentVoucherDiscount > remainingAmount {
+				return nil, fmt.Errorf("Voucher discount amount is invalid: discount %d exceeds remaining transaction amount %d",
+					currentVoucherDiscount, remainingAmount)
+			}
+			voucherDiscount += currentVoucherDiscount
+			if eligible {
+				voucherUsages = append(voucherUsages, &model.VoucherUsage{VoucherId: voucherId})
+			}
+
+			discountToApply := currentVoucherDiscount
+			for i := len(items) - 1; i >= 0 && discountToApply > 0; i-- {
+				if items[i].BasePrice > discountToApply {
+					items[i].BasePrice -= discountToApply
+					discountToApply = 0
+				} else {
+					discountToApply -= items[i].BasePrice
+					items[i].BasePrice = 0
+				}
+			}
+		}
+	}
+
+	expectedDiscount := calculatedDiscount + voucherDiscount
+	if params.DiscountAmount != expectedDiscount {
+		return nil, fmt.Errorf("Discount amount mismatch: calculated %d, provided %d",
+			expectedDiscount, params.DiscountAmount)
+	}
+
+	expectedTotal := calculatedTotal - voucherDiscount
+	if expectedTotal != params.TotalAmount {
+		return nil, fmt.Errorf("Total amount mismatch: calculated %d, provided %d",
+			expectedTotal, params.TotalAmount)
+	}
+
 	// Validate payment (if you track cash given)
 	// Remove this if PurchasedPrice is just another name for TotalAmount
 	if params.PurchasedPrice < params.TotalAmount {
 		return nil, fmt.Errorf("Insufficient payment: need %d, got %d",
 			params.TotalAmount, params.PurchasedPrice)
+	}
+	if len(voucherUsages) > 0 && service.VoucherUsageRepository == nil {
+		return nil, errors.New("Voucher usage repository is required when applying vouchers")
+	}
+
+	for _, voucherUsage := range voucherUsages {
+		if err := service.VoucherService.CommitVoucherUsage(voucherUsage.VoucherId, params.TenantId); err != nil {
+			return nil, fmt.Errorf("Failed to commit voucher usage: %w", err)
+		}
 	}
 
 	var paymentToken string = ""
@@ -233,6 +304,15 @@ func (service *OrderItemServiceImpl) Transactions(params *repository.CreateTrans
 			}
 		*/
 		return nil, fmt.Errorf("Failed to create transaction: %w", err)
+	}
+
+	if len(voucherUsages) > 0 {
+		for _, voucherUsage := range voucherUsages {
+			voucherUsage.OrderItemId = transactionDataReturn.CreatedOrderItemId
+		}
+		if err := service.VoucherUsageRepository.CreateVoucherUsages(voucherUsages); err != nil {
+			return nil, fmt.Errorf("Transaction was created, but recording voucher usage failed: %w", err)
+		}
 	}
 
 	// In case it's available
