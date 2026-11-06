@@ -71,13 +71,16 @@ func (repository *StoreStockRepositoryMock) Edit(item *model.StoreStock) error {
 }
 
 // LoadCashierData implements StoreStockRepository.
-func (repository *StoreStockRepositoryMock) LoadCashierData(tenantId int, storeId int) ([]*model.CashierData, error) {
+func (repository *StoreStockRepositoryMock) LoadCashierData(tenantId int, storeId int) ([]*model.CashierData, []*model.Voucher, error) {
 	args := repository.Mock.Called(tenantId, storeId)
 	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	} else {
-		return args.Get(0).([]*model.CashierData), nil
+		return nil, nil, args.Error(2)
 	}
+	var vouchers []*model.Voucher
+	if args.Get(1) != nil {
+		vouchers = args.Get(1).([]*model.Voucher)
+	}
+	return args.Get(0).([]*model.CashierData), vouchers, args.Error(2)
 }
 
 // Delete implements StoreStockRepository.

@@ -211,7 +211,7 @@ func (controller *StoreStockControllerImpl) LoadCashierData(ctx fiber.Ctx) error
 
 	tenantId, _ := strconv.Atoi(ctx.Params("tenantId"))
 
-	cashierData, err := controller.Service.LoadCashierData(tenantId, storeId)
+	cashierData, vouchers, err := controller.Service.LoadCashierData(tenantId, storeId)
 	if err != nil {
 		return ctx.Status(fiber.StatusBadRequest).
 			JSON(common.NewWebResponseError(400, common.StatusError, err.Error()))
@@ -220,7 +220,7 @@ func (controller *StoreStockControllerImpl) LoadCashierData(ctx fiber.Ctx) error
 	return ctx.Status(fiber.StatusOK).
 		JSON(common.NewWebResponse(200, common.StatusSuccess, fiber.Map{
 			"cashier_data": cashierData,
-			"vouchers":     nil,
+			"vouchers":     vouchers,
 		}))
 }
 

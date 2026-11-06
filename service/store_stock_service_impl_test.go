@@ -361,50 +361,57 @@ func TestStoreStockServiceImpl(t *testing.T) {
 			}
 
 			storeStockRepository.Mock = &mock.Mock{}
-			storeStockRepository.Mock.On("LoadCashierData", 1, 1).Return(expectedCashierData, nil)
-			cashierData, err := storeStockService.LoadCashierData(1, 1)
+			expectedVouchers := []*model.Voucher{{Id: 7, TenantId: 1, Code: "SAVE"}}
+			storeStockRepository.Mock.On("LoadCashierData", 1, 1).Return(expectedCashierData, expectedVouchers, nil)
+			cashierData, vouchers, err := storeStockService.LoadCashierData(1, 1)
 			assert.NoError(t, err)
 			assert.NotNil(t, cashierData)
 			assert.Len(t, cashierData, 1)
+			assert.Equal(t, expectedVouchers, vouchers)
 		})
 
 		t.Run("InvalidTenantId_Zero", func(t *testing.T) {
 			storeStockRepository.Mock = &mock.Mock{}
-			cashierData, err := storeStockService.LoadCashierData(0, 1)
+			cashierData, vouchers, err := storeStockService.LoadCashierData(0, 1)
 			assert.Error(t, err)
 			assert.Nil(t, cashierData)
+			assert.Nil(t, vouchers)
 			assert.Equal(t, "Item id could not be empty or fill with 0", err.Error())
 		})
 
 		t.Run("InvalidTenantId_Negative", func(t *testing.T) {
 			storeStockRepository.Mock = &mock.Mock{}
-			cashierData, err := storeStockService.LoadCashierData(-1, 1)
+			cashierData, vouchers, err := storeStockService.LoadCashierData(-1, 1)
 			assert.Error(t, err)
 			assert.Nil(t, cashierData)
+			assert.Nil(t, vouchers)
 			assert.Equal(t, "Item id could not be empty or fill with 0", err.Error())
 		})
 
 		t.Run("InvalidStoreId_Zero", func(t *testing.T) {
 			storeStockRepository.Mock = &mock.Mock{}
-			cashierData, err := storeStockService.LoadCashierData(1, 0)
+			cashierData, vouchers, err := storeStockService.LoadCashierData(1, 0)
 			assert.Error(t, err)
 			assert.Nil(t, cashierData)
+			assert.Nil(t, vouchers)
 			assert.Equal(t, "Store id could not be empty or fill with 0", err.Error())
 		})
 
 		t.Run("InvalidStoreId_Negative", func(t *testing.T) {
 			storeStockRepository.Mock = &mock.Mock{}
-			cashierData, err := storeStockService.LoadCashierData(1, -1)
+			cashierData, vouchers, err := storeStockService.LoadCashierData(1, -1)
 			assert.Error(t, err)
 			assert.Nil(t, cashierData)
+			assert.Nil(t, vouchers)
 			assert.Equal(t, "Store id could not be empty or fill with 0", err.Error())
 		})
 
 		t.Run("BothIds_Invalid", func(t *testing.T) {
 			storeStockRepository.Mock = &mock.Mock{}
-			cashierData, err := storeStockService.LoadCashierData(0, 0)
+			cashierData, vouchers, err := storeStockService.LoadCashierData(0, 0)
 			assert.Error(t, err)
 			assert.Nil(t, cashierData)
+			assert.Nil(t, vouchers)
 			assert.Equal(t, "Item id could not be empty or fill with 0", err.Error())
 		})
 
@@ -413,21 +420,23 @@ func TestStoreStockServiceImpl(t *testing.T) {
 			expectedCashierData := []*model.CashierData{}
 
 			storeStockRepository.Mock = &mock.Mock{}
-			storeStockRepository.Mock.On("LoadCashierData", 1, 1).Return(expectedCashierData, nil)
-			cashierData, err := storeStockService.LoadCashierData(1, 1)
+			storeStockRepository.Mock.On("LoadCashierData", 1, 1).Return(expectedCashierData, []*model.Voucher{}, nil)
+			cashierData, vouchers, err := storeStockService.LoadCashierData(1, 1)
 			assert.NoError(t, err)
 			assert.NotNil(t, cashierData)
 			assert.Empty(t, cashierData)
+			assert.Empty(t, vouchers)
 		})
 
 		t.Run("RepositoryError_DatabaseError", func(t *testing.T) {
 			expectedError := errors.New("database connection error")
 
 			storeStockRepository.Mock = &mock.Mock{}
-			storeStockRepository.Mock.On("LoadCashierData", 1, 1).Return(nil, expectedError)
-			cashierData, err := storeStockService.LoadCashierData(1, 1)
+			storeStockRepository.Mock.On("LoadCashierData", 1, 1).Return(nil, nil, expectedError)
+			cashierData, vouchers, err := storeStockService.LoadCashierData(1, 1)
 			assert.Error(t, err)
 			assert.Nil(t, cashierData)
+			assert.Nil(t, vouchers)
 			assert.Equal(t, "database connection error", err.Error())
 		})
 
@@ -435,10 +444,11 @@ func TestStoreStockServiceImpl(t *testing.T) {
 			expectedError := errors.New("invalid character 'i' looking for beginning of value")
 
 			storeStockRepository.Mock = &mock.Mock{}
-			storeStockRepository.Mock.On("LoadCashierData", 1, 1).Return(nil, expectedError)
-			cashierData, err := storeStockService.LoadCashierData(1, 1)
+			storeStockRepository.Mock.On("LoadCashierData", 1, 1).Return(nil, nil, expectedError)
+			cashierData, vouchers, err := storeStockService.LoadCashierData(1, 1)
 			assert.Error(t, err)
 			assert.Nil(t, cashierData)
+			assert.Nil(t, vouchers)
 		})
 
 		t.Run("MultipleItems", func(t *testing.T) {
@@ -482,8 +492,8 @@ func TestStoreStockServiceImpl(t *testing.T) {
 			}
 
 			storeStockRepository.Mock = &mock.Mock{}
-			storeStockRepository.Mock.On("LoadCashierData", 1, 1).Return(expectedCashierData, nil)
-			cashierData, err := storeStockService.LoadCashierData(1, 1)
+			storeStockRepository.Mock.On("LoadCashierData", 1, 1).Return(expectedCashierData, nil, nil)
+			cashierData, _, err := storeStockService.LoadCashierData(1, 1)
 			assert.NoError(t, err)
 			assert.NotNil(t, cashierData)
 			assert.Len(t, cashierData, 3)
@@ -497,10 +507,11 @@ func TestStoreStockServiceImpl(t *testing.T) {
 			expectedError := errors.New("unexpected null response from database")
 
 			storeStockRepository.Mock = &mock.Mock{}
-			storeStockRepository.Mock.On("LoadCashierData", 1, 1).Return(nil, expectedError)
-			cashierData, err := storeStockService.LoadCashierData(1, 1)
+			storeStockRepository.Mock.On("LoadCashierData", 1, 1).Return(nil, nil, expectedError)
+			cashierData, vouchers, err := storeStockService.LoadCashierData(1, 1)
 			assert.Error(t, err)
 			assert.Nil(t, cashierData)
+			assert.Nil(t, vouchers)
 			assert.Equal(t, "unexpected null response from database", err.Error())
 		})
 
@@ -523,8 +534,8 @@ func TestStoreStockServiceImpl(t *testing.T) {
 			}
 
 			storeStockRepository.Mock = &mock.Mock{}
-			storeStockRepository.Mock.On("LoadCashierData", 1, 1).Return(expectedCashierData, nil)
-			cashierData, err := storeStockService.LoadCashierData(1, 1)
+			storeStockRepository.Mock.On("LoadCashierData", 1, 1).Return(expectedCashierData, nil, nil)
+			cashierData, _, err := storeStockService.LoadCashierData(1, 1)
 			assert.NoError(t, err)
 			assert.NotNil(t, cashierData)
 			assert.Len(t, cashierData, 1)
@@ -551,8 +562,8 @@ func TestStoreStockServiceImpl(t *testing.T) {
 			}
 
 			storeStockRepository.Mock = &mock.Mock{}
-			storeStockRepository.Mock.On("LoadCashierData", 1, 1).Return(expectedCashierData, nil)
-			cashierData, err := storeStockService.LoadCashierData(1, 1)
+			storeStockRepository.Mock.On("LoadCashierData", 1, 1).Return(expectedCashierData, nil, nil)
+			cashierData, _, err := storeStockService.LoadCashierData(1, 1)
 			assert.NoError(t, err)
 			assert.NotNil(t, cashierData)
 			assert.Len(t, cashierData, 1)
@@ -579,8 +590,8 @@ func TestStoreStockServiceImpl(t *testing.T) {
 			}
 
 			storeStockRepository.Mock = &mock.Mock{}
-			storeStockRepository.Mock.On("LoadCashierData", 1, 1).Return(expectedCashierData, nil)
-			cashierData, err := storeStockService.LoadCashierData(1, 1)
+			storeStockRepository.Mock.On("LoadCashierData", 1, 1).Return(expectedCashierData, nil, nil)
+			cashierData, _, err := storeStockService.LoadCashierData(1, 1)
 			assert.NoError(t, err)
 			assert.NotNil(t, cashierData)
 			assert.Len(t, cashierData, 1)
@@ -606,8 +617,8 @@ func TestStoreStockServiceImpl(t *testing.T) {
 			}
 
 			storeStockRepository.Mock = &mock.Mock{}
-			storeStockRepository.Mock.On("LoadCashierData", 999, 555).Return(expectedCashierData, nil)
-			cashierData, err := storeStockService.LoadCashierData(999, 555)
+			storeStockRepository.Mock.On("LoadCashierData", 999, 555).Return(expectedCashierData, nil, nil)
+			cashierData, _, err := storeStockService.LoadCashierData(999, 555)
 			assert.NoError(t, err)
 			assert.NotNil(t, cashierData)
 			assert.Len(t, cashierData, 1)
@@ -616,10 +627,11 @@ func TestStoreStockServiceImpl(t *testing.T) {
 
 		t.Run("RepositoryReturnsNil", func(t *testing.T) {
 			storeStockRepository.Mock = &mock.Mock{}
-			storeStockRepository.Mock.On("LoadCashierData", 1, 1).Return(nil, nil)
-			cashierData, err := storeStockService.LoadCashierData(1, 1)
+			storeStockRepository.Mock.On("LoadCashierData", 1, 1).Return(nil, nil, nil)
+			cashierData, vouchers, err := storeStockService.LoadCashierData(1, 1)
 			assert.NoError(t, err)
 			assert.Nil(t, cashierData)
+			assert.Nil(t, vouchers)
 		})
 
 		t.Run("LargeDataSet", func(t *testing.T) {
@@ -640,8 +652,8 @@ func TestStoreStockServiceImpl(t *testing.T) {
 			}
 
 			storeStockRepository.Mock = &mock.Mock{}
-			storeStockRepository.Mock.On("LoadCashierData", 1, 1).Return(expectedCashierData, nil)
-			cashierData, err := storeStockService.LoadCashierData(1, 1)
+			storeStockRepository.Mock.On("LoadCashierData", 1, 1).Return(expectedCashierData, nil, nil)
+			cashierData, _, err := storeStockService.LoadCashierData(1, 1)
 			assert.NoError(t, err)
 			assert.NotNil(t, cashierData)
 			assert.Len(t, cashierData, 1000)
