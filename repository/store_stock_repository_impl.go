@@ -334,7 +334,7 @@ func (repository *StoreStockRepositoryImpl) Edit(item *model.StoreStock) error {
 }
 
 // LoadCashierData implements StoreStockRepository.
-func (repository *StoreStockRepositoryImpl) LoadCashierData(tenantId int, storeId int) ([]*model.CashierData, error) {
+func (repository *StoreStockRepositoryImpl) LoadCashierData(tenantId int, storeId int) ([]*model.CashierData, []*model.Voucher, error) {
 	var cashierData []*model.CashierData
 
 	err := repository.Client.
@@ -359,14 +359,22 @@ func (repository *StoreStockRepositoryImpl) LoadCashierData(tenantId int, storeI
 		Order("warehouse.item_name ASC").
 		Scan(&cashierData).Error
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	if len(cashierData) == 0 {
-		return nil, errors.New("unexpected null response from database")
+		return nil, nil, errors.New("unexpected null response from database")
 	}
 
-	return cashierData, nil
+	var vouchers []*model.Voucher
+	if err := repository.Client.
+		Where("tenant_id = ?", tenantId).
+		Order("created_at DESC").
+		Find(&vouchers).Error; err != nil {
+		return nil, nil, err
+	}
+
+	return cashierData, vouchers, nil
 }
 
 // Withdraw implements StoreStockRepository.

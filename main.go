@@ -129,6 +129,15 @@ func main() {
 	apiV1.Delete("/categories/unregister/:tenantId", tenantRestriction, categoryController.Unregister)
 	apiV1.Delete("/categories/:tenantId", tenantRestriction, categoryController.Delete)
 
+	voucherRepository := repository.NewVoucherRepositoryImpl(gormClient)
+	voucherService := service.NewVoucherServiceImpl(voucherRepository)
+	voucherController := controller.NewVoucherControllerImpl(voucherService)
+
+	apiV1.Get("/vouchers/:tenantId", tenantRestriction, voucherController.Get)
+	apiV1.Post("/vouchers/:tenantId", tenantRestriction, voucherController.Create)
+	apiV1.Put("/vouchers/:tenantId/:voucherId", tenantRestriction, voucherController.Edit)
+	apiV1.Delete("/vouchers/:tenantId/:voucherId", tenantRestriction, voucherController.Delete)
+
 	storeRepository := repository.NewStoreRepositoryImpl(gormClient)
 	storeService := service.NewStoreServiceImpl(storeRepository)
 	storeController := controller.NewStoreControllerImpl(storeService)
@@ -150,8 +159,12 @@ func main() {
 	apiV1.Put("/store_stocks/transfer_to_warehouse/:tenantId", tenantRestriction, storeStockController.TransferStockToWarehouse)
 	apiV1.Delete("/store_stocks/withdraw/:tenantId", tenantRestriction, storeStockController.Withdraw)
 
+	// Voucher usage repository
+	voucherUsageRepository := repository.NewVoucherUsageRepositoryImpl(gormClient)
+
+	// Order item repository
 	orderItemRepository := repository.NewOrderItemRepositoryImpl(gormClient)
-	orderItemService := service.NewOrderItemServiceImpl(orderItemRepository, paymentProvider)
+	orderItemService := service.NewOrderItemServiceImpl(orderItemRepository, paymentProvider, voucherService, voucherUsageRepository)
 	orderItemController := controller.NewOrderItemControllerImpl(orderItemService)
 
 	// GET /order_items/:tenantId?order_item_id=99

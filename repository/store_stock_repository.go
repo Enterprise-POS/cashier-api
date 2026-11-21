@@ -27,5 +27,5 @@ type StoreStockRepository interface {
 	/*
 		Load all necessary store stock item and category for cashier app
 	*/
-	LoadCashierData(tenantId int, storeId int) ([]*model.CashierData, error)
+	LoadCashierData(tenantId int, storeId int) ([]*model.CashierData, []*model.Voucher, error)
 }
