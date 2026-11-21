@@ -184,6 +184,22 @@ func main() {
 
 	apiV1.Post("/purchased_item_list/logs/:tenantId", tenantRestriction, purchasedItemController.PurchasedItemListLogs)
 
+	expenseRepository := repository.NewExpenseRepositoryImpl(gormClient)
+	expenseService := service.NewExpenseServiceImpl(expenseRepository)
+	expenseController := controller.NewExpenseControllerImpl(expenseService)
+
+	// GET /expenses/details/:tenantId?expense_id=99
+	apiV1.Get("/expenses/details/:tenantId", tenantRestriction, expenseController.FindById)
+	apiV1.Post("/expenses/search/:tenantId", tenantRestriction, expenseController.Get)
+	apiV1.Post("/expenses/:tenantId", tenantRestriction, expenseController.Create)
+	apiV1.Put("/expenses/:tenantId", tenantRestriction, expenseController.Edit)
+	apiV1.Delete("/expenses/:tenantId", tenantRestriction, expenseController.Delete)
+
+	apiV1.Get("/expense_categories/:tenantId", tenantRestriction, expenseController.GetCategories)
+	apiV1.Post("/expense_categories/:tenantId", tenantRestriction, expenseController.CreateCategory)
+	apiV1.Put("/expense_categories/:tenantId", tenantRestriction, expenseController.EditCategory)
+	apiV1.Delete("/expense_categories/:tenantId", tenantRestriction, expenseController.DeleteCategory)
+
 	// Handle route not found (404)
 	app.All("*", func(ctx fiber.Ctx) error {
 		return ctx.Status(fiber.StatusNotFound).
