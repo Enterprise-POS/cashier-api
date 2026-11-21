@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 type ExpenseControllerImpl struct {
@@ -69,7 +69,7 @@ type ExpenseControllerGetRequest struct {
 	DateFilter        *query.DateFilter    `json:"date_filter"`
 }
 
-func badRequest(ctx *fiber.Ctx, message string) error {
+func badRequest(ctx fiber.Ctx, message string) error {
 	return ctx.Status(fiber.StatusBadRequest).
 		JSON(common.NewWebResponseError(400, common.StatusError, message))
 }
@@ -77,7 +77,7 @@ func badRequest(ctx *fiber.Ctx, message string) error {
 const malformedBodyMessage = "Something gone wrong ! The request body is malformed"
 
 // Create implements ExpenseController.
-func (controller *ExpenseControllerImpl) Create(ctx *fiber.Ctx) error {
+func (controller *ExpenseControllerImpl) Create(ctx fiber.Ctx) error {
 	// It's guaranteed to be int, because restrict by tenant already did check first
 	tenantId, _ := strconv.Atoi(ctx.Params("tenantId"))
 
@@ -87,7 +87,7 @@ func (controller *ExpenseControllerImpl) Create(ctx *fiber.Ctx) error {
 	}
 
 	var body ExpenseControllerRequestBody
-	if err := ctx.BodyParser(&body); err != nil {
+	if err := ctx.Bind().Body(&body); err != nil {
 		return badRequest(ctx, malformedBodyMessage)
 	}
 
@@ -107,11 +107,11 @@ func (controller *ExpenseControllerImpl) Create(ctx *fiber.Ctx) error {
 }
 
 // Get implements ExpenseController.
-func (controller *ExpenseControllerImpl) Get(ctx *fiber.Ctx) error {
+func (controller *ExpenseControllerImpl) Get(ctx fiber.Ctx) error {
 	tenantId, _ := strconv.Atoi(ctx.Params("tenantId"))
 
 	var body ExpenseControllerGetRequest
-	if err := ctx.BodyParser(&body); err != nil {
+	if err := ctx.Bind().Body(&body); err != nil {
 		return badRequest(ctx, malformedBodyMessage)
 	}
 
@@ -132,7 +132,7 @@ func (controller *ExpenseControllerImpl) Get(ctx *fiber.Ctx) error {
 }
 
 // FindById implements ExpenseController.
-func (controller *ExpenseControllerImpl) FindById(ctx *fiber.Ctx) error {
+func (controller *ExpenseControllerImpl) FindById(ctx fiber.Ctx) error {
 	tenantId, _ := strconv.Atoi(ctx.Params("tenantId"))
 
 	rawExpenseId := ctx.Query("expense_id", "")
@@ -153,11 +153,11 @@ func (controller *ExpenseControllerImpl) FindById(ctx *fiber.Ctx) error {
 }
 
 // Edit implements ExpenseController.
-func (controller *ExpenseControllerImpl) Edit(ctx *fiber.Ctx) error {
+func (controller *ExpenseControllerImpl) Edit(ctx fiber.Ctx) error {
 	tenantId, _ := strconv.Atoi(ctx.Params("tenantId"))
 
 	var body ExpenseControllerRequestBody
-	if err := ctx.BodyParser(&body); err != nil {
+	if err := ctx.Bind().Body(&body); err != nil {
 		return badRequest(ctx, malformedBodyMessage)
 	}
 
@@ -173,13 +173,13 @@ func (controller *ExpenseControllerImpl) Edit(ctx *fiber.Ctx) error {
 }
 
 // Delete implements ExpenseController.
-func (controller *ExpenseControllerImpl) Delete(ctx *fiber.Ctx) error {
+func (controller *ExpenseControllerImpl) Delete(ctx fiber.Ctx) error {
 	tenantId, _ := strconv.Atoi(ctx.Params("tenantId"))
 
 	var body struct {
 		ExpenseId int `json:"expense_id"`
 	}
-	if err := ctx.BodyParser(&body); err != nil {
+	if err := ctx.Bind().Body(&body); err != nil {
 		return badRequest(ctx, malformedBodyMessage)
 	}
 
@@ -191,7 +191,7 @@ func (controller *ExpenseControllerImpl) Delete(ctx *fiber.Ctx) error {
 }
 
 // GetCategories implements ExpenseController.
-func (controller *ExpenseControllerImpl) GetCategories(ctx *fiber.Ctx) error {
+func (controller *ExpenseControllerImpl) GetCategories(ctx fiber.Ctx) error {
 	tenantId, _ := strconv.Atoi(ctx.Params("tenantId"))
 
 	categories, err := controller.Service.GetCategories(tenantId)
@@ -212,11 +212,11 @@ type ExpenseCategoryRequestBody struct {
 }
 
 // CreateCategory implements ExpenseController.
-func (controller *ExpenseControllerImpl) CreateCategory(ctx *fiber.Ctx) error {
+func (controller *ExpenseControllerImpl) CreateCategory(ctx fiber.Ctx) error {
 	tenantId, _ := strconv.Atoi(ctx.Params("tenantId"))
 
 	var body ExpenseCategoryRequestBody
-	if err := ctx.BodyParser(&body); err != nil {
+	if err := ctx.Bind().Body(&body); err != nil {
 		return badRequest(ctx, malformedBodyMessage)
 	}
 
@@ -232,11 +232,11 @@ func (controller *ExpenseControllerImpl) CreateCategory(ctx *fiber.Ctx) error {
 }
 
 // EditCategory implements ExpenseController.
-func (controller *ExpenseControllerImpl) EditCategory(ctx *fiber.Ctx) error {
+func (controller *ExpenseControllerImpl) EditCategory(ctx fiber.Ctx) error {
 	tenantId, _ := strconv.Atoi(ctx.Params("tenantId"))
 
 	var body ExpenseCategoryRequestBody
-	if err := ctx.BodyParser(&body); err != nil {
+	if err := ctx.Bind().Body(&body); err != nil {
 		return badRequest(ctx, malformedBodyMessage)
 	}
 
@@ -252,11 +252,11 @@ func (controller *ExpenseControllerImpl) EditCategory(ctx *fiber.Ctx) error {
 }
 
 // DeleteCategory implements ExpenseController.
-func (controller *ExpenseControllerImpl) DeleteCategory(ctx *fiber.Ctx) error {
+func (controller *ExpenseControllerImpl) DeleteCategory(ctx fiber.Ctx) error {
 	tenantId, _ := strconv.Atoi(ctx.Params("tenantId"))
 
 	var body ExpenseCategoryRequestBody
-	if err := ctx.BodyParser(&body); err != nil {
+	if err := ctx.Bind().Body(&body); err != nil {
 		return badRequest(ctx, malformedBodyMessage)
 	}
 

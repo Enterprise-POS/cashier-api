@@ -17,7 +17,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -33,7 +33,7 @@ func TestExpenseControllerImpl(t *testing.T) {
 	tx := client.CreateGormClient().Begin()
 	t.Cleanup(func() { tx.Rollback() })
 
-	testTimeout := int((time.Second * 10).Milliseconds())
+	testTimeout := fiber.TestConfig{Timeout: time.Second * 10}
 	app := fiber.New()
 
 	userController := NewUserControllerImpl(service.NewUserServiceImpl(repository.NewUserRepositoryImpl(tx)))
