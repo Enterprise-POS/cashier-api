@@ -125,6 +125,10 @@ type SalesReport struct {
 	SumProfit                int `json:"sum_profit"`             // revenue - base_price, SUCCESS only
 	SumPurchasedPriceSuccess int `json:"sum_purchased_price_success"`
 
+	// Manual expenses (expense table, by expense_date). Store filter excludes whole business expenses
+	SumExpenses int `json:"sum_expenses"`
+	NetProfit   int `json:"net_profit"` // sum_profit - sum_expenses
+
 	// Breakdowns
 	PaymentStatusCount  map[model.PaymentStatus]int `json:"payment_status_count"`
 	PaymentStatusAmount map[model.PaymentStatus]int `json:"payment_status_amount"`

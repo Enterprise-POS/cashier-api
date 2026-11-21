@@ -725,6 +725,32 @@ func (repository *OrderItemRepositoryImpl) GetSalesReport(tenantId int, storeId 
 	}
 
 	// ---------------------------------------------------------------
+	// 4b. Expenses — by expense_date, not created_at.
+	// storeId > 0 excludes whole business expenses (store_id IS NULL), they only count at "All stores"
+	// ---------------------------------------------------------------
+	expenseQuery := repository.Client.Model(&model.Expense{}).Where("tenant_id = ?", tenantId)
+	if storeId > 0 {
+		expenseQuery = expenseQuery.Where("store_id = ?", storeId)
+	}
+	if dateFilter != nil {
+		if dateFilter.StartDate != nil {
+			expenseQuery = expenseQuery.Where("expense_date >= to_timestamp(?)", *dateFilter.StartDate)
+		}
+		if dateFilter.EndDate != nil {
+			// Same boundary as orders: exclusive end on a range, inclusive when only end is given
+			if dateFilter.StartDate != nil {
+				expenseQuery = expenseQuery.Where("expense_date < to_timestamp(?)", *dateFilter.EndDate)
+			} else {
+				expenseQuery = expenseQuery.Where("expense_date <= to_timestamp(?)", *dateFilter.EndDate)
+			}
+		}
+	}
+	if err := expenseQuery.Select("COALESCE(SUM(amount), 0)").Scan(&report.SumExpenses).Error; err != nil {
+		return nil, fmt.Errorf("GetSalesReport expenses failed: %w", err)
+	}
+	report.NetProfit = report.SumProfit - report.SumExpenses
+
+	// ---------------------------------------------------------------
 	// 5. Top items by quantity (all statuses — quantity moved, not revenue)
 	// ---------------------------------------------------------------
 	type qtyRaw struct {
