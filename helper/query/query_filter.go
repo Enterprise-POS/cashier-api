@@ -20,12 +20,14 @@ type DateFilter struct {
 
 }
 
-// Generic
+// Generic sortable columns. Voucher-specific columns are used to sort voucher lists.
 const (
 	CreatedAtColumn   ColumnName = "created_at"
 	TotalAmountColumn ColumnName = "total_amount" // OrderItem, order_item
 	Quantity          ColumnName = "quantity"     // PurchasedItemList
 	ItemName          ColumnName = "item_name"    // Warehouse, StoreStock
+	VoucherNameColumn ColumnName = "name"         // Voucher
+	VoucherCodeColumn ColumnName = "code"         // Voucher
 )
 
 // PurchasedItem, purchased_item_list
@@ -33,7 +35,7 @@ const PurchasedItemTable string = "purchased_item_list"
 
 func IsValidColumn(column ColumnName) bool {
 	switch column {
-	case CreatedAtColumn, TotalAmountColumn, Quantity, ItemName:
+	case CreatedAtColumn, TotalAmountColumn, Quantity, ItemName, VoucherNameColumn, VoucherCodeColumn:
 		return true
 	default:
 		return false

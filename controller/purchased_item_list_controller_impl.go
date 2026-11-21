@@ -7,7 +7,7 @@ import (
 	"cashier-api/service"
 	"strconv"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 type PurchasedItemControllerImpl struct {
@@ -36,11 +36,11 @@ type PurchasedItemListLogsResponse struct {
 }
 
 // PurchasedItemListLogs implements PurchasedItemController.
-func (controller *PurchasedItemControllerImpl) PurchasedItemListLogs(ctx *fiber.Ctx) error {
+func (controller *PurchasedItemControllerImpl) PurchasedItemListLogs(ctx fiber.Ctx) error {
 	tenantId, _ := strconv.Atoi(ctx.Params("tenantId"))
 
 	var body PurchasedItemListLogsRequest
-	err := ctx.BodyParser(&body)
+	err := ctx.Bind().Body(&body)
 	if err != nil {
 		return ctx.Status(fiber.StatusBadRequest).
 			JSON(common.NewWebResponseError(400, common.StatusError, "Something gone wrong ! The request body is malformed"))

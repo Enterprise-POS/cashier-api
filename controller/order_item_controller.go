@@ -1,7 +1,7 @@
 package controller
 
 import (
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 type OrderItemController interface {
@@ -9,43 +9,43 @@ type OrderItemController interface {
 		When cashier app press the button, then
 		this will called
 	*/
-	PlaceOrderItem(ctx *fiber.Ctx) error
+	PlaceOrderItem(ctx fiber.Ctx) error
 
 	/*
 		Always minus page by 1 because PostgreSQL start index from 0
 	*/
-	FindById(ctx *fiber.Ctx) error
+	FindById(ctx fiber.Ctx) error
 
 	/*
 		Get the list of order_item, purchased_item_list will not included
 		2nd params return is the count of all data
 	*/
-	Get(ctx *fiber.Ctx) error
+	Get(ctx fiber.Ctx) error
 
 	/*
 		This method will insert into 2 table
 	*/
-	Transactions(ctx *fiber.Ctx) error
+	Transactions(ctx fiber.Ctx) error
 
 	/*
 		Check payment gateway transaction status
 	*/
-	CheckTransaction(ctx *fiber.Ctx) error
+	CheckTransaction(ctx fiber.Ctx) error
 
 	/*
 		Cancel payment gateway transaction also with write CANCELED to database
 	*/
-	CancelTransaction(ctx *fiber.Ctx) error
+	CancelTransaction(ctx fiber.Ctx) error
 
 	/*
 		Using aggregate function from SQL to get report
 	*/
-	GetSalesReport(ctx *fiber.Ctx) error
+	GetSalesReport(ctx fiber.Ctx) error
 
 	/*
 		Generate and stream an Excel (.xlsx) profit report
 	*/
-	ExportProfitExcel(ctx *fiber.Ctx) error
+	ExportProfitExcel(ctx fiber.Ctx) error
 
-	DeleteInvoice(ctx *fiber.Ctx) error
+	DeleteInvoice(ctx fiber.Ctx) error
 }

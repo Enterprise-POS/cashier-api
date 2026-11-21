@@ -7,21 +7,19 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestErrorHandler_InternalServerError(t *testing.T) {
 	app := fiber.New(fiber.Config{
-		IdleTimeout:             time.Second * 5,
-		ReadTimeout:             time.Second * 5,
-		WriteTimeout:            time.Second * 5,
-		Prefork:                 false,
-		EnableTrustedProxyCheck: true,
-		ErrorHandler:            ErrorHandler,
+		IdleTimeout:  time.Second * 5,
+		ReadTimeout:  time.Second * 5,
+		WriteTimeout: time.Second * 5, TrustProxy: true,
+		ErrorHandler: ErrorHandler,
 	})
 
-	app.Get("/test", func(c *fiber.Ctx) error {
+	app.Get("/test", func(c fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusInternalServerError, "some internal error")
 	})
 
