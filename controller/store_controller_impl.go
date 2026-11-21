@@ -6,7 +6,7 @@ import (
 	"cashier-api/service"
 	"strconv"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 type StoreControllerImpl struct {
@@ -18,7 +18,7 @@ func NewStoreControllerImpl(service service.StoreService) StoreController {
 }
 
 // Create implements StoreController.
-func (controller *StoreControllerImpl) Create(ctx *fiber.Ctx) error {
+func (controller *StoreControllerImpl) Create(ctx fiber.Ctx) error {
 	// It's guaranteed to be not "", because restrict by tenant already did check first
 	tenantId, _ := strconv.Atoi(ctx.Params("tenantId"))
 
@@ -26,7 +26,7 @@ func (controller *StoreControllerImpl) Create(ctx *fiber.Ctx) error {
 		Name string `json:"name"`
 	}
 	var body StoreCreateRequestBody
-	err := ctx.BodyParser(&body)
+	err := ctx.Bind().Body(&body)
 	if err != nil {
 		return ctx.Status(fiber.StatusBadRequest).
 			JSON(common.NewWebResponseError(400, common.StatusError, "Something gone wrong ! The request body is malformed"))
@@ -45,7 +45,7 @@ func (controller *StoreControllerImpl) Create(ctx *fiber.Ctx) error {
 }
 
 // GetAll implements StoreController.
-func (controller *StoreControllerImpl) GetAll(ctx *fiber.Ctx) error {
+func (controller *StoreControllerImpl) GetAll(ctx fiber.Ctx) error {
 	tenantId, _ := strconv.Atoi(ctx.Params("tenantId"))
 
 	paramLimit := ctx.Query("limit", "5") // default 5
@@ -87,14 +87,14 @@ func (controller *StoreControllerImpl) GetAll(ctx *fiber.Ctx) error {
 }
 
 // SetActivate implements StoreController.
-func (controller *StoreControllerImpl) SetActivate(ctx *fiber.Ctx) error {
+func (controller *StoreControllerImpl) SetActivate(ctx fiber.Ctx) error {
 	tenantId, _ := strconv.Atoi(ctx.Params("tenantId"))
 	type StoreSetActiveRequestBody struct {
 		StoreId int  `json:"store_id"`
 		SetInto bool `json:"set_into"`
 	}
 	var body StoreSetActiveRequestBody
-	err := ctx.BodyParser(&body)
+	err := ctx.Bind().Body(&body)
 	if err != nil {
 		return ctx.Status(fiber.StatusBadRequest).
 			JSON(common.NewWebResponseError(
@@ -112,7 +112,7 @@ func (controller *StoreControllerImpl) SetActivate(ctx *fiber.Ctx) error {
 }
 
 // Edit implements StoreController.
-func (controller *StoreControllerImpl) Edit(ctx *fiber.Ctx) error {
+func (controller *StoreControllerImpl) Edit(ctx fiber.Ctx) error {
 	tenantId, _ := strconv.Atoi(ctx.Params("tenantId"))
 	type StoreSetActiveRequestBody struct {
 		StoreId     int    `json:"store_id"`
@@ -121,7 +121,7 @@ func (controller *StoreControllerImpl) Edit(ctx *fiber.Ctx) error {
 		PhoneNumber string `json:"phone_number"`
 	}
 	var body StoreSetActiveRequestBody
-	err := ctx.BodyParser(&body)
+	err := ctx.Bind().Body(&body)
 	if err != nil {
 		return ctx.Status(fiber.StatusBadRequest).
 			JSON(common.NewWebResponseError(

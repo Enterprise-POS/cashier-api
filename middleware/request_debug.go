@@ -4,7 +4,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
 )
@@ -12,13 +12,13 @@ import (
 func RequestDebug() fiber.Handler {
 	if os.Getenv("MODE") == "prod" {
 		// Nothing to do
-		return func(ctx *fiber.Ctx) error {
+		return func(ctx fiber.Ctx) error {
 			return ctx.Next()
 		}
 	} else {
 		// Even in production mode, logrus already configured to not print
 		// any debug code, but we want to save compute time here
-		return func(ctx *fiber.Ctx) error {
+		return func(ctx fiber.Ctx) error {
 			start := time.Now()
 
 			// Generate or reuse request ID

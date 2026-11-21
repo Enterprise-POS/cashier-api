@@ -13,8 +13,9 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -97,7 +98,7 @@ func TestPurchasedItemControllerImpl(t *testing.T) {
 
 		request := httptest.NewRequest("POST", fmt.Sprintf("/purchased_items/logs/%d", TENANT_ID), requestBody)
 		request.Header.Set("Content-Type", "application/json")
-		response, err := app.Test(request, testTimeout)
+		response, err := app.Test(request, fiber.TestConfig{Timeout: time.Duration(testTimeout) * time.Millisecond})
 		assert.NoError(t, err)
 		assert.NotNil(t, response)
 		assert.Equal(t, http.StatusOK, response.StatusCode)
@@ -148,7 +149,7 @@ func TestPurchasedItemControllerImpl(t *testing.T) {
 
 		request := httptest.NewRequest("POST", fmt.Sprintf("/purchased_items/logs/%d", TENANT_ID), requestBody)
 		request.Header.Set("Content-Type", "application/json")
-		response, err := app.Test(request, testTimeout)
+		response, err := app.Test(request, fiber.TestConfig{Timeout: time.Duration(testTimeout) * time.Millisecond})
 		assert.NoError(t, err)
 		assert.NotNil(t, response)
 		assert.Equal(t, http.StatusOK, response.StatusCode)
@@ -170,7 +171,7 @@ func TestPurchasedItemControllerImpl(t *testing.T) {
 
 		request := httptest.NewRequest("POST", fmt.Sprintf("/purchased_items/logs/%d", TENANT_ID), requestBody)
 		request.Header.Set("Content-Type", "application/json")
-		response, err := app.Test(request, testTimeout)
+		response, err := app.Test(request, fiber.TestConfig{Timeout: time.Duration(testTimeout) * time.Millisecond})
 		assert.NoError(t, err)
 		assert.NotNil(t, response)
 		assert.Equal(t, http.StatusBadRequest, response.StatusCode)
@@ -206,7 +207,7 @@ func TestPurchasedItemControllerImpl(t *testing.T) {
 
 		request := httptest.NewRequest("POST", fmt.Sprintf("/purchased_items/logs/%d", TENANT_ID), requestBody)
 		request.Header.Set("Content-Type", "application/json")
-		response, err := app.Test(request, testTimeout)
+		response, err := app.Test(request, fiber.TestConfig{Timeout: time.Duration(testTimeout) * time.Millisecond})
 		assert.NoError(t, err)
 		assert.NotNil(t, response)
 		assert.Equal(t, http.StatusBadRequest, response.StatusCode)
@@ -246,7 +247,7 @@ func TestPurchasedItemControllerImpl(t *testing.T) {
 
 		request := httptest.NewRequest("POST", "/purchased_items/logs/not_a_number", requestBody)
 		request.Header.Set("Content-Type", "application/json")
-		response, err := app.Test(request, testTimeout)
+		response, err := app.Test(request, fiber.TestConfig{Timeout: time.Duration(testTimeout) * time.Millisecond})
 		assert.NoError(t, err)
 		assert.NotNil(t, response)
 		assert.Equal(t, http.StatusBadRequest, response.StatusCode)

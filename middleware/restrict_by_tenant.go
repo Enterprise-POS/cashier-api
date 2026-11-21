@@ -5,7 +5,7 @@ import (
 	"cashier-api/model"
 	"strconv"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	log "github.com/sirupsen/logrus"
 	"gorm.io/gorm"
 )
@@ -14,7 +14,7 @@ import (
 Always put this middleware after protected_route middleware
 */
 func RestrictByTenant(client *gorm.DB) fiber.Handler {
-	return func(ctx *fiber.Ctx) error {
+	return func(ctx fiber.Ctx) error {
 		// Get user id (from JWT middleware -> ctx.Locals("sub"))
 		sub := ctx.Locals("sub")
 		userId, ok := sub.(int)

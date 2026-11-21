@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -49,11 +49,11 @@ func TestRestrictByTenant(t *testing.T) {
 	// Helper: builds app that simulates JWT middleware by injecting dummyUser.Id into ctx.Locals("sub")
 	newApp := func() *fiber.App {
 		app := fiber.New()
-		app.Use(func(ctx *fiber.Ctx) error {
+		app.Use(func(ctx fiber.Ctx) error {
 			ctx.Locals("sub", dummyUser.Id)
 			return ctx.Next()
 		})
-		app.Get("/test/:tenantId", RestrictByTenant(gormClient), func(ctx *fiber.Ctx) error {
+		app.Get("/test/:tenantId", RestrictByTenant(gormClient), func(ctx fiber.Ctx) error {
 			return ctx.SendStatus(fiber.StatusOK)
 		})
 		return app
@@ -62,7 +62,7 @@ func TestRestrictByTenant(t *testing.T) {
 	t.Run("AuthorizedUser", func(t *testing.T) {
 		// User is associated with dummyTenant — should pass through to 200
 		req := httptest.NewRequest("GET", fmt.Sprintf("/test/%d", dummyTenant.Id), nil)
-		resp, err := newApp().Test(req, testTimeout)
+		resp, err := newApp().Test(req, fiber.TestConfig{Timeout: time.Duration(testTimeout) * time.Millisecond})
 		assert.NoError(t, err)
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 	})
@@ -71,7 +71,7 @@ func TestRestrictByTenant(t *testing.T) {
 		// User has no association with otherTenant — should return 403.
 		// so it matches any row in user_mtm_tenant and always grants access.
 		req := httptest.NewRequest("GET", fmt.Sprintf("/test/%d", otherTenant.Id), nil)
-		resp, err := newApp().Test(req, testTimeout)
+		resp, err := newApp().Test(req, fiber.TestConfig{Timeout: time.Duration(testTimeout) * time.Millisecond})
 		assert.NoError(t, err)
 		assert.Equal(t, http.StatusForbidden, resp.StatusCode)
 	})
@@ -79,16 +79,16 @@ func TestRestrictByTenant(t *testing.T) {
 	t.Run("MissingTenantId", func(t *testing.T) {
 		// Route has no :tenantId param — Params("tenantId") returns "" — should return 400
 		app := fiber.New()
-		app.Use(func(ctx *fiber.Ctx) error {
+		app.Use(func(ctx fiber.Ctx) error {
 			ctx.Locals("sub", dummyUser.Id)
 			return ctx.Next()
 		})
-		app.Get("/test", RestrictByTenant(gormClient), func(ctx *fiber.Ctx) error {
+		app.Get("/test", RestrictByTenant(gormClient), func(ctx fiber.Ctx) error {
 			return ctx.SendStatus(fiber.StatusOK)
 		})
 
 		req := httptest.NewRequest("GET", "/test", nil)
-		resp, err := app.Test(req, testTimeout)
+		resp, err := app.Test(req, fiber.TestConfig{Timeout: time.Duration(testTimeout) * time.Millisecond})
 		assert.NoError(t, err)
 		assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
 	})
@@ -96,7 +96,7 @@ func TestRestrictByTenant(t *testing.T) {
 	t.Run("NonIntTenantId", func(t *testing.T) {
 		// tenantId cannot be parsed as int — should return 400
 		req := httptest.NewRequest("GET", "/test/abc", nil)
-		resp, err := newApp().Test(req, testTimeout)
+		resp, err := newApp().Test(req, fiber.TestConfig{Timeout: time.Duration(testTimeout) * time.Millisecond})
 		assert.NoError(t, err)
 		assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
 	})
@@ -104,16 +104,16 @@ func TestRestrictByTenant(t *testing.T) {
 	t.Run("InvalidSubLocals", func(t *testing.T) {
 		// ctx.Locals("sub") is a string, not int — type assertion fails — should return 400
 		app := fiber.New()
-		app.Use(func(ctx *fiber.Ctx) error {
+		app.Use(func(ctx fiber.Ctx) error {
 			ctx.Locals("sub", "not-an-int")
 			return ctx.Next()
 		})
-		app.Get("/test/:tenantId", RestrictByTenant(gormClient), func(ctx *fiber.Ctx) error {
+		app.Get("/test/:tenantId", RestrictByTenant(gormClient), func(ctx fiber.Ctx) error {
 			return ctx.SendStatus(fiber.StatusOK)
 		})
 
 		req := httptest.NewRequest("GET", fmt.Sprintf("/test/%d", dummyTenant.Id), nil)
-		resp, err := app.Test(req, testTimeout)
+		resp, err := app.Test(req, fiber.TestConfig{Timeout: time.Duration(testTimeout) * time.Millisecond})
 		assert.NoError(t, err)
 		assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
 	})

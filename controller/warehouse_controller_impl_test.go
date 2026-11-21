@@ -19,7 +19,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -86,7 +86,7 @@ func TestWarehouseControllerImpl(t *testing.T) {
 	request.Header.Set("Content-Type", "application/json")
 
 	// We need to get the cookie
-	response, err := app.Test(request, testTimeout)
+	response, err := app.Test(request, fiber.TestConfig{Timeout: time.Duration(testTimeout) * time.Millisecond})
 	require.NoError(t, err)
 	require.NotNil(t, response)
 	require.Equal(t, http.StatusOK, response.StatusCode)
@@ -114,7 +114,7 @@ func TestWarehouseControllerImpl(t *testing.T) {
 			request = httptest.NewRequest("POST", fmt.Sprintf("/warehouses/create_item/%d", createdTenant.Id), body)
 			request.Header.Set("Content-Type", "application/json")
 			request.AddCookie(enterprisePOSCookie)
-			response, err = app.Test(request, testTimeout)
+			response, err = app.Test(request, fiber.TestConfig{Timeout: time.Duration(testTimeout) * time.Millisecond})
 			require.Nil(t, err)
 			require.NotNil(t, response)
 			require.Equal(t, http.StatusOK, response.StatusCode)
@@ -133,7 +133,7 @@ func TestWarehouseControllerImpl(t *testing.T) {
 			request := httptest.NewRequest("GET", parsedUrl.String(), nil)
 			request.Header.Set("Content-Type", "application/json")
 			request.AddCookie(enterprisePOSCookie)
-			response, err = app.Test(request, testTimeout)
+			response, err = app.Test(request, fiber.TestConfig{Timeout: time.Duration(testTimeout) * time.Millisecond})
 			require.NoError(t, err)
 
 			var getItemBody common.WebResponse
@@ -184,7 +184,7 @@ func TestWarehouseControllerImpl(t *testing.T) {
 			request = httptest.NewRequest("POST", fmt.Sprintf("/warehouses/create_item/%d", createdTenant.Id), body)
 			request.Header.Set("Content-Type", "application/json")
 			request.AddCookie(enterprisePOSCookie)
-			response, err = app.Test(request, testTimeout)
+			response, err = app.Test(request, fiber.TestConfig{Timeout: time.Duration(testTimeout) * time.Millisecond})
 			require.Nil(t, err)
 			require.NotNil(t, response)
 			require.Equal(t, http.StatusOK, response.StatusCode)
@@ -218,7 +218,7 @@ func TestWarehouseControllerImpl(t *testing.T) {
 			request = httptest.NewRequest("POST", fmt.Sprintf("/warehouses/create_item/%d", createdTenant.Id), body)
 			request.Header.Set("Content-Type", "application/json")
 			request.AddCookie(enterprisePOSCookie)
-			response, err = app.Test(request, testTimeout)
+			response, err = app.Test(request, fiber.TestConfig{Timeout: time.Duration(testTimeout) * time.Millisecond})
 			require.NoError(t, err)
 			require.NotNil(t, response)
 			require.Equal(t, http.StatusOK, response.StatusCode)
@@ -249,7 +249,7 @@ func TestWarehouseControllerImpl(t *testing.T) {
 			request = httptest.NewRequest("POST", fmt.Sprintf("/warehouses/create_item/%d", someoneTenantId), body)
 			request.Header.Set("Content-Type", "application/json")
 			request.AddCookie(enterprisePOSCookie)
-			response, err = app.Test(request, testTimeout)
+			response, err = app.Test(request, fiber.TestConfig{Timeout: time.Duration(testTimeout) * time.Millisecond})
 			assert.NotNil(t, response)
 			assert.NoError(t, err)
 			assert.Equal(t, http.StatusForbidden, response.StatusCode)
@@ -275,7 +275,7 @@ func TestWarehouseControllerImpl(t *testing.T) {
 		request = httptest.NewRequest("POST", fmt.Sprintf("/warehouses/create_item/%d", createdTenant.Id), body)
 		request.Header.Set("Content-Type", "application/json")
 		request.AddCookie(enterprisePOSCookie)
-		response, err = app.Test(request, testTimeout)
+		response, err = app.Test(request, fiber.TestConfig{Timeout: time.Duration(testTimeout) * time.Millisecond})
 		require.Equal(t, http.StatusOK, response.StatusCode)
 
 		var createdItemBody common.WebResponse
@@ -314,7 +314,7 @@ func TestWarehouseControllerImpl(t *testing.T) {
 			request = httptest.NewRequest("POST", fmt.Sprintf("/warehouses/find/%d", createdTenant.Id), body)
 			request.Header.Set("Content-Type", "application/json")
 			request.AddCookie(enterprisePOSCookie)
-			response, err = app.Test(request, testTimeout)
+			response, err = app.Test(request, fiber.TestConfig{Timeout: time.Duration(testTimeout) * time.Millisecond})
 			assert.NoError(t, err)
 			assert.Equal(t, http.StatusOK, response.StatusCode)
 		})
@@ -329,7 +329,7 @@ func TestWarehouseControllerImpl(t *testing.T) {
 			request = httptest.NewRequest("POST", fmt.Sprintf("/warehouses/find/%d", createdTenant.Id), body)
 			request.Header.Set("Content-Type", "application/json")
 			request.AddCookie(enterprisePOSCookie)
-			response, err = app.Test(request, testTimeout)
+			response, err = app.Test(request, fiber.TestConfig{Timeout: time.Duration(testTimeout) * time.Millisecond})
 			assert.NoError(t, err)
 			assert.Equal(t, http.StatusBadRequest, response.StatusCode)
 		})
@@ -344,7 +344,7 @@ func TestWarehouseControllerImpl(t *testing.T) {
 			request = httptest.NewRequest("POST", fmt.Sprintf("/warehouses/find/%d", createdTenant.Id), body)
 			request.Header.Set("Content-Type", "application/json")
 			request.AddCookie(enterprisePOSCookie)
-			response, err = app.Test(request, testTimeout)
+			response, err = app.Test(request, fiber.TestConfig{Timeout: time.Duration(testTimeout) * time.Millisecond})
 			assert.NoError(t, err)
 			assert.Equal(t, http.StatusBadRequest, response.StatusCode)
 		})
@@ -374,7 +374,7 @@ func TestWarehouseControllerImpl(t *testing.T) {
 		request = httptest.NewRequest("POST", fmt.Sprintf("/warehouses/create_item/%d", createdTenant.Id), body)
 		request.Header.Set("Content-Type", "application/json")
 		request.AddCookie(enterprisePOSCookie)
-		response, err = app.Test(request, testTimeout)
+		response, err = app.Test(request, fiber.TestConfig{Timeout: time.Duration(testTimeout) * time.Millisecond})
 		require.Equal(t, http.StatusOK, response.StatusCode)
 
 		var createdItemBody common.WebResponse
@@ -418,7 +418,7 @@ func TestWarehouseControllerImpl(t *testing.T) {
 			request = httptest.NewRequest("PUT", fmt.Sprintf("/warehouses/edit/%d", createdTenant.Id), body)
 			request.Header.Set("Content-Type", "application/json")
 			request.AddCookie(enterprisePOSCookie)
-			response, err = app.Test(request, testTimeout)
+			response, err = app.Test(request, fiber.TestConfig{Timeout: time.Duration(testTimeout) * time.Millisecond})
 			require.Equal(t, http.StatusAccepted, response.StatusCode)
 
 			// Check
@@ -443,7 +443,7 @@ func TestWarehouseControllerImpl(t *testing.T) {
 			request = httptest.NewRequest("PUT", fmt.Sprintf("/warehouses/edit/%d", createdTenant.Id), body)
 			request.Header.Set("Content-Type", "application/json")
 			request.AddCookie(enterprisePOSCookie)
-			response, err = app.Test(request, testTimeout)
+			response, err = app.Test(request, fiber.TestConfig{Timeout: time.Duration(testTimeout) * time.Millisecond})
 			require.Equal(t, http.StatusBadRequest, response.StatusCode)
 		})
 
@@ -462,7 +462,7 @@ func TestWarehouseControllerImpl(t *testing.T) {
 			request = httptest.NewRequest("PUT", fmt.Sprintf("/warehouses/edit/%d", createdTenant.Id), body)
 			request.Header.Set("Content-Type", "application/json")
 			request.AddCookie(enterprisePOSCookie)
-			response, err = app.Test(request, testTimeout)
+			response, err = app.Test(request, fiber.TestConfig{Timeout: time.Duration(testTimeout) * time.Millisecond})
 			require.Equal(t, http.StatusBadRequest, response.StatusCode)
 
 			byteBody, err = json.Marshal(fiber.Map{
@@ -478,7 +478,7 @@ func TestWarehouseControllerImpl(t *testing.T) {
 			request = httptest.NewRequest("PUT", fmt.Sprintf("/warehouses/edit/%d", createdTenant.Id), body)
 			request.Header.Set("Content-Type", "application/json")
 			request.AddCookie(enterprisePOSCookie)
-			response, err = app.Test(request, testTimeout)
+			response, err = app.Test(request, fiber.TestConfig{Timeout: time.Duration(testTimeout) * time.Millisecond})
 			require.Equal(t, http.StatusBadRequest, response.StatusCode)
 		})
 
@@ -503,7 +503,7 @@ func TestWarehouseControllerImpl(t *testing.T) {
 		request = httptest.NewRequest("POST", fmt.Sprintf("/warehouses/create_item/%d", createdTenant.Id), body)
 		request.Header.Set("Content-Type", "application/json")
 		request.AddCookie(enterprisePOSCookie)
-		response, err = app.Test(request, testTimeout)
+		response, err = app.Test(request, fiber.TestConfig{Timeout: time.Duration(testTimeout) * time.Millisecond})
 		require.Equal(t, http.StatusOK, response.StatusCode)
 
 		var createdItemBody common.WebResponse
@@ -542,7 +542,7 @@ func TestWarehouseControllerImpl(t *testing.T) {
 			request = httptest.NewRequest("PUT", fmt.Sprintf("/warehouses/activate/%d", createdTenant.Id), body)
 			request.Header.Set("Content-Type", "application/json")
 			request.AddCookie(enterprisePOSCookie)
-			response, err = app.Test(request, testTimeout)
+			response, err = app.Test(request, fiber.TestConfig{Timeout: time.Duration(testTimeout) * time.Millisecond})
 			require.Equal(t, http.StatusAccepted, response.StatusCode)
 		})
 
@@ -556,7 +556,7 @@ func TestWarehouseControllerImpl(t *testing.T) {
 			request = httptest.NewRequest("PUT", fmt.Sprintf("/warehouses/activate/%d", createdTenant.Id), body)
 			request.Header.Set("Content-Type", "application/json")
 			request.AddCookie(enterprisePOSCookie)
-			response, err = app.Test(request, testTimeout)
+			response, err = app.Test(request, fiber.TestConfig{Timeout: time.Duration(testTimeout) * time.Millisecond})
 			require.Equal(t, http.StatusAccepted, response.StatusCode)
 		})
 
@@ -570,7 +570,7 @@ func TestWarehouseControllerImpl(t *testing.T) {
 			request = httptest.NewRequest("PUT", fmt.Sprintf("/warehouses/activate/%d", createdTenant.Id), body)
 			request.Header.Set("Content-Type", "application/json")
 			request.AddCookie(enterprisePOSCookie)
-			response, err = app.Test(request, testTimeout)
+			response, err = app.Test(request, fiber.TestConfig{Timeout: time.Duration(testTimeout) * time.Millisecond})
 			require.Equal(t, http.StatusAccepted, response.StatusCode)
 		})
 

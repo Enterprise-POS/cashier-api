@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 type StoreStockControllerImpl struct {
@@ -20,7 +20,7 @@ func NewStoreStockControllerImpl(service service.StoreStockService) StoreStockCo
 }
 
 // Get implements StoreStockController.
-func (controller *StoreStockControllerImpl) Get(ctx *fiber.Ctx) error {
+func (controller *StoreStockControllerImpl) Get(ctx fiber.Ctx) error {
 	paramLimit := ctx.Query("limit", "5") // default 5
 	paramPage := ctx.Query("page", "1")   // default 1
 	paramStoreId := ctx.Query("store_id", "must specify")
@@ -60,7 +60,7 @@ func (controller *StoreStockControllerImpl) Get(ctx *fiber.Ctx) error {
 }
 
 // GetV2 implements StoreStockController.
-func (controller *StoreStockControllerImpl) GetV2(ctx *fiber.Ctx) error {
+func (controller *StoreStockControllerImpl) GetV2(ctx fiber.Ctx) error {
 	paramLimit := ctx.Query("limit", "5") // default 5
 	paramPage := ctx.Query("page", "1")   // default 1
 	paramStoreId := ctx.Query("store_id", "must specify")
@@ -110,7 +110,7 @@ func (controller *StoreStockControllerImpl) GetV2(ctx *fiber.Ctx) error {
 }
 
 // Edit implements StoreStockController.
-func (controller *StoreStockControllerImpl) Edit(ctx *fiber.Ctx) error {
+func (controller *StoreStockControllerImpl) Edit(ctx fiber.Ctx) error {
 	// It's guaranteed to be not "", because restrict by tenant
 	// already did check first
 	tenantId, _ := strconv.Atoi(ctx.Params("tenantId"))
@@ -122,7 +122,7 @@ func (controller *StoreStockControllerImpl) Edit(ctx *fiber.Ctx) error {
 		StoreId int `json:"store_id"`
 	}
 	var body StoreStockEditRequestBody
-	err := ctx.BodyParser(&body)
+	err := ctx.Bind().Body(&body)
 	if err != nil {
 		return ctx.Status(fiber.StatusBadRequest).
 			JSON(common.NewWebResponseError(400, common.StatusError, "Something gone wrong ! The request body is malformed"))
@@ -145,7 +145,7 @@ func (controller *StoreStockControllerImpl) Edit(ctx *fiber.Ctx) error {
 }
 
 // TransferStockToStoreStock implements StoreStockController.
-func (controller *StoreStockControllerImpl) TransferStockToStoreStock(ctx *fiber.Ctx) error {
+func (controller *StoreStockControllerImpl) TransferStockToStoreStock(ctx fiber.Ctx) error {
 	// It's guaranteed to be not "", because restrict by tenant
 	// already did check first
 	tenantId, _ := strconv.Atoi(ctx.Params("tenantId"))
@@ -157,7 +157,7 @@ func (controller *StoreStockControllerImpl) TransferStockToStoreStock(ctx *fiber
 		// TenantId int `json:"tenantId"` // Handled at url
 	}
 	var body StoreStockTransferStockToStoreStockRequestBody
-	err := ctx.BodyParser(&body)
+	err := ctx.Bind().Body(&body)
 	if err != nil {
 		return ctx.Status(fiber.StatusBadRequest).
 			JSON(common.NewWebResponseError(400, common.StatusError, "Something gone wrong ! The request body is malformed"))
@@ -173,7 +173,7 @@ func (controller *StoreStockControllerImpl) TransferStockToStoreStock(ctx *fiber
 }
 
 // TransferStockToWarehouse implements StoreStockController.
-func (controller *StoreStockControllerImpl) TransferStockToWarehouse(ctx *fiber.Ctx) error {
+func (controller *StoreStockControllerImpl) TransferStockToWarehouse(ctx fiber.Ctx) error {
 	// It's guaranteed to be not "", because restrict by tenant
 	// already did check first
 	tenantId, _ := strconv.Atoi(ctx.Params("tenantId"))
@@ -185,7 +185,7 @@ func (controller *StoreStockControllerImpl) TransferStockToWarehouse(ctx *fiber.
 		// TenantId int `json:"tenantId"` // Handled at url
 	}
 	var body StoreStockTransferStockToWarehouseRequestBody
-	err := ctx.BodyParser(&body)
+	err := ctx.Bind().Body(&body)
 	if err != nil {
 		return ctx.Status(fiber.StatusBadRequest).
 			JSON(common.NewWebResponseError(400, common.StatusError, "Something gone wrong ! The request body is malformed"))
@@ -201,7 +201,7 @@ func (controller *StoreStockControllerImpl) TransferStockToWarehouse(ctx *fiber.
 }
 
 // LoadCashierData implements StoreStockController.
-func (controller *StoreStockControllerImpl) LoadCashierData(ctx *fiber.Ctx) error {
+func (controller *StoreStockControllerImpl) LoadCashierData(ctx fiber.Ctx) error {
 	paramStoreId := ctx.Query("store_id", "")
 	storeId, err := strconv.Atoi(paramStoreId)
 	if err != nil {
@@ -224,7 +224,7 @@ func (controller *StoreStockControllerImpl) LoadCashierData(ctx *fiber.Ctx) erro
 }
 
 // Withdraw implements StoreStockController.
-func (controller *StoreStockControllerImpl) Withdraw(ctx *fiber.Ctx) error {
+func (controller *StoreStockControllerImpl) Withdraw(ctx fiber.Ctx) error {
 	tenantId, _ := strconv.Atoi(ctx.Params("tenantId"))
 
 	type WithdrawProductFromStoreRequestBody struct {
@@ -233,7 +233,7 @@ func (controller *StoreStockControllerImpl) Withdraw(ctx *fiber.Ctx) error {
 		StoreStockId int `json:"store_stock_id"`
 	}
 	var body WithdrawProductFromStoreRequestBody
-	err := ctx.BodyParser(&body)
+	err := ctx.Bind().Body(&body)
 	if err != nil {
 		return ctx.Status(fiber.StatusBadRequest).
 			JSON(common.NewWebResponseError(400, common.StatusError, "Something gone wrong ! The request body is malformed"))
