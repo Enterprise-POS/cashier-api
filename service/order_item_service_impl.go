@@ -208,21 +208,13 @@ func (service *OrderItemServiceImpl) Transactions(params *repository.CreateTrans
 			return nil, errors.New("Voucher service is required when applying vouchers")
 		}
 
-		items := make([]*model.Item, 0, len(params.Items))
-		for _, purchasedItem := range params.Items {
-			items = append(items, &model.Item{
-				ItemId:    purchasedItem.ItemId,
-				TenantId:  params.TenantId,
-				BasePrice: purchasedItem.BasePriceSnapshot,
-			})
-		}
 		for _, voucherCode := range params.ApplyVouchers {
 			if strings.TrimSpace(voucherCode) == "" {
 				return nil, errors.New("Voucher code is required")
 			}
 
 			_, currentVoucherDiscount, _, voucherId, eligible, err :=
-				service.VoucherService.PreviewVoucher(params.TenantId, voucherCode, items)
+				service.VoucherService.PreviewVoucherForPurchasedItems(params.TenantId, voucherCode, params.Items, voucherDiscount)
 			if err != nil {
 				return nil, fmt.Errorf("Failed to use voucher %q: %w", voucherCode, err)
 			}
@@ -234,17 +226,6 @@ func (service *OrderItemServiceImpl) Transactions(params *repository.CreateTrans
 			voucherDiscount += currentVoucherDiscount
 			if eligible {
 				voucherUsages = append(voucherUsages, &model.VoucherUsage{VoucherId: voucherId})
-			}
-
-			discountToApply := currentVoucherDiscount
-			for i := len(items) - 1; i >= 0 && discountToApply > 0; i-- {
-				if items[i].BasePrice > discountToApply {
-					items[i].BasePrice -= discountToApply
-					discountToApply = 0
-				} else {
-					discountToApply -= items[i].BasePrice
-					items[i].BasePrice = 0
-				}
 			}
 		}
 	}

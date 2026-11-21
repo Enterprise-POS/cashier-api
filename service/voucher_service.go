@@ -28,9 +28,9 @@ type VoucherService interface {
 	//   - ITEM_COMBINATIONS:
 	// 			1. Decrement (greater than zero).
 	// 			2. ItemIdCombinations must be non-empty and contain positive item IDs.
-	//     			Repeated IDs specify required quantities (for example, [1, 1, 1]
-	//     			requires three units of item 1). The cart must match the configured
-	//     			item IDs and quantities exactly; the decrement applies once.
+	//     			Repeated IDs specify minimum required quantities (for example,
+	//     			[1, 1, 1] requires three units of item 1); other cart items are allowed.
+	//     			The decrement applies once.
 	//   - ITEM_QUANTITIES:
 	// 			1. Decrement (greater than zero)
 	// 			2. ItemQuantities (greater than zero), and exactly one positive ID in ItemIdCombinations.
@@ -39,6 +39,7 @@ type VoucherService interface {
 	EditVoucher(voucherId, tenantId int, updates *model.VoucherUpdate) (*model.Voucher, error)
 	DeleteVoucher(voucherId, tenantId int) error
 	PreviewVoucher(tenantId int, code string, items []*model.Item) (beforeDiscountPrice, discountPrice, afterDiscountPrice, voucherId int, eligible bool, err error)
+	PreviewVoucherForPurchasedItems(tenantId int, code string, items []*model.PurchasedItem, previousVoucherDiscount int) (beforeDiscountPrice, discountPrice, afterDiscountPrice, voucherId int, eligible bool, err error)
 	CommitVoucherUsage(voucherId, tenantId int) error
 	UseVoucher(tenantId int, code string, items []*model.Item) (beforeDiscountPrice, discountPrice, afterDiscountPrice int, err error)
 }

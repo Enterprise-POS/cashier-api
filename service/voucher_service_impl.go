@@ -262,6 +262,45 @@ func (service *VoucherServiceImpl) UseVoucher(tenantId int, code string, items [
 }
 
 func (service *VoucherServiceImpl) PreviewVoucher(tenantId int, code string, items []*model.Item) (totalPrice int, discountPrice int, afterDiscountPrice int, voucherId int, eligible bool, err error) {
+	previewItems := make([]voucherPreviewItem, 0, len(items))
+	for _, item := range items {
+		if item == nil {
+			return 0, 0, 0, 0, false, errors.New("Purchased item cannot be nil")
+		}
+		previewItems = append(previewItems, voucherPreviewItem{
+			itemId:    item.ItemId,
+			tenantId:  item.TenantId,
+			basePrice: item.BasePrice,
+			quantity:  1,
+		})
+	}
+	return service.previewVoucher(tenantId, code, previewItems, 0)
+}
+
+func (service *VoucherServiceImpl) PreviewVoucherForPurchasedItems(tenantId int, code string, items []*model.PurchasedItem, previousVoucherDiscount int) (totalPrice int, discountPrice int, afterDiscountPrice int, voucherId int, eligible bool, err error) {
+	previewItems := make([]voucherPreviewItem, 0, len(items))
+	for _, item := range items {
+		if item == nil {
+			return 0, 0, 0, 0, false, errors.New("Purchased item cannot be nil")
+		}
+		previewItems = append(previewItems, voucherPreviewItem{
+			itemId:    item.ItemId,
+			tenantId:  tenantId,
+			basePrice: item.BasePriceSnapshot,
+			quantity:  item.Quantity,
+		})
+	}
+	return service.previewVoucher(tenantId, code, previewItems, previousVoucherDiscount)
+}
+
+type voucherPreviewItem struct {
+	itemId    int
+	tenantId  int
+	basePrice int
+	quantity  int
+}
+
+func (service *VoucherServiceImpl) previewVoucher(tenantId int, code string, items []voucherPreviewItem, previousVoucherDiscount int) (totalPrice int, discountPrice int, afterDiscountPrice int, voucherId int, eligible bool, err error) {
 	if tenantId < 1 {
 		return 0, 0, 0, 0, false, errors.New("Tenant ID is required")
 	}
@@ -276,22 +315,34 @@ func (service *VoucherServiceImpl) PreviewVoucher(tenantId int, code string, ite
 	totalPrice = 0
 	maxInt := int(^uint(0) >> 1)
 	for _, item := range items {
-		if item == nil {
-			return 0, 0, 0, 0, false, errors.New("Purchased item cannot be nil")
-		}
-		if item.ItemId < 1 {
+		if item.itemId < 1 {
 			return 0, 0, 0, 0, false, errors.New("Purchased item ID is required")
 		}
-		if item.TenantId != tenantId {
+		if item.tenantId != tenantId {
 			return 0, 0, 0, 0, false, errors.New("Purchased item does not belong to the requested tenant")
 		}
-		if item.BasePrice < 0 {
-			return 0, 0, 0, 0, false, fmt.Errorf("Purchased item price cannot be negative: %d", item.BasePrice)
+		if item.basePrice < 0 {
+			return 0, 0, 0, 0, false, fmt.Errorf("Purchased item price cannot be negative: %d", item.basePrice)
 		}
-		if totalPrice > maxInt-item.BasePrice {
+		if item.quantity < 1 {
+			return 0, 0, 0, 0, false, errors.New("Purchased item quantity must be greater than zero")
+		}
+		if item.basePrice > maxInt/item.quantity {
 			return 0, 0, 0, 0, false, errors.New("Purchased item total exceeds the maximum supported amount")
 		}
-		totalPrice += item.BasePrice
+		itemTotal := item.basePrice * item.quantity
+		if totalPrice > maxInt-itemTotal {
+			return 0, 0, 0, 0, false, errors.New("Purchased item total exceeds the maximum supported amount")
+		}
+		totalPrice += itemTotal
+	}
+	if previousVoucherDiscount < 0 {
+		return 0, 0, 0, 0, false, errors.New("Previous voucher discount cannot be negative")
+	}
+	if previousVoucherDiscount >= totalPrice {
+		totalPrice = 0
+	} else {
+		totalPrice -= previousVoucherDiscount
 	}
 
 	voucher, err := service.Repository.FindVoucherByCode(code, tenantId)
@@ -420,7 +471,7 @@ func (service *VoucherServiceImpl) handleVoucherRepositoryError(operation string
 	}
 }
 
-func calculateVoucherDiscount(voucher *model.Voucher, items []*model.Item, totalPrice int) (int, bool, error) {
+func calculateVoucherDiscount(voucher *model.Voucher, items []voucherPreviewItem, totalPrice int) (int, bool, error) {
 	if voucher == nil {
 		return 0, false, errors.New("Voucher not found")
 	}
@@ -451,7 +502,7 @@ func calculateVoucherDiscount(voucher *model.Voucher, items []*model.Item, total
 		if err := validateItemIds([]int(voucher.ItemIdCombinations)); err != nil {
 			return 0, false, err
 		}
-		if !matchesExactItemCombination([]int(voucher.ItemIdCombinations), items) {
+		if !matchesItemCombination([]int(voucher.ItemIdCombinations), items) {
 			return 0, false, nil
 		}
 		discountPrice, err := validateDecrement(voucher.Decrement, totalPrice)
@@ -465,8 +516,13 @@ func calculateVoucherDiscount(voucher *model.Voucher, items []*model.Item, total
 		}
 		quantity := 0
 		for _, item := range items {
-			if item.ItemId == voucher.ItemIdCombinations[0] {
-				quantity++
+			if item.itemId == voucher.ItemIdCombinations[0] && quantity < voucher.ItemQuantities {
+				remaining := voucher.ItemQuantities - quantity
+				if item.quantity >= remaining {
+					quantity = voucher.ItemQuantities
+				} else {
+					quantity += item.quantity
+				}
 			}
 		}
 		if quantity < voucher.ItemQuantities {
@@ -511,7 +567,7 @@ func validateDecrement(decrement, totalPrice int) (int, error) {
 	return decrement, nil
 }
 
-func matchesExactItemCombination(voucherItemIds []int, items []*model.Item) bool {
+func matchesItemCombination(voucherItemIds []int, items []voucherPreviewItem) bool {
 	if len(voucherItemIds) == 0 {
 		return false
 	}
@@ -526,13 +582,17 @@ func matchesExactItemCombination(voucherItemIds []int, items []*model.Item) bool
 
 	purchased := make(map[int]int, len(items))
 	for _, item := range items {
-		purchased[item.ItemId]++
-	}
-	if len(expected) != len(purchased) {
-		return false
+		if purchased[item.itemId] < expected[item.itemId] {
+			remaining := expected[item.itemId] - purchased[item.itemId]
+			if item.quantity >= remaining {
+				purchased[item.itemId] = expected[item.itemId]
+			} else {
+				purchased[item.itemId] += item.quantity
+			}
+		}
 	}
 	for itemId, quantity := range expected {
-		if purchased[itemId] != quantity {
+		if purchased[itemId] < quantity {
 			return false
 		}
 	}

@@ -376,7 +376,7 @@ func TestVoucherServiceImpl(t *testing.T) {
 					wantUsed:     1,
 				},
 				{
-					name: "ExtraItemInvalidatesExactCombination",
+					name: "ExtraItemsDoNotInvalidateCombination",
 					voucher: &model.Voucher{
 						VoucherType:        model.ITEM_COMBINATIONS,
 						Decrement:          100,
@@ -388,11 +388,12 @@ func TestVoucherServiceImpl(t *testing.T) {
 						{ItemId: 3, TenantId: 7, BasePrice: 200},
 					},
 					wantBefore:   800,
-					wantDiscount: 0,
-					wantAfter:    800,
+					wantDiscount: 100,
+					wantAfter:    700,
+					wantUsed:     1,
 				},
 				{
-					name: "AdditionalUnitsInvalidateExactCombination",
+					name: "AdditionalUnitsDoNotInvalidateCombination",
 					voucher: &model.Voucher{
 						VoucherType:        model.ITEM_COMBINATIONS,
 						Decrement:          100,
@@ -405,8 +406,9 @@ func TestVoucherServiceImpl(t *testing.T) {
 						{ItemId: 1, TenantId: 7, BasePrice: 300},
 					},
 					wantBefore:   1200,
-					wantDiscount: 0,
-					wantAfter:    1200,
+					wantDiscount: 100,
+					wantAfter:    1100,
+					wantUsed:     1,
 				},
 				{
 					name: "ItemQuantityThresholdAppliesOnceToWholeCart",
@@ -469,6 +471,48 @@ func TestVoucherServiceImpl(t *testing.T) {
 					assert.Equal(t, test.wantUsed, repository.incrementCalls)
 					assert.Equal(t, "SAVE10", repository.lookupCode)
 					assert.Equal(t, 7, repository.lookupTenant)
+				})
+			}
+		})
+
+		t.Run("PurchasedItemQuantitiesMatchCombinationAndQuantityVouchers", func(t *testing.T) {
+			items := []*model.PurchasedItem{
+				{ItemId: 1, Quantity: 2, BasePriceSnapshot: 300},
+				{ItemId: 2, Quantity: 1, BasePriceSnapshot: 100},
+			}
+			tests := []struct {
+				name    string
+				voucher *model.Voucher
+			}{
+				{
+					name: "CombinationCountsUnitsAndAllowsExtraItems",
+					voucher: &model.Voucher{
+						Id: 1, VoucherType: model.ITEM_COMBINATIONS,
+						Decrement: 100, ItemIdCombinations: model.VoucherItemIDs{1, 1},
+					},
+				},
+				{
+					name: "ItemQuantityCountsUnits",
+					voucher: &model.Voucher{
+						Id: 1, VoucherType: model.ITEM_QUANTITIES,
+						Decrement: 100, ItemIdCombinations: model.VoucherItemIDs{1}, ItemQuantities: 2,
+					},
+				},
+			}
+
+			for _, test := range tests {
+				t.Run(test.name, func(t *testing.T) {
+					service := NewVoucherServiceImpl(&voucherRepositoryStub{voucher: test.voucher})
+
+					before, discount, after, voucherId, eligible, err :=
+						service.PreviewVoucherForPurchasedItems(7, "SAVE", items, 0)
+
+					require.NoError(t, err)
+					assert.Equal(t, 700, before)
+					assert.Equal(t, 100, discount)
+					assert.Equal(t, 600, after)
+					assert.Equal(t, 1, voucherId)
+					assert.True(t, eligible)
 				})
 			}
 		})

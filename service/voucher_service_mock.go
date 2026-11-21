@@ -52,6 +52,11 @@ func (service *VoucherServiceMock) PreviewVoucher(tenantId int, code string, ite
 	return args.Int(0), args.Int(1), args.Int(2), args.Int(3), args.Bool(4), args.Error(5)
 }
 
+func (service *VoucherServiceMock) PreviewVoucherForPurchasedItems(tenantId int, code string, items []*model.PurchasedItem, previousVoucherDiscount int) (int, int, int, int, bool, error) {
+	args := service.Mock.Called(tenantId, code, items, previousVoucherDiscount)
+	return args.Int(0), args.Int(1), args.Int(2), args.Int(3), args.Bool(4), args.Error(5)
+}
+
 func (service *VoucherServiceMock) CommitVoucherUsage(voucherId, tenantId int) error {
 	args := service.Mock.Called(voucherId, tenantId)
 	return args.Error(0)

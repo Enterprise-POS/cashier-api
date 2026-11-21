@@ -420,12 +420,12 @@ func TestOrderItemServiceImpl(t *testing.T) {
 			params.TotalAmount = 9_600
 			params.DiscountAmount = 400
 
-			voucherService.Mock.On("PreviewVoucher", TENANT_ID, "FIRST", mock.MatchedBy(func(items []*model.Item) bool {
-				return len(items) == 1 && items[0].BasePrice == 10_000
-			})).Return(10_000, 100, 9_900, 1, true, nil)
-			voucherService.Mock.On("PreviewVoucher", TENANT_ID, "SECOND", mock.MatchedBy(func(items []*model.Item) bool {
-				return len(items) == 1 && items[0].BasePrice == 9_900
-			})).Return(9_900, 200, 9_700, 2, true, nil)
+			voucherService.Mock.On("PreviewVoucherForPurchasedItems", TENANT_ID, "FIRST", mock.MatchedBy(func(items []*model.PurchasedItem) bool {
+				return len(items) == 1 && items[0].BasePriceSnapshot == 10_000 && items[0].Quantity == 1
+			}), 0).Return(10_000, 100, 9_900, 1, true, nil)
+			voucherService.Mock.On("PreviewVoucherForPurchasedItems", TENANT_ID, "SECOND", mock.MatchedBy(func(items []*model.PurchasedItem) bool {
+				return len(items) == 1 && items[0].BasePriceSnapshot == 10_000 && items[0].Quantity == 1
+			}), 100).Return(9_900, 200, 9_700, 2, true, nil)
 			voucherService.Mock.On("CommitVoucherUsage", 1, TENANT_ID).Return(nil)
 			voucherService.Mock.On("CommitVoucherUsage", 2, TENANT_ID).Return(nil)
 
@@ -459,7 +459,7 @@ func TestOrderItemServiceImpl(t *testing.T) {
 			params := baseValidParams()
 			params.ApplyVouchers = []string{"INVALID"}
 
-			voucherService.Mock.On("PreviewVoucher", TENANT_ID, "INVALID", mock.Anything).
+			voucherService.Mock.On("PreviewVoucherForPurchasedItems", TENANT_ID, "INVALID", mock.Anything, 0).
 				Return(0, 0, 0, 0, false, errors.New("voucher unavailable"))
 
 			transactionDataReturn, err := orderItemService.Transactions(params, cashServerKey)
@@ -467,6 +467,42 @@ func TestOrderItemServiceImpl(t *testing.T) {
 			assert.ErrorContains(t, err, "voucher unavailable")
 			assert.Nil(t, transactionDataReturn)
 			orderItemRepo.Mock.AssertNotCalled(t, "Transactions", mock.Anything)
+		})
+
+		t.Run("PassesPurchasedQuantityToVoucherPreview", func(t *testing.T) {
+			orderItemRepo := repository.NewOrderItemRepositoryMock(&mock.Mock{}).(*repository.OrderItemRepositoryMock)
+			voucherService := NewVoucherServiceMock(&mock.Mock{}).(*VoucherServiceMock)
+			voucherUsageRepository := repository.NewVoucherUsageRepositoryMock(&mock.Mock{}).(*repository.VoucherUsageRepositoryMock)
+			orderItemService := NewOrderItemServiceImpl(orderItemRepo, paymentProvider, voucherService, voucherUsageRepository)
+			params := baseValidParams()
+			params.Items[0].Quantity = 2
+			params.Items[0].StorePriceSnapshot = 5_000
+			params.Items[0].BasePriceSnapshot = 5_000
+			params.Items[0].TotalAmount = 10_000
+			params.TotalQuantity = 2
+			params.ApplyVouchers = []string{"COMBO"}
+			params.TotalAmount = 9_900
+			params.DiscountAmount = 100
+
+			voucherService.Mock.On("PreviewVoucherForPurchasedItems", TENANT_ID, "COMBO", mock.MatchedBy(func(items []*model.PurchasedItem) bool {
+				return len(items) == 1 &&
+					items[0].ItemId == 1 &&
+					items[0].Quantity == 2 &&
+					items[0].BasePriceSnapshot == 5_000
+			}), 0).Return(10_000, 100, 9_900, 1, true, nil)
+			voucherService.Mock.On("CommitVoucherUsage", 1, TENANT_ID).Return(nil)
+			orderItemRepo.Mock.On("Transactions", mock.MatchedBy(func(params *repository.CreateTransactionParams) bool {
+				return params.TotalQuantity == 2 && params.TotalAmount == 9_900 && params.DiscountAmount == 100
+			})).Return(&repository.TransactionDataReturn{CreatedOrderItemId: 1}, nil)
+			voucherUsageRepository.Mock.On("CreateVoucherUsages", mock.MatchedBy(func(usages []*model.VoucherUsage) bool {
+				return len(usages) == 1 && usages[0].VoucherId == 1 && usages[0].OrderItemId == 1
+			})).Return(nil)
+
+			created, err := orderItemService.Transactions(params, cashServerKey)
+
+			assert.NoError(t, err)
+			assert.NotNil(t, created)
+			voucherService.Mock.AssertExpectations(t)
 		})
 
 		t.Run("VoucherDiscountExceedsTransactionTotal", func(t *testing.T) {
@@ -477,7 +513,7 @@ func TestOrderItemServiceImpl(t *testing.T) {
 			params.ApplyVouchers = []string{"TOO-MUCH"}
 			params.DiscountAmount = 10_001
 
-			voucherService.Mock.On("PreviewVoucher", TENANT_ID, "TOO-MUCH", mock.Anything).
+			voucherService.Mock.On("PreviewVoucherForPurchasedItems", TENANT_ID, "TOO-MUCH", mock.Anything, 0).
 				Return(10_000, 10_001, -1, 1, true, nil)
 
 			transactionDataReturn, err := orderItemService.Transactions(params, cashServerKey)
@@ -496,7 +532,7 @@ func TestOrderItemServiceImpl(t *testing.T) {
 			params.ApplyVouchers = []string{"SAVE"}
 			params.DiscountAmount = 99
 
-			voucherService.Mock.On("PreviewVoucher", TENANT_ID, "SAVE", mock.Anything).
+			voucherService.Mock.On("PreviewVoucherForPurchasedItems", TENANT_ID, "SAVE", mock.Anything, 0).
 				Return(10_000, 100, 9_900, 1, true, nil)
 
 			transactionDataReturn, err := orderItemService.Transactions(params, cashServerKey)
