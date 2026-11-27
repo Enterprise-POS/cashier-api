@@ -24,7 +24,6 @@ func NewOrderItemControllerImpl(service service.OrderItemService) OrderItemContr
 }
 
 type OrderItemControllerGetRequest struct {
-	TenantId   int                  `json:"tenant_id" binding:"required,gt=0"`
 	StoreId    int                  `json:"store_id" binding:"required,gt=0"`
 	Limit      int                  `json:"limit" binding:"required,gte=1,lte=100"`
 	Page       int                  `json:"page" binding:"required,gte=1"`
@@ -59,7 +58,7 @@ func (controller *OrderItemControllerImpl) Get(ctx fiber.Ctx) error {
 			JSON(common.NewWebResponseError(400, common.StatusError, "Something gone wrong ! The request body is malformed"))
 	}
 
-	orderItems, count, err := controller.Service.Get(body.TenantId, body.StoreId, body.Limit, body.Page, body.Filters, body.DateFilter)
+	orderItems, count, err := controller.Service.Get(tenantId, body.StoreId, body.Limit, body.Page, body.Filters, body.DateFilter)
 	if err != nil {
 		return ctx.Status(fiber.StatusBadRequest).
 			JSON(common.NewWebResponseError(400, common.StatusError, err.Error()))

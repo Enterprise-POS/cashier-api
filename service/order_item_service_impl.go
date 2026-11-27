@@ -99,6 +99,15 @@ func (service *OrderItemServiceImpl) Get(
 		}
 	}
 
+	for _, filter := range filters {
+		if filter == nil {
+			return nil, 0, errors.New("Invalid filter column")
+		}
+		if !query.IsValidColumn(filter.Column) {
+			return nil, 0, fmt.Errorf("Invalid filter column: %s", filter.Column)
+		}
+	}
+
 	orderItems, count, err := service.Repository.Get(tenantId, storeId, limit, page-1, filters, dateFilter)
 	if err != nil {
 		return nil, 0, err

@@ -63,6 +63,15 @@ func (repository *TenantRepositoryImpl) GetTenantWithUser(userId int) ([]*model.
 	return results, nil
 }
 
+func (repository *TenantRepositoryImpl) GetTenantById(tenantId int) (*model.Tenant, error) {
+	var tenant model.Tenant
+	err := repository.Client.Table(TenantTable).First(&tenant, tenantId).Error
+	if err != nil {
+		return nil, err
+	}
+	return &tenant, nil
+}
+
 /*
 Fresh new tenant, with current user as a owner
 only create 1 tenant, will call new_tenant_user_as_owner function

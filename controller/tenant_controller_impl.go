@@ -142,9 +142,8 @@ func (controller *TenantControllerImpl) RemoveUserFromTenant(ctx fiber.Ctx) erro
 // AddUserToTenant implements TenantController.
 func (controller *TenantControllerImpl) AddUserToTenant(ctx fiber.Ctx) error {
 	var body struct {
-		UserId      int `json:"user_id"` // To be add user
-		TenantId    int `json:"tenant_id"`
-		PerformerId int `json:"performer_id"`
+		UserId   int `json:"user_id"` // To be add user
+		TenantId int `json:"tenant_id"`
 	}
 
 	err := ctx.Bind().Body(&body)
@@ -160,7 +159,7 @@ func (controller *TenantControllerImpl) AddUserToTenant(ctx fiber.Ctx) error {
 			JSON(common.NewWebResponseError(400, common.StatusError, "Unexpected behavior ! could not get the id"))
 	}
 
-	createdUserUserMtmTenant, err := controller.Service.AddUserToTenant(body.UserId, body.TenantId, body.PerformerId, userId)
+	createdUserUserMtmTenant, err := controller.Service.AddUserToTenant(body.UserId, body.TenantId, userId)
 	if err != nil {
 		if err.Error() == "[TenantService:AddUserToTenant]" {
 			return ctx.Status(fiber.StatusForbidden).
@@ -173,7 +172,7 @@ func (controller *TenantControllerImpl) AddUserToTenant(ctx fiber.Ctx) error {
 
 	return ctx.Status(fiber.StatusOK).
 		JSON(common.NewWebResponse(200, common.StatusSuccess, fiber.Map{
-			"requested_by":     body.PerformerId,
+			"requested_by":     userId,
 			"added_user_id":    createdUserUserMtmTenant.UserId,
 			"target_tenant_id": createdUserUserMtmTenant.TenantId,
 		}))

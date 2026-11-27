@@ -26,6 +26,11 @@ type TenantRepository interface {
 	GetTenantWithUser(userId int) ([]*model.Tenant, error)
 
 	/*
+		Return a tenant by id
+	*/
+	GetTenantById(tenantId int) (*model.Tenant, error)
+
+	/*
 		Fresh new tenant, with current user as a owner
 		only create 1 tenant, will call new_tenant_user_as_owner function
 	*/

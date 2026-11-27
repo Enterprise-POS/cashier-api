@@ -59,6 +59,29 @@ func TestOrderItemServiceImpl(t *testing.T) {
 			assert.Equal(t, expectedItems, orderItems)
 		})
 
+		t.Run("InvalidFilterColumn", func(t *testing.T) {
+			orderItemRepo := repository.NewOrderItemRepositoryMock(&mock.Mock{}).(*repository.OrderItemRepositoryMock)
+			orderItemService := NewOrderItemServiceImpl(orderItemRepo, paymentProvider, NewVoucherServiceMock(&mock.Mock{}))
+
+			filters := []*query.QueryFilter{{Column: "(SELECT password FROM user)"}}
+			orderItems, count, err := orderItemService.Get(TENANT_ID, STORE_ID, LIMIT, PAGE, filters, nil)
+
+			assert.EqualError(t, err, "Invalid filter column: (SELECT password FROM user)")
+			assert.Equal(t, 0, count)
+			assert.Nil(t, orderItems)
+		})
+
+		t.Run("NilFilter", func(t *testing.T) {
+			orderItemRepo := repository.NewOrderItemRepositoryMock(&mock.Mock{}).(*repository.OrderItemRepositoryMock)
+			orderItemService := NewOrderItemServiceImpl(orderItemRepo, paymentProvider, NewVoucherServiceMock(&mock.Mock{}))
+
+			orderItems, count, err := orderItemService.Get(TENANT_ID, STORE_ID, LIMIT, PAGE, []*query.QueryFilter{nil}, nil)
+
+			assert.EqualError(t, err, "Invalid filter column")
+			assert.Equal(t, 0, count)
+			assert.Nil(t, orderItems)
+		})
+
 		t.Run("TenantIdIsNotProvided", func(t *testing.T) {
 			orderItemRepo := repository.NewOrderItemRepositoryMock(&mock.Mock{}).(*repository.OrderItemRepositoryMock)
 			orderItemService := NewOrderItemServiceImpl(orderItemRepo, paymentProvider, NewVoucherServiceMock(&mock.Mock{}))

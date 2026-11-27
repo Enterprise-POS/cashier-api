@@ -3,7 +3,6 @@ package service
 import (
 	"cashier-api/model"
 	"cashier-api/repository"
-	"errors"
 	"testing"
 	"time"
 
@@ -144,10 +143,10 @@ func TestTenantServiceImpl(t *testing.T) {
 		t.Run("NormalAdd", func(t *testing.T) {
 			toBeAddedUserId := 99
 			tenantId := 1
-			performerId := 1 // user who request to add some user
-			sub := performerId
+			sub := 1
 
 			now := time.Now()
+			tenantRepo.Mock.On("GetTenantById", tenantId).Return(&model.Tenant{Id: tenantId, OwnerUserId: sub}, nil)
 			expectedAddedUserFromTenant := &model.UserMtmTenant{
 				Id:        1,
 				UserId:    toBeAddedUserId,
@@ -155,7 +154,7 @@ func TestTenantServiceImpl(t *testing.T) {
 				CreatedAt: &now,
 			}
 			tenantRepo.Mock.On("AddUserToTenant", toBeAddedUserId, tenantId).Return(expectedAddedUserFromTenant, nil)
-			testUserMtmTenant, err := tenantService.AddUserToTenant(toBeAddedUserId, tenantId, performerId, sub)
+			testUserMtmTenant, err := tenantService.AddUserToTenant(toBeAddedUserId, tenantId, sub)
 			assert.NoError(t, err)
 			assert.NotNil(t, testUserMtmTenant)
 			assert.Equal(t, expectedAddedUserFromTenant.TenantId, testUserMtmTenant.TenantId)
@@ -163,16 +162,16 @@ func TestTenantServiceImpl(t *testing.T) {
 			assert.Equal(t, expectedAddedUserFromTenant.CreatedAt, testUserMtmTenant.CreatedAt)
 		})
 
-		t.Run("ForbiddenActionForAddingUserWithOtherUserId", func(t *testing.T) {
-			toBeAddedUserId := 99
-			tenantId := 1
-			performerId := 1
-			sub := 2 // JWT id different
-			tenantRepo.Mock.On("AddUserToTenant", toBeAddedUserId, tenantId).Return(nil, errors.New("[TenantService:AddUserToTenant]"))
-			testUserMtmTenant, err := tenantService.AddUserToTenant(toBeAddedUserId, tenantId, performerId, sub)
+		t.Run("ForbiddenWhenNotTenantOwner", func(t *testing.T) {
+			toBeAddedUserId := 100
+			tenantId := 2
+			sub := 2
+			tenantRepo.Mock.On("GetTenantById", tenantId).Return(&model.Tenant{Id: tenantId, OwnerUserId: 1}, nil)
+			testUserMtmTenant, err := tenantService.AddUserToTenant(toBeAddedUserId, tenantId, sub)
 			assert.Error(t, err)
 			assert.Nil(t, testUserMtmTenant)
 			assert.Equal(t, "[TenantService:AddUserToTenant]", err.Error())
+			tenantRepo.Mock.AssertNotCalled(t, "AddUserToTenant", toBeAddedUserId, tenantId)
 		})
 	})
 

@@ -42,6 +42,17 @@ func (t *TenantRepositoryMock) GetByUserId(userId int) ([]*model.Tenant, error) 
 	panic("unimplemented")
 }
 
+// GetTenantById implements [TenantRepository].
+func (repository *TenantRepositoryMock) GetTenantById(tenantId int) (*model.Tenant, error) {
+	args := repository.Mock.Called(tenantId)
+
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+
+	return args.Get(0).(*model.Tenant), nil
+}
+
 // GetTenantWithUser implements [TenantRepository].
 func (repository *TenantRepositoryMock) GetTenantWithUser(userId int) ([]*model.Tenant, error) {
 	args := repository.Mock.Called(userId)

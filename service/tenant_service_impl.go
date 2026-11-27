@@ -82,9 +82,13 @@ func (service *TenantServiceImpl) RemoveUserFromTenant(userMtmTenant *model.User
 
 // Future admin, staff, owner role should be implemented.
 // AddUserToTenant implements TenantService.
-func (service *TenantServiceImpl) AddUserToTenant(userId, tenantId, performerId, sub int) (*model.UserMtmTenant, error) {
-	if performerId != sub {
-		log.Warnf("Forbidden action detected ! userId: %d, sub: %d; Performing RemoveUserFromTenant", performerId, sub)
+func (service *TenantServiceImpl) AddUserToTenant(userId, tenantId, sub int) (*model.UserMtmTenant, error) {
+	tenant, err := service.Repository.GetTenantById(tenantId)
+	if err != nil {
+		return nil, err
+	}
+	if tenant.OwnerUserId != sub {
+		log.Warnf("Forbidden action detected ! tenantId: %d, sub: %d; Performing AddUserToTenant", tenantId, sub)
 		return nil, errors.New("[TenantService:AddUserToTenant]")
 	}
 

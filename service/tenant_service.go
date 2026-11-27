@@ -18,7 +18,7 @@ type TenantService interface {
 		Will create new data into user_mtm_tenant table
 		that will make user have many to many relation with tenant table
 	*/
-	AddUserToTenant(userId, tenantId, performerId, sub int) (*model.UserMtmTenant, error)
+	AddUserToTenant(userId, tenantId, sub int) (*model.UserMtmTenant, error)
 
 	/*
 		Remove user from tenant

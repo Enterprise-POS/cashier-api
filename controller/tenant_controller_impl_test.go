@@ -56,6 +56,10 @@ func TestTenantControllerImpl(t *testing.T) {
 		TenantId    int `json:"tenant_id"`
 		PerformerId int `json:"performer_id"`
 	}
+	type AddUserRequestBody struct {
+		UserId   int `json:"user_id"`
+		TenantId int `json:"tenant_id"`
+	}
 
 	t.Run("NewTenant", func(t *testing.T) {
 		// Create dummy user
@@ -358,12 +362,32 @@ func TestTenantControllerImpl(t *testing.T) {
 		require.True(t, token.Valid)
 		dummyUser2.Id = int(sub)
 
+		t.Run("NonOwnerCannotAddSelfToTenant", func(t *testing.T) {
+			requestBody, err := json.Marshal(&AddUserRequestBody{
+				UserId:   dummyUser2.Id,
+				TenantId: createdTenant.Id,
+			})
+			require.NoError(t, err)
+			request := httptest.NewRequest("POST", "/tenants/add_user", bytes.NewReader(requestBody))
+			request.AddCookie(enterprisePOSCookie2)
+			request.Header.Set("Content-Type", "application/json")
+			response, err := app.Test(request, fiber.TestConfig{Timeout: time.Duration(int(time.Second*5)) * time.Millisecond})
+			require.NoError(t, err)
+			assert.Equal(t, http.StatusForbidden, response.StatusCode)
+
+			var membershipCount int64
+			err = gormClient.Model(&model.UserMtmTenant{}).
+				Where("user_id = ? AND tenant_id = ?", dummyUser2.Id, createdTenant.Id).
+				Count(&membershipCount).Error
+			require.NoError(t, err)
+			assert.Zero(t, membershipCount)
+		})
+
 		t.Run("NormalAdd", func(t *testing.T) {
 			// WARN: Current scope body is for current scope
-			requestBody, err := json.Marshal(&RequestBodyStructure{
-				UserId:      dummyUser2.Id, // to be added user
-				TenantId:    createdTenant.Id,
-				PerformerId: dummyTenant.OwnerUserId, // owner
+			requestBody, err := json.Marshal(&AddUserRequestBody{
+				UserId:   dummyUser2.Id, // to be added user
+				TenantId: createdTenant.Id,
 			})
 			require.NoError(t, err)
 			request := httptest.NewRequest("POST", "/tenants/add_user", bytes.NewReader(requestBody))
@@ -383,10 +407,9 @@ func TestTenantControllerImpl(t *testing.T) {
 
 		t.Run("DuplicateKeyForInsertingTheSameUserId", func(t *testing.T) {
 			// WARN: Current scope body is for current scope
-			requestBody, err := json.Marshal(&RequestBodyStructure{
-				UserId:      dummyUser2.Id, // to be added user
-				TenantId:    createdTenant.Id,
-				PerformerId: dummyTenant.OwnerUserId, // owner
+			requestBody, err := json.Marshal(&AddUserRequestBody{
+				UserId:   dummyUser2.Id, // to be added user
+				TenantId: createdTenant.Id,
 			})
 			require.NoError(t, err)
 			request := httptest.NewRequest("POST", "/tenants/add_user", bytes.NewReader(requestBody))
@@ -400,27 +423,6 @@ func TestTenantControllerImpl(t *testing.T) {
 			assert.Equal(t, http.StatusBadRequest, response.StatusCode)
 			assert.Contains(t, responseBody, "error")
 			assert.Contains(t, responseBody, "Current user already exist.")
-		})
-
-		t.Run("IllegalActionByUsingAnotherUserId", func(t *testing.T) {
-			requestBody, err := json.Marshal(&RequestBodyStructure{
-				UserId:      dummyUser2.Id,
-				TenantId:    createdTenant.Id,
-				PerformerId: 99, // using someone id
-			})
-
-			request := httptest.NewRequest("POST", "/tenants/add_user", bytes.NewReader(requestBody))
-			request.AddCookie(enterprisePOSCookie)
-			request.Header.Set("Content-Type", "application/json")
-			response, err := app.Test(request, fiber.TestConfig{Timeout: time.Duration(int(time.Second*5)) * time.Millisecond})
-
-			bodyBytes, err := io.ReadAll(response.Body)
-			responseBody := string(bodyBytes)
-
-			assert.NoError(t, err)
-			assert.Equal(t, http.StatusForbidden, response.StatusCode)
-			assert.Contains(t, responseBody, "error")
-			assert.Contains(t, responseBody, "Forbidden action detected ! Do not proceed")
 		})
 
 		// Clean up
@@ -711,11 +713,10 @@ func TestTenantControllerImpl(t *testing.T) {
 		// Interaction
 		// Invite 2nd user into tenant
 		type addUserRequestBody struct {
-			UserId      int `json:"user_id"` // To be add user
-			TenantId    int `json:"tenant_id"`
-			PerformerId int `json:"performer_id"`
+			UserId   int `json:"user_id"` // To be add user
+			TenantId int `json:"tenant_id"`
 		}
-		bodyBytes, err = json.Marshal(&addUserRequestBody{UserId: dummyUser2.Id, TenantId: createdTenant.Id, PerformerId: dummyUser.Id})
+		bodyBytes, err = json.Marshal(&addUserRequestBody{UserId: dummyUser2.Id, TenantId: createdTenant.Id})
 		request = httptest.NewRequest("POST", "/tenants/add_user", bytes.NewReader(bodyBytes))
 		request.AddCookie(enterprisePOSCookie)
 		request.Header.Set("Content-Type", "application/json")

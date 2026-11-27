@@ -26,6 +26,26 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestOrderItemControllerGetUsesURLTenantID(t *testing.T) {
+	orderItemServiceMock := service.NewOrderItemServiceMock(&mock.Mock{}).(*service.OrderItemServiceMock)
+	orderItemServiceMock.Mock.On("Get", 7, 1, 10, 1, ([]*query.QueryFilter)(nil), (*query.DateFilter)(nil)).
+		Return([]*model.OrderItem{}, 0, nil)
+	orderItemController := NewOrderItemControllerImpl(orderItemServiceMock)
+
+	app := fiber.New()
+	app.Post("/:tenantId", func(ctx fiber.Ctx) error {
+		ctx.Locals("sub", 1)
+		return orderItemController.Get(ctx)
+	})
+
+	request := httptest.NewRequest("POST", "/7", strings.NewReader(`{"tenant_id":8,"store_id":1,"limit":10,"page":1}`))
+	request.Header.Set("Content-Type", "application/json")
+	response, err := app.Test(request)
+	require.NoError(t, err)
+	require.Equal(t, http.StatusOK, response.StatusCode)
+	orderItemServiceMock.Mock.AssertExpectations(t)
+}
+
 func TestOrderItemControllerImpl(t *testing.T) {
 	if os.Getenv("JWT_S") == "" {
 		t.Skip("Required ENV not available: JWT_S")
@@ -110,6 +130,10 @@ func TestOrderItemControllerImpl(t *testing.T) {
 	t.Run("Get", func(t *testing.T) {
 		t.Run("NormalGet", func(t *testing.T) {
 			expectedResponse := &OrderItemControllerGetResponse{
+				TotalCount:          2,
+				Page:                1,
+				Limit:               20,
+				RequestedByTenantId: createdTestTenant.Id,
 				OrderItems: []*model.OrderItem{
 					{
 						Id:             1,
@@ -142,8 +166,15 @@ func TestOrderItemControllerImpl(t *testing.T) {
 				StartDate: &startDate,
 				EndDate:   &endDate,
 			}
-			body := OrderItemControllerGetRequest{
-				TenantId: 1,
+			body := struct {
+				TenantId   int                  `json:"tenant_id"`
+				StoreId    int                  `json:"store_id"`
+				Limit      int                  `json:"limit"`
+				Page       int                  `json:"page"`
+				Filters    []*query.QueryFilter `json:"filters"`
+				DateFilter *query.DateFilter    `json:"date_filter"`
+			}{
+				TenantId: createdTestTenant.Id + 1,
 				StoreId:  1,
 				Limit:    20,
 				Page:     1,
@@ -161,7 +192,7 @@ func TestOrderItemControllerImpl(t *testing.T) {
 			requestBody := strings.NewReader(string(byteBody))
 
 			orderItemServiceMock.Mock = &mock.Mock{}
-			orderItemServiceMock.Mock.On("Get", body.TenantId, body.StoreId, body.Limit, body.Page, body.Filters, body.DateFilter).
+			orderItemServiceMock.Mock.On("Get", createdTestTenant.Id, body.StoreId, body.Limit, body.Page, body.Filters, body.DateFilter).
 				Return(expectedResponse.OrderItems, len(expectedResponse.OrderItems), nil)
 
 			request = httptest.NewRequest("POST", fmt.Sprintf("/order_items/search/%d", createdTestTenant.Id), requestBody)
@@ -175,10 +206,12 @@ func TestOrderItemControllerImpl(t *testing.T) {
 			byteResponseBody, err := io.ReadAll(response.Body)
 			assert.NoError(t, err)
 
+			var envelope struct {
+				Data json.RawMessage `json:"data"`
+			}
+			assert.NoError(t, json.Unmarshal(byteResponseBody, &envelope))
 			var responseBody OrderItemControllerGetResponse
-			err = json.Unmarshal(byteResponseBody, &responseBody)
-			assert.NoError(t, err)
-			assert.NotNil(t, responseBody)
+			assert.NoError(t, json.Unmarshal(envelope.Data, &responseBody))
 			assert.Equal(t, expectedResponse.TotalCount, responseBody.TotalCount)
 			assert.Equal(t, expectedResponse.Limit, responseBody.Limit)
 			assert.Equal(t, expectedResponse.RequestedByTenantId, responseBody.RequestedByTenantId)
